@@ -28,6 +28,10 @@ APKs for you. Set up once:
 Open the link above on the phone, download `wickfarer.apk`, open it, and allow your browser to
 install apps when Android asks. A new build installs over the old one and keeps your saves.
 
+If you installed a build from before the rename to Wickfarer (package `com.oddwright.emberwake`),
+uninstall it: the new package is a different app to Android. In Obtainium, remove the old entry
+and add the repo again.
+
 ## The signing key
 
 Android installs an update over the old app only when both are signed with the same key. If
