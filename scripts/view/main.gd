@@ -7,7 +7,17 @@ extends Node
 const SAVE_SLOT := "run"
 const OLD_FIGHT_SLOT := "combat"  ## Phase 0 saved a lone fight here
 const LONG_PRESS := 0.4
-const AUTOSAVE_EVERY := 10.0
+## A live fight saves this often as well as on every order, because iOS kills a
+## swiped-away app without a callback and a crash sends none either.
+const AUTOSAVE_EVERY := 2.0
+## Menu pages a cold start can reopen, by the page Back returns to. Anything
+## else falls back to the title.
+const RESUMABLE_PAGES := {
+	"": [""],
+	"title": ["title", "options", "confirm"],
+	"pause": ["pause", "options", "confirm"],
+}
+const CONFIRMS: Array[String] = ["abandon", "new_run"]
 const MAX_STEPS_PER_FRAME := 5
 
 var save_dir := SaveService.DIR  ## tests point this at a scratch folder
@@ -27,11 +37,11 @@ var music_director := MusicDirector.new()
 var audio: AudioService
 var haptics: Haptics
 var menu_view: MenuView
+var tutorial: Tutorial  ## the training flight's coach and the one-time tips
+var coach: CoachView
 var menu_layout: MenuLayout
 var crew_view: CrewView
-var crew_layout: CrewLayout
-var roster_open := false  ## the crew roster is over the fight (and pauses it)
-var roster_pick := -1  ## the roster row whose post is being picked, or -1
+var roster: Roster  ## the crew roster, Muster and posting crew
 ## The open menu page: "" (playing), "title", "pause", "options" or "confirm".
 var menu := ""
 ## The page Back returns to: "title" hides the game, "pause" dims it.
@@ -51,10 +61,12 @@ var _press_pos := Vector2.ZERO
 var _press_time := 0
 var _pressing := false
 var _paused_before_menu := false
-var _paused_before_roster := false
+var _saved_ui: Dictionary = {}  ## the ui block of the save we opened with
+var _last_save := ""  ## the payload last written, so an unchanged state isn't rewritten
 
 
 func _ready() -> void:
+	roster = Roster.new(self)
 	ContentDB.load_all()
 	var errors := ContentDB.validate()
 	for e in errors:
@@ -82,6 +94,9 @@ func _ready() -> void:
 	crew_view = CrewView.new()
 	viewport.add_child(crew_view)
 	crew_view.setup(self)
+	coach = CoachView.new()
+	viewport.add_child(coach)  # over the fight and run screens, under the menus
+	coach.setup(self)
 	menu_view = MenuView.new()
 	viewport.add_child(menu_view)  # last, so the menus draw over the game
 	menu_view.setup(self)
@@ -89,11 +104,13 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_on_resize)
 	_on_resize()
 	run = _load_saved()
-	open_menu("title")
+	if not _restore_ui(_saved_ui):
+		open_menu("title")
 
 
 func _setup_feedback() -> void:
 	settings = GameSettings.load_or_default(save_dir)
+	tutorial = Tutorial.load_or_default(save_dir)
 	feedback = FeedbackDirector.new(ContentDB.feedback.get("cues", {}), settings)
 	audio = AudioService.new()
 	add_child(audio)
@@ -112,9 +129,11 @@ func ui_cue(what: String) -> void:
 func _load_saved() -> Run:
 	SaveService.erase(OLD_FIGHT_SLOT, save_dir)
 	var data := SaveService.read(SAVE_SLOT, save_dir)
+	var ui: Variant = data.get("ui", {})
+	_saved_ui = ui if ui is Dictionary else {}
 	if data.has("run"):
 		var r := Run.from_dict(data.run)
-		if not r.state in ["lost", "reach_done"]:
+		if not r.is_over():
 			return r
 	return null
 
@@ -131,7 +150,7 @@ func _set_run(r: Run) -> void:
 
 
 ## Call after every run action: shows the right screen and saves.
-func _enter_screen() -> void:
+func _enter_screen(save := true) -> void:
 	var fighting := run_screen() == "fight"
 	_show_game(menu_base != "title")
 	if fighting and combat != run.combat:
@@ -140,7 +159,8 @@ func _enter_screen() -> void:
 		combat = null
 		layout = null
 	_build_run_layout()
-	_save()
+	if save:
+		_save()
 
 
 ## The fight and run screens are hidden under the title menu, and dimmed
@@ -150,7 +170,7 @@ func _show_game(on: bool) -> void:
 	world.visible = on and fighting
 	text.visible = on and fighting
 	run_view.visible = on and run != null and not fighting
-	crew_view.visible = on and fighting and roster_open
+	crew_view.visible = on and fighting and roster.open
 	menu_view.visible = menu != ""
 
 
@@ -167,7 +187,10 @@ func _build_run_layout() -> void:
 			count = (run.event().get("choices", []) as Array).size()
 		"store":
 			mode = "store"
-			count = run.store_items().size() + 1  # and Leave
+			count = run.store_options().size()
+		"refit":
+			mode = "refit"
+			count = run.refit_options().size()
 	run_layout = RunLayout.build(screen, run.chart, mode, count)
 
 
@@ -181,8 +204,7 @@ func _start(c: Combat) -> void:
 	pause_reason = ""
 	selected_weapon = -1
 	selected_crew = -1
-	roster_open = false
-	roster_pick = -1
+	roster.reset()
 	floaters.clear()
 	flashes.clear()
 	if feedback:
@@ -208,7 +230,7 @@ func _on_resize() -> void:
 		_rebuild_layout()
 	_build_run_layout()
 	_build_menu_layout()
-	_build_crew_layout()
+	roster.rebuild()
 
 
 func _rebuild_layout() -> void:
@@ -230,8 +252,8 @@ func _rebuild_layout() -> void:
 func _pause(reason := "") -> void:
 	if menu != "":
 		_paused_before_menu = true  # a fold or a trip away while in the menu still counts
-	if roster_open:
-		_paused_before_roster = true  # and in the roster
+	if roster.open:
+		roster.paused_before = true  # and in the roster
 	paused = true
 	pause_reason = reason
 	_save()
@@ -240,10 +262,82 @@ func _pause(reason := "") -> void:
 func _save() -> void:
 	if run == null:
 		return
-	if run.state in ["lost", "reach_done"]:
-		SaveService.erase(SAVE_SLOT, save_dir)
-	else:
-		SaveService.write(SAVE_SLOT, {"run": run.to_dict()}, save_dir)
+	if run.is_over():
+		_erase_save()
+		return
+	var payload := {"run": run.to_dict(), "ui": _ui_state()}
+	var text_now := JsonUtil.s(payload)
+	if text_now == _last_save:
+		return  # nothing moved, e.g. a paused fight: spare the flash
+	if SaveService.write(SAVE_SLOT, payload, save_dir):
+		_last_save = text_now
+
+
+func _erase_save() -> void:
+	SaveService.erase(SAVE_SLOT, save_dir)
+	_last_save = ""
+
+
+## What the screen shows, beside the run, so a cold start reopens it (docs/SAVES.md).
+func _ui_state() -> Dictionary:
+	return {
+		"menu": menu,
+		"menu_base": menu_base,
+		"confirm": confirm_action,
+		"paused_before_menu": _paused_before_menu,
+		"weapon": selected_weapon,
+		"crew": selected_crew,
+		"music": music_director.to_dict(combat),
+	}
+
+
+## Puts the screen back the way a save left it, with one write at the end.
+## Returns false when there is nothing to go back to, and the app opens on the
+## title instead. The data came off disk, so every value is checked.
+func _restore_ui(d: Dictionary) -> bool:
+	var page := str(d.get("menu", ""))
+	var base := str(d.get("menu_base", ""))
+	if run == null or d.is_empty() or not page in RESUMABLE_PAGES.get(base, []):
+		return false
+	menu_base = base  # set first, so the title keeps the game hidden
+	_enter_screen(false)
+	if combat:
+		var music: Variant = d.get("music", {})
+		music_director.restore(music if music is Dictionary else {}, combat)
+		_hold_live_fight()
+		var w := _int_or(d.get("weapon"), -1)
+		selected_weapon = w if w >= 0 and w < combat.player().weapon_ids.size() else -1
+		var uid := _int_or(d.get("crew"), -1)
+		selected_crew = uid if _player_has_crew(uid) else -1
+	if page != "":
+		confirm_action = str(d.get("confirm", ""))
+		if page == "confirm" and not confirm_action in CONFIRMS:
+			page = base  # a confirm page that asks nothing: back to its menu
+		_paused_before_menu = d.get("paused_before_menu") == true
+		menu = page
+		_build_menu_layout()
+		_show_game(base != "title")
+	_save()
+	return true
+
+
+## A JSON number as an int, or `fallback` for anything else (null, a string).
+static func _int_or(v: Variant, fallback: int) -> int:
+	return int(v) if v is float or v is int else fallback
+
+
+func _player_has_crew(uid: int) -> bool:
+	for c in combat.player().crew:
+		if c.uid == uid:
+			return true
+	return false
+
+
+## Never drop a player straight back into a live fight: it waits for a tap.
+func _hold_live_fight() -> void:
+	if combat and combat.state == "fighting":
+		paused = true
+		pause_reason = "UI_TAP_TO_RESUME"
 
 
 func _notification(what: int) -> void:
@@ -267,6 +361,8 @@ func _on_leave() -> void:
 	if audio:
 		audio.suspend(true)
 		haptics.stop()
+	if tutorial:
+		tutorial.save(save_dir)
 	if combat and combat.state == "fighting":
 		_pause("UI_TAP_TO_RESUME")
 	else:
@@ -282,12 +378,14 @@ func _process(delta: float) -> void:
 	feedback.update(delta)
 	haptics.update(delta)
 	if run != null and menu == "":
+		_coach()
 		_tick_game(delta)
 	_play_feedback()
 	world.queue_redraw()
 	text.queue_redraw()
 	crew_view.queue_redraw()
 	run_view.queue_redraw()
+	coach.queue_redraw()
 	menu_view.queue_redraw()
 
 
@@ -316,6 +414,40 @@ func _tick_game(delta: float) -> void:
 			flashes.erase(k)
 
 
+## Lets the coach look at the screen, and holds the fight's clock while a step waits.
+func _coach() -> void:
+	if tutorial == null:
+		return
+	var on := run_screen()
+	if combat and combat.state != "fighting":
+		on = "fight_over"
+	var ctx := {
+		"screen": on,
+		"paused": paused,
+		"weapon": selected_weapon,
+		"crew": selected_crew,
+		"run": run,
+		"combat": combat,
+	}
+	var fresh := tutorial.update(ctx)
+	var live := combat != null and combat.state == "fighting"
+	if live and not paused and (fresh or tutorial.holds()):
+		paused = true
+		pause_reason = ""
+	if tutorial.dirty:
+		tutorial.save(save_dir)
+
+
+## The coach has words on screen, so the screen's own hint line stays quiet.
+func coach_speaking() -> bool:
+	return tutorial != null and menu == "" and not tutorial.display.is_empty()
+
+
+func _order(what: String, detail := "") -> void:
+	if tutorial:
+		tutorial.on_order(what, detail)
+
+
 func _play_feedback() -> void:
 	for f in feedback.drain():
 		if f.sound != "":
@@ -340,10 +472,12 @@ func music_state() -> String:
 			return "engage" if combat == null else music_director.state_for(combat)
 		"event", "outcome":
 			return "event"
-		"store":
+		"store", "refit":
 			return "store"
 		"lost":
 			return "defeat"
+		"won":
+			return "victory"
 	return "chart"
 
 
@@ -365,6 +499,8 @@ func flash_amount(side: int, room_id: String) -> float:
 func _on_events(events: Array) -> void:
 	if feedback:
 		feedback.on_sim_events(events, combat)
+	if tutorial:
+		tutorial.on_events(events)
 	for e: Dictionary in events:
 		match e.type:
 			"hit":
@@ -429,16 +565,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		var key := (event as InputEventKey).keycode
 		if key == KEY_ESCAPE:
 			back()
-		elif key == KEY_SPACE and combat and menu == "" and not roster_open:
+		elif key == KEY_SPACE and combat and menu == "" and not roster.open:
 			_toggle_pause()  # pause only means something in a fight
 
 
-func _toggle_pause() -> void:
+## Returns false when the coach is holding the clock for a step.
+func _toggle_pause() -> bool:
 	if paused:
+		if tutorial and tutorial.holds():
+			return false
 		paused = false
 		pause_reason = ""
 	else:
 		_pause()
+	return true
 
 
 func _tap(window_pos: Vector2, long: bool) -> void:
@@ -448,8 +588,8 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 		return
 	if run == null:
 		return
-	if roster_open and combat:
-		_tap_roster(p)
+	if roster.open and combat:
+		roster.tap(p)
 		return
 	if MenuLayout.menu_button(screen.native).grow(2).has_point(p):
 		ui_cue("tap")
@@ -458,6 +598,11 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 	if combat == null:
 		_tap_run(p)
 		return
+	_tap_fight(p, long)
+	_save()  # an order saves the moment it's given, with the selection it leaves
+
+
+func _tap_fight(p: Vector2i, long: bool) -> void:
 	if combat.state != "fighting":
 		if layout.again_rect().grow(4).has_point(p):
 			ui_cue("tap")
@@ -474,6 +619,8 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 	if selected_weapon >= 0 and enemy_room:
 		var aimed := combat.apply({"type": "aim", "weapon": selected_weapon, "room": enemy_room.id})
 		ui_cue("aim" if aimed else "refused")
+		if aimed:
+			_order("aim")
 		selected_weapon = -1
 		return
 	var c := world.crew_at(0, p)
@@ -484,6 +631,8 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 	if selected_crew >= 0 and my_room:
 		var moved := combat.apply({"type": "move", "crew": selected_crew, "room": my_room.id})
 		ui_cue("tap" if moved else "refused")
+		if moved:
+			_order("move")
 		selected_crew = -1
 		return
 	selected_weapon = -1
@@ -496,6 +645,8 @@ func _press_button(b: Dictionary, long: bool) -> void:
 			var cmd := "power_down" if long else "power_up"
 			var ok := combat.apply({"type": cmd, "system": b.id})
 			ui_cue(cmd if ok else "refused")
+			if ok:
+				_order(cmd, str(b.id))
 		"weapon":
 			var i := int(b.id)
 			if long:
@@ -509,14 +660,14 @@ func _press_button(b: Dictionary, long: bool) -> void:
 		"ward":
 			combat.apply({"type": "ward_deck", "deck": 1 - combat.player().ward_deck})
 			ui_cue("tap")
+			_order("ward")
 		"pause":
-			_toggle_pause()
-			ui_cue("tap")
+			ui_cue("tap" if _toggle_pause() else "refused")
 		"crew":
 			ui_cue("tap")
-			open_roster()
+			roster.show()
 		"muster":
-			ui_cue("tap" if combat.apply({"type": "muster"}) else "refused")
+			roster.muster()
 
 
 # ------------------------------------------------------------------ crew
@@ -525,106 +676,11 @@ func _press_button(b: Dictionary, long: bool) -> void:
 ## Tap selects a crew member (tap again to let go); long press posts them.
 func _tap_crew(c: Crew, long: bool) -> void:
 	if long:
-		_post_here(c)
+		roster.post_here(c)
 		return
 	selected_crew = -1 if selected_crew == c.uid else c.uid
 	selected_weapon = -1
 	ui_cue("select")
-
-
-## Long press on a crew member: where they stand (or are headed) becomes their post.
-func _post_here(c: Crew) -> void:
-	var dest: String = c.path.back() if c.is_moving() else c.room
-	if not combat.apply({"type": "post", "crew": c.uid, "room": dest}):
-		ui_cue("refused")
-		return
-	ui_cue("select")
-	selected_crew = -1
-	_float(0, dest, tr("UI_POST_SET") % tr(combat.player().role_of(c)), Pixel.c("w"))
-
-
-## The crew listed in the roster, top to bottom.
-func roster_crew() -> Array[Crew]:
-	var out: Array[Crew] = []
-	if combat:
-		out = combat.player().alive_crew()
-	return out
-
-
-## The posts the picker offers: each station on the ship, in data/systems.json
-## order, then "" for none.
-func roster_picks() -> Array[String]:
-	var out: Array[String] = []
-	if combat:
-		for sys: String in ContentDB.systems:
-			var r := combat.player().system_room(sys)
-			if r:
-				out.append(r.id)
-	out.append("")
-	return out
-
-
-## Opens the roster. It pauses the fight; closing it puts the pause back as it was.
-func open_roster() -> void:
-	if combat == null or combat.state != "fighting" or roster_open:
-		return
-	_paused_before_roster = paused
-	paused = true
-	roster_open = true
-	roster_pick = -1
-	selected_crew = -1
-	selected_weapon = -1
-	_build_crew_layout()
-	_show_game(menu_base != "title")
-
-
-func close_roster() -> void:
-	if not roster_open:
-		return
-	roster_open = false
-	roster_pick = -1
-	paused = _paused_before_roster
-	if not paused:
-		pause_reason = ""
-	_show_game(menu_base != "title")
-
-
-func _build_crew_layout() -> void:
-	if screen.is_empty() or not roster_open:
-		return
-	var picks: Array[String] = []
-	if roster_pick >= 0:
-		picks = roster_picks()
-	crew_layout = CrewLayout.build(screen, roster_crew().size(), picks)
-
-
-func _tap_roster(p: Vector2i) -> void:
-	var b := crew_layout.button_at(p) if crew_layout else {}
-	if b.is_empty():
-		return
-	var crew := roster_crew()
-	match b.kind:
-		"post":
-			var i := int(b.id)
-			roster_pick = -1 if roster_pick == i or i >= crew.size() else i
-			ui_cue("select")
-		"pick":
-			var picks := roster_picks()
-			var ok := roster_pick >= 0 and roster_pick < crew.size()
-			if ok:
-				var cmd := {"type": "post", "crew": crew[roster_pick].uid, "room": picks[int(b.id)]}
-				ok = combat.apply(cmd)
-			ui_cue("tap" if ok else "refused")
-			roster_pick = -1
-		"muster":
-			ui_cue("tap" if combat.apply({"type": "muster"}) else "refused")
-			close_roster()
-			return
-		"close":
-			ui_cue("tap")
-			close_roster()
-			return
-	_build_crew_layout()
 
 
 func _tap_run(p: Vector2i) -> void:
@@ -644,18 +700,25 @@ func _tap_run(p: Vector2i) -> void:
 				ui_cue("refused")
 				return
 			ui_cue("choose")
-		"store":
-			var items := run.store_items()
-			var i := int(b.id)
-			var done := run.buy(items[i]) if i < items.size() else run.leave_store()
-			if not done:
+		"store", "refit":
+			var opts := run.store_options() if b.kind == "store" else run.refit_options()
+			var option := opts[int(b.id)]
+			if not run.store_action(option):
 				ui_cue("refused")
 				return
-			ui_cue("buy" if i < items.size() else "tap")
+			var paid := (
+				option in Run.STORE_ITEMS or option in Run.REFIT_SYSTEMS or option == "stoke"
+			)
+			ui_cue("buy" if paid else "tap")
 		"next":
-			if run.state in ["lost", "reach_done"] and run.outcome == "":
+			if run.is_over() and run.outcome == "":
 				ui_cue("tap")
 				_set_run(Run.create(_fresh_seed()))
+				return
+			if run.state == "reach_done" and run.outcome == "":
+				run.next_reach()
+				ui_cue("jump")
+				_enter_screen()
 				return
 			if not run.read_outcome():
 				return
@@ -673,11 +736,16 @@ func menu_items(page: String) -> Array[String]:
 		"title":
 			if run != null:
 				out.append("continue")
-			out.append_array(["new_run", "options"])
+			out.append("new_run")
+			if tutorial and tutorial.done:
+				out.append("training")  # until then, New Run is the training flight
+			out.append("options")
 			if can_quit():
 				out.append("quit")
 		"pause":
 			out.assign(["resume", "options"])
+			if tutorial and tutorial.active(run):
+				out.append("skip_training")
 			if not run_over():
 				out.append("abandon")
 			out.append("to_title")
@@ -688,7 +756,7 @@ func menu_items(page: String) -> Array[String]:
 
 ## A lost or finished run waiting on its ending screen; nothing to continue.
 func run_over() -> bool:
-	return run != null and run.state in ["lost", "reach_done"]
+	return run != null and run.is_over()
 
 
 ## iOS apps must not quit themselves (Apple rejects it); Android and desktop may.
@@ -713,6 +781,7 @@ func close_menu() -> void:
 	menu_base = ""
 	menu_layout = null
 	_show_game(true)
+	_save()
 
 
 func _build_menu_layout() -> void:
@@ -725,8 +794,8 @@ func _build_menu_layout() -> void:
 func back() -> void:
 	match menu:
 		"":
-			if roster_open:
-				close_roster()
+			if roster.open:
+				roster.close()
 			elif run != null:
 				open_menu("pause")
 		"options", "confirm":
@@ -763,6 +832,15 @@ func _tap_menu(p: Vector2i) -> void:
 				_confirm("new_run")
 		"options":
 			open_menu("options")
+		"training":
+			if run == null:
+				_start_training()
+			else:
+				_confirm("training")
+		"skip_training":
+			tutorial.skip()
+			tutorial.save(save_dir)
+			_resume()
 		"quit":
 			_quit()
 		"resume":
@@ -777,10 +855,13 @@ func _tap_menu(p: Vector2i) -> void:
 				run_layout = null
 			open_menu("title")
 		"yes":
-			if confirm_action == "abandon":
-				_abandon()
-			else:
-				_new_run()
+			match confirm_action:
+				"abandon":
+					_abandon()
+				"training":
+					_start_training()
+				_:
+					_new_run()
 		"no":
 			open_menu(menu_base)
 
@@ -792,22 +873,32 @@ func _confirm(what: String) -> void:
 
 func _continue() -> void:
 	close_menu()
-	_enter_screen()
-	if combat and combat.state == "fighting":
-		_pause("UI_TAP_TO_RESUME")  # never drop a player straight back into a live fight
-	else:
-		paused = false
-		pause_reason = ""
+	paused = false
+	pause_reason = ""
+	_enter_screen(false)
+	_hold_live_fight()
+	_save()
 
 
+## A new player's first run is the training flight; it can be replayed from the title.
 func _new_run() -> void:
+	if tutorial and not tutorial.done:
+		_start_training()
+		return
 	close_menu()
 	_set_run(Run.create(_fresh_seed()))
 
 
+func _start_training() -> void:
+	close_menu()
+	tutorial.start_training()
+	tutorial.save(save_dir)
+	_set_run(Run.create(_fresh_seed(), "tallow_wren", Tutorial.TRAINING_REACH))
+
+
 ## Ends the run for good: the save goes, and the title has no Continue.
 func _abandon() -> void:
-	SaveService.erase(SAVE_SLOT, save_dir)
+	_erase_save()
 	run = null
 	combat = null
 	layout = null

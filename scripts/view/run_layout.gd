@@ -13,6 +13,7 @@ const CHOICE_H := 20
 const CHOICE_H_SQUARE := 30  ## the right page is narrow, so labels may take two lines
 const CHOICE_GAP := 4
 const NEXT_W := 90
+const WIDE_ROWS := 3  ## buttons a Wide page stacks before it splits into two columns
 
 var kind: String
 var native: Vector2i
@@ -27,7 +28,7 @@ var menu_rect: Rect2i
 var _beacon_y: Dictionary = {}
 
 
-## mode is "chart", "event", "store" or "next" (one Continue button).
+## mode is "chart", "event", "store", "refit" or "next" (one Continue button).
 static func build(
 	screen: Dictionary, chart: StarChart, mode: String, choice_count := 0
 ) -> RunLayout:
@@ -56,6 +57,8 @@ static func build(
 			l._choices(maxi(choice_count, 1), "choice")
 		"store":
 			l._choices(maxi(choice_count, 1), "store")
+		"refit":
+			l._choices(maxi(choice_count, 1), "refit")
 		"next":
 			l._add("next", 0, l._button_column(1)[0])
 	return l
@@ -128,8 +131,15 @@ func _button_column(count: int) -> Array[Rect2i]:
 		bw = native.x - x - 10
 		y = text_rect.position.y + 4
 	var bh := CHOICE_H if kind == "wide" else CHOICE_H_SQUARE
+	# A long list (the refit page) goes in two columns where one would run off
+	# the bottom of a short Wide canvas.
+	var cols := 2 if kind == "wide" and count > WIDE_ROWS else 1
+	var rows := ceili(float(count) / cols)
+	var cw := (bw - (cols - 1) * CHOICE_GAP) / cols
 	for i in count:
-		out.append(Rect2i(x, y + i * (bh + CHOICE_GAP), bw, bh))
+		var c := i / rows
+		var row := i % rows
+		out.append(Rect2i(x + c * (cw + CHOICE_GAP), y + row * (bh + CHOICE_GAP), cw, bh))
 	return out
 
 

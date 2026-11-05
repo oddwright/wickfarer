@@ -8,7 +8,7 @@ extends RefCounted
 ## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
-const VERSION := 3
+const VERSION := 4
 const DIR := "user://"
 
 
@@ -35,7 +35,13 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 						room["wanted_power"] = room.get("power", 0)
 			return d
 		2:
-			# Version 3 crew have skill practice. Crew from an older save start
+			# Version 3 ships carry refits (room levels, reactor, max hull, stokes)
+			# and runs carry their stats and Reach chain. Their defaults (the hull's
+			# own numbers, zero stats) are right for a version 2 save, so nothing
+			# moves; the bump only stops an older build from loading a newer run.
+			return d
+		3:
+			# Version 4 crew have skill practice. Crew from an older save start
 			# Green; their post (missing here) is filled in by Ship.from_dict,
 			# which knows which rooms are stations.
 			for ship: Dictionary in _saved_ships(d):

@@ -1,3 +1,5 @@
+# gdlint: disable=max-public-methods
+# (every test_ method is public by design: the runner calls them by name)
 extends SceneTree
 ## Headless test runner: godot --headless --path . -s tests/run_tests.gd
 ## Exits with code 1 if anything fails, so CI goes red.
@@ -9,6 +11,9 @@ const AUDIO_TESTS = preload("res://tests/audio_tests.gd")
 const STORY_TESTS = preload("res://tests/story_tests.gd")
 const SCREEN_TESTS = preload("res://tests/screen_tests.gd")
 const CREW_TESTS = preload("res://tests/crew_tests.gd")
+const PROGRESS_TESTS = preload("res://tests/progress_tests.gd")
+const RESUME_TESTS = preload("res://tests/resume_tests.gd")
+const TUTORIAL_TESTS = preload("res://tests/tutorial_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -70,6 +75,8 @@ func _init() -> void:
 		"test_music_clips_are_synced_stems",
 		"test_menu_screens_on_every_screen",
 		"test_options_adjust_settings",
+		"test_progression",
+		"test_tutorial",
 	]:
 		current = t
 		call(t)
@@ -78,7 +85,7 @@ func _init() -> void:
 ## Tests that need the real scene in the tree run on the first frame, once the
 ## root has entered it (it hasn't during _init).
 func _process(_delta: float) -> bool:
-	for t in ["test_scene_flows"]:
+	for t in ["test_menu_flow", "_test_tutorial_flow", "_test_crew_roster_flow"]:
 		current = t
 		call(t)
 	_finish()
@@ -422,7 +429,7 @@ func test_every_save_fixture_still_loads() -> void:
 			continue
 		var r := Run.from_dict(up.get("data", {}).get("run", {}))
 		var end := Autopilot.new().play(r)
-		check(end in ["lost", "reach_done"], "%s resumes and plays to the end (%s)" % [name, end])
+		check(end in Run.ENDINGS, "%s resumes and plays to the end (%s)" % [name, end])
 	check(runs >= 1, "at least one whole-run save fixture")
 
 
@@ -571,8 +578,8 @@ func test_beacon_openers() -> void:
 func test_run_saves_and_resumes_at_every_step() -> void:
 	var pilot := Autopilot.new()
 	var r := Run.create(21)
-	for step in 12:
-		if r.state in ["reach_done", "lost"]:
+	for step in 60:  # long enough to refit at a store and cross a Gate
+		if r.is_over():
 			break
 		var copy := Run.from_dict(JSON.parse_string(J.s(r.to_dict())))
 		check(
@@ -593,7 +600,7 @@ func test_autopilot_runs_always_end() -> void:
 		var r := Run.create(300 + i)
 		var end := Autopilot.new().play(r)
 		ends[end] = int(ends.get(end, 0)) + 1
-		check(end in ["reach_done", "lost"], "run %d ended properly (got %s)" % [i, end])
+		check(end in Run.ENDINGS, "run %d ended properly (got %s)" % [i, end])
 	print("  autopilot run endings: ", ends)
 
 
@@ -610,10 +617,16 @@ func test_run_screens_on_every_screen() -> void:
 				if (l.button("beacon", n.id).rect as Rect2i).get_center() != l.beacon_pos(n):
 					probs.append("beacon %s is off its hit box" % n.id)
 		var chart0 := Run.create(1).chart
-		for mode in ["event", "store", "next"]:
-			var l := RunLayout.build(scr, chart0, mode, 3)
+		var counts := {
+			"event": 3,
+			"store": Run.STORE_ITEMS.size() + 2,
+			"refit": Run.REFIT_SYSTEMS.size() + 2,
+			"next": 1
+		}
+		for mode: String in counts:
+			var l := RunLayout.build(scr, chart0, mode, counts[mode])
 			probs.append_array(l.problems())
-			var own := {"event": "choice", "store": "store", "next": "next"}
+			var own := {"event": "choice", "store": "store", "refit": "refit", "next": "next"}
 			if l.button(own[mode]).is_empty():
 				probs.append("%s has no %s button" % [mode, own[mode]])
 			for b in l.buttons:
@@ -622,6 +635,16 @@ func test_run_screens_on_every_screen() -> void:
 				if mode != "next" and (b.rect as Rect2i).intersects(l.text_rect):
 					probs.append("%s button covers the text" % mode)
 		check(probs.is_empty(), "%s run screens: %s" % [name, probs.slice(0, 4)])
+
+
+## Reaches, refits and stoking: tests/progress_tests.gd.
+func test_progression() -> void:
+	PROGRESS_TESTS.reaches_chain(self)
+	PROGRESS_TESTS.refit_and_stoke(self)
+	PROGRESS_TESTS.stories_last_the_run(self)
+	PROGRESS_TESTS.enemies_grow(self)
+	PROGRESS_TESTS.saves_keep_refits(self)
+	PROGRESS_TESTS.content_checked(self)
 
 
 func test_view_screens_follow_the_run() -> void:
@@ -846,4 +869,30 @@ func test_options_adjust_settings() -> void:
 ## The menus and the crew roster, driven through the real scene.
 func test_scene_flows() -> void:
 	MENU_TESTS.flow(self)
+	CREW_TESTS.roster_flow(self)
+
+
+## Also the cold-start resume: the app killed and reopened on its save.
+func test_menu_flow() -> void:
+	MENU_TESTS.flow(self)
+	RESUME_TESTS.flow(self)
+
+
+## The training lessons, tips, saving mid-step and where the coach writes, everywhere.
+func test_tutorial() -> void:
+	TUTORIAL_TESTS.lessons(self)
+	TUTORIAL_TESTS.tips(self)
+	var dir := "user://test_saves"
+	DirAccess.make_dir_recursive_absolute(dir)
+	TUTORIAL_TESTS.saves(self, dir)
+	TUTORIAL_TESTS.layouts(self, SCREEN_TESTS.variants(SCREENS))
+
+
+## Private so the runner stays under gdlint's public method limit; called by name.
+func _test_tutorial_flow() -> void:
+	TUTORIAL_TESTS.flow(self)
+
+
+## The crew roster, driven through the real scene. Private like the tutorial flow.
+func _test_crew_roster_flow() -> void:
 	CREW_TESTS.roster_flow(self)

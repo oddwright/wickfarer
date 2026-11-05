@@ -347,7 +347,7 @@ func _draw_hud() -> void:
 						Rect2(r.position.x + 4, y, 10, 7), Pixel.c("j") if on else Pixel.c("c")
 					)
 			"crew", "muster":
-				_draw_panel(r, b.kind == "crew" and main.roster_open)
+				_draw_panel(r, b.kind == "crew" and main.roster.open)
 			"pause":
 				_draw_panel(r, main.paused)
 				var cx := r.position.x + 11

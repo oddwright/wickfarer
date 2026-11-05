@@ -3,7 +3,8 @@ extends RefCounted
 ## A rough stand-in for a human player, used by tests and balance tools only.
 ## In fights it aims at whichever enemy deck the ward isn't covering and sends
 ## crew to fires and repairs. On the chart it heads for the Gate, avoids
-## swallowed beacons and spends scrap on repairs.
+## swallowed beacons, spends scrap on repairs and refits, and goes on
+## through every Gate.
 
 var pilot := CombatAI.new()
 
@@ -27,7 +28,7 @@ func combat_step(c: Combat) -> void:
 
 
 ## Plays the run until it ends or `max_steps` actions pass. Returns the final state.
-func play(run: Run, max_steps := 400, max_fight_ticks := 6000) -> String:
+func play(run: Run, max_steps := 1200, max_fight_ticks := 6000) -> String:
 	for step in max_steps:
 		match run.state:
 			"chart":
@@ -52,12 +53,34 @@ func play(run: Run, max_steps := 400, max_fight_ticks := 6000) -> String:
 			"store":
 				while run.ship.hull < run.ship.max_hull - 2 and run.buy("repair"):
 					pass
-				if run.light < 3:
-					run.buy("light")
+				while run.light < 4 and run.scrap >= 25 and run.buy("light"):
+					pass
+				_refit(run)
 				run.leave_store()
+			"reach_done":
+				run.next_reach()
 			_:
 				return run.state
 	return run.state
+
+
+## Spends spare scrap on the cheapest refit, keeping enough for a few repairs,
+## and stokes the Ember when it can spare the Light for the jumps ahead.
+func _refit(run: Run) -> void:
+	run.open_refit()
+	var bought := true
+	while bought:
+		bought = false
+		var cheapest := ""
+		for sys in Run.REFIT_SYSTEMS:
+			var p := run.refit_price(sys)
+			if p >= 0 and (cheapest == "" or p < run.refit_price(cheapest)):
+				cheapest = sys
+		if cheapest != "" and run.scrap - run.refit_price(cheapest) >= 10:
+			bought = run.refit(cheapest)
+	if run.stoke_price() >= 0 and run.light - run.stoke_price() >= 4:
+		run.stoke()
+	run.close_refit()
 
 
 func _pick_jump(run: Run) -> String:
@@ -69,7 +92,8 @@ func _pick_jump(run: Run) -> String:
 		if run.is_swallowed(id):
 			score -= 100.0
 		if n.kind == "store":
-			score += 3.0
+			# Worth a sideways jump once there is scrap to spend on refits.
+			score += 12.0 if run.scrap >= 40 else 3.0
 		if score > best_score:
 			best_score = score
 			best = id

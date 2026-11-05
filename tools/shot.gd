@@ -1,7 +1,7 @@
 extends SceneTree
 ## Screenshot one screen at a given window size (needs a display; use xvfb-run).
 ## godot --path . -s tools/shot.gd -- <width> <height> <out.png> [ticks] [screen] [ui size]
-## screen is fight (default), chart, event, event:<event id>, store or lost,
+## screen is fight (default), chart, event, event:<event id>, store, refit, reach_done, won or lost,
 ## roster or roster_pick (the crew roster over a fight, picker shut or open),
 ## or a menu over a fight: title, pause, options or confirm. ui size is the
 ## options setting, a step from auto (-2 to 1); it is not saved.
@@ -64,8 +64,10 @@ func _set_up() -> void:
 			run.event_id = "ash_toll"
 		"store":
 			run.state = "store"
-		"lost":
-			run.state = "lost"
+		"refit":
+			run.state = "refit"
+		"lost", "won", "reach_done":
+			run.state = which
 		"fight":
 			run._start_fight("ashmarket_cutter")
 	if which in ["title", "pause", "options", "confirm", "roster", "roster_pick"]:
@@ -108,7 +110,7 @@ func _open_roster(picking: bool) -> void:
 		c.fight_xp["guns"] = 30.0 + 10.0 * k
 		k += 1
 	main.selected_weapon = -1
-	main.open_roster()
+	main.roster.show()
 	if picking:
-		main.roster_pick = 0
-		main._build_crew_layout()
+		main.roster.pick = 0
+		main.roster.rebuild()

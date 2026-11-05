@@ -8,15 +8,15 @@ const SKILL_PIP := 3
 
 
 func _draw() -> void:
-	if main == null or not main.roster_open or main.crew_layout == null or main.combat == null:
+	if main == null or not main.roster.open or main.roster.layout == null or main.combat == null:
 		return
-	var l: CrewLayout = main.crew_layout
+	var l: CrewLayout = main.roster.layout
 	var me: Ship = main.combat.player()
 	draw_rect(Rect2(Vector2.ZERO, l.native), Pixel.c("a", 0.93))
-	var crew: Array[Crew] = main.roster_crew()
+	var crew: Array[Crew] = main.roster.crew()
 	var hint := tr("UI_ROSTER_HINT")
-	if main.roster_pick >= 0 and main.roster_pick < crew.size():
-		hint = tr("UI_PICK_POST") % tr(crew[main.roster_pick].name)
+	if main.roster.pick >= 0 and main.roster.pick < crew.size():
+		hint = tr("UI_PICK_POST") % tr(crew[main.roster.pick].name)
 	_text(
 		Vector2(l.title_rect.position.x, l.title_rect.end.y),
 		tr("UI_ROSTER_TITLE"),
@@ -33,17 +33,17 @@ func _draw() -> void:
 	)
 	for i in mini(crew.size(), l.rows.size()):
 		_draw_row(me, crew[i], l.rows[i])
-	var picks: Array[String] = main.roster_picks()
+	var picks: Array[String] = main.roster.picks()
 	var current := ""
-	if main.roster_pick >= 0 and main.roster_pick < crew.size():
-		current = crew[main.roster_pick].post
+	if main.roster.pick >= 0 and main.roster.pick < crew.size():
+		current = crew[main.roster.pick].post
 	for b in l.buttons:
 		var r: Rect2i = b.rect
 		match b.kind:
 			"post":
 				var i := int(b.id)
 				if i < crew.size():
-					_post_button(me, r, crew[i].post, me.role_of(crew[i]), main.roster_pick == i)
+					_post_button(me, r, crew[i].post, me.role_of(crew[i]), main.roster.pick == i)
 			"pick":
 				var id: String = picks[int(b.id)]
 				_post_button(me, r, id, "", id == current)

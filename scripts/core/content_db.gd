@@ -13,6 +13,7 @@ const FILES := {
 	"reaches": "res://data/reaches.json",
 	"feedback": "res://data/feedback.json",
 	"skills": "res://data/skills.json",
+	"tutorial": "res://data/tutorial.json",
 }
 
 const EVENT_EFFECTS := [
@@ -36,6 +37,7 @@ static var events: Dictionary = {}
 static var reaches: Dictionary = {}
 static var feedback: Dictionary = {}  ## sounds, haptics, cues and music layers
 static var skills: Dictionary = {}  ## crew skills, ranks and how practice grows
+static var tutorial: Dictionary = {}  ## the training flight's lessons and the one-time tips
 static var loaded := false
 
 
@@ -51,6 +53,7 @@ static func load_all() -> void:
 	reaches = _read(FILES.reaches)
 	feedback = _read(FILES.feedback)
 	skills = _read(FILES.skills)
+	tutorial = _read(FILES.tutorial)
 	_install_translation()
 	loaded = true
 
@@ -105,16 +108,62 @@ static func validate() -> Array[String]:
 				errors.append("species %s: missing %s" % [sid, field])
 		_check_string(s.get("name", ""), "species %s" % sid, errors)
 	for sys_id: String in systems:
-		_check_string(systems[sys_id].get("name", ""), "system %s" % sys_id, errors)
+		_validate_system(sys_id, systems[sys_id], errors)
+	if not systems.has("ember") or not systems.ember.get("stoke_light", []) is Array:
+		errors.append("system ember: needs a stoke_light price list")
+	for sys_id in Run.REFIT_SYSTEMS:
+		if not systems.has(sys_id):
+			errors.append("refit offers unknown system %s" % sys_id)
 	for ship_id: String in ships:
 		_validate_ship(ship_id, ships[ship_id], errors)
 	for eid: String in events:
 		_validate_event(eid, events[eid], errors)
 	for rid: String in reaches:
 		_validate_reach(rid, reaches[rid], errors)
+	_validate_reach_chain(errors)
 	_validate_feedback(feedback, errors)
 	Skills.validate(errors)
+	_validate_tutorial(tutorial, errors)
 	return errors
+
+
+static func _validate_system(sys_id: String, sys: Dictionary, errors: Array[String]) -> void:
+	var where := "system %s" % sys_id
+	_check_string(sys.get("name", ""), where, errors)
+	for f in ["upgrade_scrap", "stoke_light"]:
+		if not sys.has(f):
+			continue
+		if not sys[f] is Array:
+			errors.append("%s: %s must be a list of prices" % [where, f])
+			continue
+		for p: Variant in sys[f]:
+			if not (p is float or p is int) or int(p) <= 0 or float(p) != float(int(p)):
+				errors.append("%s: %s prices must be whole numbers above 0" % [where, f])
+	if sys.has("stoke_light") and sys_id != "ember":
+		errors.append("%s: only the Ember can be stoked" % where)
+
+
+## The Reaches form one chain from reach_1, each "next" naming a real Reach,
+## with no loops, so every run ends at a last Gate.
+static func _validate_reach_chain(errors: Array[String]) -> void:
+	if not reaches.has("reach_1"):
+		errors.append("there must be a reach_1, where runs start")
+		return
+	var seen := {}
+	var rid := "reach_1"
+	while rid != "":
+		if seen.has(rid):
+			errors.append("reach %s: the chain of next Reaches loops" % rid)
+			return
+		seen[rid] = true
+		rid = str(reaches[rid].get("next", ""))
+		if rid != "" and not reaches.has(rid):
+			errors.append("reach chain: unknown next Reach %s" % rid)
+			return
+	for other: String in reaches:
+		# The training flight is its own one-Reach run, outside the chain.
+		if not seen.has(other) and not bool(reaches[other].get("training", false)):
+			errors.append("reach %s: no Reach leads to it" % other)
 
 
 ## Every field a Run or StarChart reads, so a bad reach fails here and not
@@ -122,6 +171,8 @@ static func validate() -> Array[String]:
 static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -> void:
 	var where := "reach %s" % rid
 	_check_string(r.get("name", ""), where, errors)
+	if r.has("training") and not r.training is bool:
+		errors.append("%s: training must be true or false" % where)
 	var enemies: Array = r.get("enemies", [])
 	if enemies.is_empty():
 		errors.append("%s: needs at least one enemy" % where)
@@ -143,6 +194,8 @@ static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -
 	var rows: Array = r.get("rows", [])
 	if rows.size() != 2 or int(rows[0]) < 1 or int(rows[1]) < int(rows[0]):
 		errors.append("%s: rows must be [min, max] with 1 <= min <= max" % where)
+	if int(r.get("gate_repair", 0)) < 0:
+		errors.append("%s: gate_repair can't be negative" % where)
 	for f in ["jump_light", "dark_jump_hull", "hush_hull"]:
 		if not r.has(f) or int(r[f]) < 0:
 			errors.append("%s: %s must be a number of 0 or more" % [where, f])
@@ -157,6 +210,15 @@ static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -
 		var span: Array = reward.get(f, [])
 		if span.size() != 2 or int(span[0]) > int(span[1]):
 			errors.append("%s: fight_reward.%s must be [min, max]" % [where, f])
+	var boost: Dictionary = r.get("enemy_boost", {})
+	for f in ["hull", "reactor"]:
+		if int(boost.get(f, 0)) < 0:
+			errors.append("%s: enemy_boost.%s can't be negative" % [where, f])
+	for sys: Variant in boost.get("systems", []):
+		if not systems.has(str(sys)):
+			errors.append("%s: enemy_boost raises unknown system %s" % [where, sys])
+		elif Ship.max_level(str(sys)) <= 1:
+			errors.append("%s: enemy_boost raises %s, which has no levels to buy" % [where, sys])
 	var store: Dictionary = r.get("store", {})
 	for item in Run.STORE_ITEMS:
 		_check_string("UI_STORE_" + item.to_upper(), "store item %s" % item, errors)
@@ -501,3 +563,80 @@ static func _num_in(v: Variant, lo: float, hi: float) -> bool:
 
 static func _int_in(v: Variant, lo: int, hi: int) -> bool:
 	return _num_in(v, lo, hi) and float(v) == floorf(float(v))
+
+
+## Lessons and tips may only use the conditions, targets and moments the coach knows,
+## so a typo fails here instead of leaving a step that can never finish.
+static func _validate_tutorial(t: Dictionary, errors: Array[String]) -> void:
+	var ids: Array[String] = []
+	for l: Variant in _array(t.get("lessons")):
+		if not l is Dictionary:
+			errors.append("tutorial: every lesson must be an object")
+			continue
+		var where := "lesson %s" % l.get("id", "?")
+		if str(l.get("id", "")) == "" or ids.has(str(l.id)):
+			errors.append("%s: needs a unique id" % where)
+		if not str(l.get("screen", "")) in Tutorial.SCREENS:
+			errors.append("%s: unknown screen %s" % [where, l.get("screen", "")])
+		var after := str(l.get("after", ""))
+		if after != "" and not ids.has(after):  # checked before this id joins the list
+			errors.append("%s: after must name an earlier lesson" % where)
+		ids.append(str(l.get("id", "")))
+		var steps := _array(l.get("steps"))
+		if steps.is_empty():
+			errors.append("%s: needs steps" % where)
+		for s: Variant in steps:
+			if not s is Dictionary:
+				errors.append("%s: every step must be an object" % where)
+				continue
+			_validate_step("%s step %s" % [where, s.get("id", "?")], s, errors)
+	var tip_ids: Array[String] = []
+	for tip: Variant in _array(t.get("tips")):
+		if not tip is Dictionary:
+			errors.append("tutorial: every tip must be an object")
+			continue
+		var where := "tip %s" % tip.get("id", "?")
+		if str(tip.get("id", "")) == "" or tip_ids.has(str(tip.id)):
+			errors.append("%s: needs a unique id" % where)
+		tip_ids.append(str(tip.get("id", "")))
+		if not str(tip.get("on", "")) in Tutorial.TIP_MOMENTS:
+			errors.append("%s: unknown moment %s" % [where, tip.get("on", "")])
+		_check_string(str(tip.get("text", "")), where, errors)
+
+
+static func _validate_step(where: String, s: Dictionary, errors: Array[String]) -> void:
+	_check_string(str(s.get("text", "")), where, errors)
+	var done := str(s.get("done", ""))
+	var cond := done.get_slice(":", 0)
+	if not cond in Tutorial.CONDITIONS:
+		errors.append("%s: unknown done condition %s" % [where, done])
+	elif cond == "did" and not done.get_slice(":", 1) in Tutorial.ORDERS:
+		errors.append("%s: did needs one of %s" % [where, Tutorial.ORDERS])
+	elif cond == "aimed" and not done.get_slice(":", 1).is_valid_int():
+		errors.append("%s: aimed needs a weapon slot" % where)
+	if s.has("hold") and not s.hold is bool:
+		errors.append("%s: hold must be true or false" % where)
+	_validate_target(where, str(s.get("target", "")), errors)
+	if s.has("then") and not s.then is Dictionary:
+		errors.append("%s: then must be an object" % where)
+		return
+	var then: Dictionary = s.get("then", {})
+	if not then.is_empty():
+		if not str(then.get("when", "")).get_slice(":", 0) in Tutorial.WHENS:
+			errors.append("%s: unknown then.when %s" % [where, then.get("when", "")])
+		_check_string(str(then.get("text", "")), where + " then", errors)
+		_validate_target(where + " then", str(then.get("target", "")), errors)
+
+
+static func _validate_target(where: String, target: String, errors: Array[String]) -> void:
+	var kind := target.get_slice(":", 0)
+	if not kind in Tutorial.TARGETS:
+		errors.append("%s: unknown target %s" % [where, target])
+	elif kind in ["system", "enemy_room"] and not systems.has(target.get_slice(":", 1)):
+		errors.append("%s: unknown system in %s" % [where, target])
+	elif kind == "weapon" and not target.get_slice(":", 1).is_valid_int():
+		errors.append("%s: weapon target needs a slot" % where)
+
+
+static func _array(v: Variant) -> Array:
+	return v if v is Array else []

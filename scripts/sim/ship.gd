@@ -26,6 +26,7 @@ var ward_deck: int = 1
 var ward_layers: int = 0
 var ward_regen: float = 0.0
 var next_uid: int = 1
+var stokes: int = 0  ## times the Ember has been stoked this run
 var ladders: Array[Dictionary] = []
 
 var _room_by_id: Dictionary = {}
@@ -604,6 +605,49 @@ func recover_after_fight() -> void:
 	enforce_power()
 
 
+# ---------------------------------------------------------------- refits
+
+
+## The highest level a system can be refitted to: systems.json lists the
+## price of each level from 2 up, so the list's length sets the cap.
+static func max_level(sys: String) -> int:
+	return (ContentDB.systems.get(sys, {}).get("upgrade_scrap", []) as Array).size() + 1
+
+
+func can_upgrade(sys: String) -> bool:
+	var r := system_room(sys)
+	return r != null and r.level < max_level(sys)
+
+
+## One more level for a system. Who pays, and with what, is the run's business:
+## the player's refits and an enemy's Reach boost both come through here.
+func upgrade(sys: String) -> bool:
+	if not can_upgrade(sys):
+		return false
+	system_room(sys).level += 1
+	return true
+
+
+## Burns Light's worth into the Ember: one more reactor power, counted so
+## the next stoke's price and the cap don't depend on where the power came from.
+func stoke() -> void:
+	reactor += 1
+	stokes += 1
+
+
+## A deeper Reach's enemy: more hull and reactor, and system levels bought
+## through upgrade() like the player's refits. Each level brings the reactor
+## power to run it, since enemy captains don't reshuffle power.
+func boost(b: Dictionary) -> void:
+	max_hull += int(b.get("hull", 0))
+	hull += int(b.get("hull", 0))
+	reactor += int(b.get("reactor", 0))
+	for sys: String in b.get("systems", []):
+		if upgrade(sys):
+			reactor += 1
+			power_up(sys)
+
+
 func set_ward_deck(deck: int) -> void:
 	if deck == ward_deck or deck < 0 or deck > 1:
 		return
@@ -626,6 +670,9 @@ func to_dict() -> Dictionary:
 		"content_id": content_id,
 		"side": side,
 		"hull": hull,
+		"max_hull": max_hull,
+		"reactor": reactor,
+		"stokes": stokes,
 		"rooms": rd,
 		"crew": cd,
 		"weapon_charge": Array(weapon_charge),
@@ -639,6 +686,10 @@ func to_dict() -> Dictionary:
 
 static func from_dict(d: Dictionary) -> Ship:
 	var s := Ship.from_content(d.content_id, int(d.side))
+	# Refits change these; saves from before refits keep the hull's own numbers.
+	s.max_hull = int(d.get("max_hull", s.max_hull))
+	s.reactor = int(d.get("reactor", s.reactor))
+	s.stokes = int(d.get("stokes", 0))
 	s.hull = int(d.hull)
 	for rd: Dictionary in d.rooms:
 		var r := s.room(rd.id)

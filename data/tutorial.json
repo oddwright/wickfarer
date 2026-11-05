@@ -1,0 +1,84 @@
+{
+  "lessons": [
+    {
+      "id": "chart",
+      "screen": "chart",
+      "steps": [
+        {"id": "jump", "text": "TUT_JUMP", "target": "beacons", "done": "left"}
+      ]
+    },
+    {
+      "id": "story",
+      "screen": "event",
+      "steps": [
+        {"id": "choose", "text": "TUT_CHOOSE", "target": "choices", "done": "left"}
+      ]
+    },
+    {
+      "id": "fight",
+      "screen": "fight",
+      "steps": [
+        {
+          "id": "aim",
+          "text": "TUT_AIM",
+          "target": "weapon:0",
+          "hold": true,
+          "done": "aimed:0",
+          "then": {"when": "weapon_selected:0", "text": "TUT_AIM_ROOM", "target": "enemy_room:weapons"}
+        },
+        {"id": "play", "text": "TUT_PLAY", "target": "pause", "done": "running"},
+        {"id": "pause", "text": "TUT_PAUSE", "target": "pause", "done": "paused"},
+        {
+          "id": "crew",
+          "text": "TUT_CREW",
+          "target": "crew",
+          "hold": true,
+          "done": "did:move",
+          "then": {"when": "crew_selected", "text": "TUT_CREW_ROOM", "target": "rooms"}
+        },
+        {"id": "muster", "text": "TUT_MUSTER", "target": "muster", "hold": true, "done": "did:muster"},
+        {"id": "power_down", "text": "TUT_POWER_DOWN", "target": "system:mend", "hold": true, "done": "did:power_down:mend"},
+        {"id": "power_up", "text": "TUT_POWER_UP", "target": "system:mend", "hold": true, "done": "did:power_up:mend"},
+        {"id": "ward", "text": "TUT_WARD", "target": "ward", "hold": true, "done": "did:ward"},
+        {"id": "win", "text": "TUT_WIN", "target": "pause", "done": "running"}
+      ]
+    },
+    {
+      "id": "chart_again",
+      "screen": "chart",
+      "after": "fight",
+      "steps": [
+        {"id": "hush", "text": "TUT_HUSH", "target": "beacons", "done": "left"}
+      ]
+    },
+    {
+      "id": "store",
+      "screen": "store",
+      "steps": [
+        {"id": "shop", "text": "TUT_STORE", "target": "choices", "done": "left"}
+      ]
+    },
+    {
+      "id": "gate",
+      "screen": "won",
+      "steps": [
+        {"id": "done", "text": "TUT_DONE", "target": "next", "done": "left"}
+      ]
+    },
+    {
+      "id": "lost",
+      "screen": "lost",
+      "steps": [
+        {"id": "lost", "text": "TUT_LOST", "target": "next", "done": "left"}
+      ]
+    }
+  ],
+  "tips": [
+    {"id": "fire", "on": "fire_start", "text": "TIP_FIRE"},
+    {"id": "ward_block", "on": "ward_block", "text": "TIP_WARD_BLOCK"},
+    {"id": "cold", "on": "cold", "text": "TIP_COLD"},
+    {"id": "low_hull", "on": "low_hull", "text": "TIP_LOW_HULL"},
+    {"id": "dark_jump", "on": "dark_jump", "text": "TIP_DARK_JUMP"},
+    {"id": "post", "on": "rank_up", "text": "TIP_POST"}
+  ]
+}
