@@ -38,10 +38,7 @@ func _init() -> void:
 		"test_jumping_costs_light_and_the_hush_follows",
 		"test_events_apply_and_respect_requirements",
 		"test_store_and_fight_rewards",
-		"test_every_beacon_opens_with_a_story",
-		"test_openers_lead_into_fights_and_stores",
-		"test_opener_effects_are_checked",
-		"test_story_text_fits_every_screen",
+		"test_beacon_openers",
 		"test_both_ships_dying_together_is_a_loss",
 		"test_event_results_and_messages_survive_saves",
 		"test_run_saves_and_resumes_at_every_step",
@@ -564,19 +561,11 @@ func test_store_and_fight_rewards() -> void:
 # The opener bodies live in tests/story_tests.gd to keep this file under the lint limit.
 
 
-func test_every_beacon_opens_with_a_story() -> void:
+## Every beacon opens with a story; see tests/story_tests.gd for each check.
+func test_beacon_openers() -> void:
 	STORY_TESTS.every_beacon(self)
-
-
-func test_openers_lead_into_fights_and_stores() -> void:
 	STORY_TESTS.lead_in(self)
-
-
-func test_opener_effects_are_checked() -> void:
 	STORY_TESTS.effects_checked(self)
-
-
-func test_story_text_fits_every_screen() -> void:
 	STORY_TESTS.text_fits(self, SCREENS)
 
 
