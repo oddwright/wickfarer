@@ -207,6 +207,14 @@ static func ai_uses_posts(t: SceneTree) -> void:
 		gunner.is_moving() and gunner.path.back() == "weapons",
 		"the enemy captain sends idle crew back to their post"
 	)
+	# A stoker is left at the Ember once every other station is manned.
+	var c2 := Combat.create(12)
+	var foe2 := c2.enemy()
+	var hand := _crew_at(foe2, "wards")
+	foe2.set_post(hand.uid, "ember")
+	hand.room = "ember"
+	c2.ai.think(c2, 1)
+	_check(t, not hand.is_moving(), "the enemy keeps a stoker at the Ember")
 
 
 static func resume(t: SceneTree) -> void:
@@ -238,7 +246,7 @@ static func resume(t: SceneTree) -> void:
 	var up := SaveService.upgrade(fixture)
 	var ship: Dictionary = up.data.run.ship
 	for c: Dictionary in ship.crew:
-		_check(t, c.has("post") and c.has("xp"), "v2 crew get a post and skills")
+		_check(t, c.has("xp") and c.has("fight_xp"), "v2 crew get skills")
 	var r := Run.from_dict(up.data.run)
 	var posted := r.ship.crew.filter(func(c: Crew) -> bool: return c.post != "")
 	_check(t, not posted.is_empty(), "v2 crew standing at stations keep them as posts")
@@ -263,6 +271,8 @@ static func layouts(t: SceneTree, screens: Dictionary) -> void:
 				var l := CrewLayout.build(scr, n, p)
 				for e in l.problems():
 					probs.append("%d crew%s: %s" % [n, " picking" if p.size() > 0 else "", e])
+				if l.title_rect.intersects(l.hint_rect) and l.title_rect != l.hint_rect:
+					probs.append("the title runs into the hint")
 				if l.rows.size() != n or l.button("post", n - 1).is_empty():
 					probs.append("%d crew: a row is missing" % n)
 		_check(t, probs.is_empty(), "%s roster: %s" % [name, probs.slice(0, 3)])
@@ -306,6 +316,13 @@ static func roster_flow(t: SceneTree) -> void:
 	main.back()
 	_check(t, not main.roster_open and main.paused, "Back closes the roster, still paused")
 	main.paused = false
+	# a trip away from the app while the roster is open keeps the fight paused
+	main.open_roster()
+	main._on_leave()
+	main.close_roster()
+	_check(t, main.paused, "leaving the app with the roster open still pauses the fight")
+	main.paused = false
+	main.pause_reason = ""
 	# long press on a crew member makes their room their post
 	var c := crew[1]
 	var fp: Vector2 = main.world.crew_pos(0, c) + Vector2(0, -6)

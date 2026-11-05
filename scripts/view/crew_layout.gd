@@ -23,6 +23,7 @@ var native: Vector2i
 var hinge: Rect2i
 var rows: Array[Rect2i] = []  ## one per crew member, information only
 var buttons: Array[Dictionary] = []  ## {kind, id, rect}: post, pick, muster, close
+var title_rect: Rect2i  ## the roster's title line
 var hint_rect: Rect2i  ## a line for the hint or the picker's question
 
 
@@ -60,6 +61,7 @@ func _build_wide(crew_count: int, picks: Array[String]) -> void:
 	for i in picks.size():
 		_add("pick", i, Rect2i(x + i * (PICK_W + 4), bottom, PICK_W, PICK_H))
 	hint_rect = Rect2i(4, 4, native.x - 8, 10)
+	title_rect = hint_rect
 
 
 func _build_square(crew_count: int, picks: Array[String]) -> void:
@@ -80,7 +82,9 @@ func _build_square(crew_count: int, picks: Array[String]) -> void:
 	var below := TOP + maxi(maxi(1, crew_count) * ROW_H, pick_lines * (PICK_H + 4)) + 6
 	_add("close", 0, Rect2i(right, below, BTN_W, BTN_H))
 	_add("muster", 0, Rect2i(right + BTN_W + 4, below, BTN_W, BTN_H))
+	# Title on the left page, hint on the right, so neither runs into the other.
 	hint_rect = Rect2i(right, 4, right_w, 10)
+	title_rect = Rect2i(4, 4, left_w, 10)
 
 
 func _add(kind_name: String, id: Variant, rect: Rect2i) -> void:

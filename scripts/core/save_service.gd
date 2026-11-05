@@ -35,12 +35,11 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 						room["wanted_power"] = room.get("power", 0)
 			return d
 		2:
-			# Version 3 crew have a post (their role) and skill practice. Crew from
-			# an older save start Green, posted wherever they stand if it's a station.
+			# Version 3 crew have skill practice. Crew from an older save start
+			# Green; their post (missing here) is filled in by Ship.from_dict,
+			# which knows which rooms are stations.
 			for ship: Dictionary in _saved_ships(d):
 				for c: Dictionary in ship.get("crew", []):
-					if not c.has("post"):
-						c["post"] = _station_room(str(ship.get("content_id", "")), str(c.room))
 					if not c.has("xp"):
 						c["xp"] = {}
 					if not c.has("fight_xp"):
@@ -59,15 +58,6 @@ static func _saved_ships(d: Dictionary) -> Array[Dictionary]:
 	if not run_ship.is_empty():
 		out.append(run_ship)
 	return out
-
-
-## room_id if it holds a system on that ship, else "".
-static func _station_room(ship_id: String, room_id: String) -> String:
-	ContentDB.load_all()
-	for r: Dictionary in ContentDB.ships.get(ship_id, {}).get("rooms", []):
-		if str(r.id) == room_id and str(r.get("system", "")) != "":
-			return room_id
-	return ""
 
 
 static func path_for(slot: String, dir := DIR) -> String:

@@ -18,7 +18,10 @@ func _draw() -> void:
 	if main.roster_pick >= 0 and main.roster_pick < crew.size():
 		hint = tr("UI_PICK_POST") % tr(crew[main.roster_pick].name)
 	_text(
-		Vector2(l.hint_rect.position.x, l.hint_rect.end.y), tr("UI_ROSTER_TITLE"), 5.0, Pixel.c("w")
+		Vector2(l.title_rect.position.x, l.title_rect.end.y),
+		tr("UI_ROSTER_TITLE"),
+		5.0,
+		Pixel.c("w")
 	)
 	_text(
 		Vector2(l.hint_rect.position.x, l.hint_rect.end.y),
@@ -30,6 +33,10 @@ func _draw() -> void:
 	)
 	for i in mini(crew.size(), l.rows.size()):
 		_draw_row(me, crew[i], l.rows[i])
+	var picks: Array[String] = main.roster_picks()
+	var current := ""
+	if main.roster_pick >= 0 and main.roster_pick < crew.size():
+		current = crew[main.roster_pick].post
 	for b in l.buttons:
 		var r: Rect2i = b.rect
 		match b.kind:
@@ -38,10 +45,6 @@ func _draw() -> void:
 				if i < crew.size():
 					_post_button(me, r, crew[i].post, me.role_of(crew[i]), main.roster_pick == i)
 			"pick":
-				var picks: Array[String] = main.roster_picks()
-				var current := ""
-				if main.roster_pick >= 0 and main.roster_pick < crew.size():
-					current = crew[main.roster_pick].post
 				var id: String = picks[int(b.id)]
 				_post_button(me, r, id, "", id == current)
 			"close":

@@ -646,7 +646,10 @@ static func from_dict(d: Dictionary) -> Ship:
 			r.load_dict(rd)
 	s.crew.clear()
 	for cd: Dictionary in d.crew:
-		s.crew.append(Crew.from_dict(cd))
+		var c := Crew.from_dict(cd)
+		if not cd.has("post"):  # saved before posts: posted where they stand, if a station
+			c.post = c.room if s.room(c.room) and s.room(c.room).system != "" else ""
+		s.crew.append(c)
 	for i in s.weapon_ids.size():
 		s.weapon_charge[i] = float(d.weapon_charge[i])
 		s.weapon_target[i] = str(d.weapon_target[i])

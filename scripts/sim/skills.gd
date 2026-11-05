@@ -7,6 +7,11 @@ extends RefCounted
 const MAX_RANK := 3
 const ROLE_NONE := "ROLE_DECKHAND"  ## a crew member with no post
 
+## Read on every tick, so built once from the content rather than per call.
+static var _thresholds: Array[float] = []
+static var _by_station: Dictionary = {}
+static var _cached_for: Dictionary = {}  ## the skills data the caches were built from
+
 
 static func data() -> Dictionary:
 	return ContentDB.skills
@@ -28,20 +33,27 @@ static func per_rank(skill: String) -> float:
 
 ## The skill a station trains, or "" for a room with no station skill.
 static func for_station(sys: String) -> String:
-	if sys == "":
-		return ""
-	for id: String in data().skills:
-		if sys in (data().skills[id].stations as Array):
-			return id
-	return ""
+	_cache()
+	return _by_station.get(sys, "")
 
 
 ## Practice needed to reach each rank, starting with 0 for Green.
 static func thresholds() -> Array[float]:
-	var out: Array[float] = []
-	for t in data().ranks:
-		out.append(float(t))
-	return out
+	_cache()
+	return _thresholds
+
+
+static func _cache() -> void:
+	if is_same(_cached_for, data()) and not _thresholds.is_empty():
+		return
+	_cached_for = data()
+	_thresholds.clear()
+	for t in data().get("ranks", [0]):
+		_thresholds.append(float(t))
+	_by_station.clear()
+	for id: String in data().get("skills", {}):
+		for sys in data().skills[id].get("stations", []):
+			_by_station[str(sys)] = id
 
 
 static func rank_for(xp: float) -> int:
@@ -83,14 +95,14 @@ static func validate(errors: Array[String]) -> void:
 	for n in names:
 		ContentDB.check_string(str(n), "skills rank", errors)
 	for k in ["fight_cap", "learn_warmth", "mentor", "patch_xp_per_damage", "patch_xp_per_fire"]:
-		if not d.has(k) or float(d[k]) < 0.0:
+		if not _is_num(d.get(k)) or float(d[k]) < 0.0:
 			errors.append("skills: %s must be a number >= 0" % k)
 	var seen := {}
 	for id: String in d.get("skills", {}):
 		var s: Dictionary = d.skills[id]
 		ContentDB.check_string(s.get("name", ""), "skill %s" % id, errors)
 		ContentDB.check_string(s.get("short", ""), "skill %s" % id, errors)
-		if not s.get("per_rank", null) is float and not s.get("per_rank", null) is int:
+		if not _is_num(s.get("per_rank")):
 			errors.append("skill %s: missing per_rank" % id)
 		for sys in s.get("stations", []):
 			if not ContentDB.systems.has(sys):
@@ -110,6 +122,10 @@ static func validate(errors: Array[String]) -> void:
 	for sys: String in ContentDB.systems:
 		ContentDB.check_string(ContentDB.systems[sys].get("role", ""), "system %s" % sys, errors)
 	ContentDB.check_string(ROLE_NONE, "skills", errors)
+
+
+static func _is_num(v: Variant) -> bool:
+	return v is float or v is int
 
 
 ## Problems with one crew entry's optional post and starting skills.

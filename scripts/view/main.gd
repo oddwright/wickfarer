@@ -9,8 +9,6 @@ const OLD_FIGHT_SLOT := "combat"  ## Phase 0 saved a lone fight here
 const LONG_PRESS := 0.4
 const AUTOSAVE_EVERY := 10.0
 const MAX_STEPS_PER_FRAME := 5
-## The stations offered in the roster's post picker, in this order, then "none".
-const POST_ORDER: Array[String] = ["helm", "weapons", "wards", "engines", "ember", "mend"]
 
 var save_dir := SaveService.DIR  ## tests point this at a scratch folder
 var run: Run
@@ -232,6 +230,8 @@ func _rebuild_layout() -> void:
 func _pause(reason := "") -> void:
 	if menu != "":
 		_paused_before_menu = true  # a fold or a trip away while in the menu still counts
+	if roster_open:
+		_paused_before_roster = true  # and in the roster
 	paused = true
 	pause_reason = reason
 	_save()
@@ -551,11 +551,12 @@ func roster_crew() -> Array[Crew]:
 	return out
 
 
-## The posts the picker offers: each station on the ship, then "" for none.
+## The posts the picker offers: each station on the ship, in data/systems.json
+## order, then "" for none.
 func roster_picks() -> Array[String]:
 	var out: Array[String] = []
 	if combat:
-		for sys in POST_ORDER:
+		for sys: String in ContentDB.systems:
 			var r := combat.player().system_room(sys)
 			if r:
 				out.append(r.id)

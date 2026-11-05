@@ -104,7 +104,9 @@ func _crew(combat: Combat, me: Ship, side: int) -> void:
 	var spare: Array[Crew] = []
 	for c in idle:
 		var here := me.room(c.room)
-		if not (here.system in STATIONS and here.fire <= 0.0 and here.damage <= 0.0):
+		# Crew stay at a station, or at their own post (a stoker at the Ember).
+		var at_post := here.system in STATIONS or (c.room == c.post and here.system != "")
+		if not (at_post and here.fire <= 0.0 and here.damage <= 0.0):
 			spare.append(c)
 	# Fill empty stations most important first; whoever's post it is takes it,
 	# so their skill keeps growing there.
@@ -122,3 +124,9 @@ func _crew(combat: Combat, me: Ship, side: int) -> void:
 		combat.apply({"type": "move", "crew": pick.uid, "room": room.id}, side)
 		taken[room.id] = true
 		spare.erase(pick)
+	# Anyone left over whose post is another station (the Ember) goes back to it.
+	for c in spare:
+		if c.post != "" and c.post != c.room and not taken.has(c.post):
+			if me.room(c.post).system != "":
+				combat.apply({"type": "move", "crew": c.uid, "room": c.post}, side)
+				taken[c.post] = true
