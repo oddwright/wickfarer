@@ -21,6 +21,8 @@ const BEACON_KINDS := ["fight", "event", "store", "empty"]  ## the Gate has no s
 const MAX_CHOICES := 3  ## what the Square layout's right page has room for
 const EVENT_REQUIRES := ["scrap", "light", "species"]
 const SOUND_BUSES: Array[String] = ["Music", "SFX", "UI"]  ## every bus a sound can play on
+const MUSIC_ENTRIES: Array[String] = ["now", "beat", "bar"]  ## when a music clip may cut in
+const PHONE_LOW_HZ := 150  ## phone speakers barely play anything lower
 const MAX_HITSTOP := 0.15  ## seconds; longer freezes read as lag
 const SYNTH_WAVES := ["sine", "tri", "square", "saw", "noise"]
 
@@ -272,7 +274,7 @@ static func _validate_effects(where: String, fx: Dictionary, errors: Array[Strin
 		errors.append("%s: store is true, and can't come with a fight" % where)
 
 
-## Sounds, haptic patterns, cues and music layers, so a typo in a cue fails
+## Sounds, haptic patterns, cues and music, so a typo in a cue fails
 ## here and not as a silent hit on someone's phone.
 static func _validate_feedback(f: Dictionary, errors: Array[String]) -> void:
 	var sounds: Dictionary = f.get("sounds", {})
@@ -308,32 +310,133 @@ static func _validate_feedback(f: Dictionary, errors: Array[String]) -> void:
 			errors.append("%s: priority is a whole number 0..9" % where)
 		if not c.get("duck", false) is bool:
 			errors.append("%s: duck is true or false" % where)
-	var music: Dictionary = f.get("music", {})
+	_validate_music(f.get("music", {}), errors)
+
+
+## Music is clips, each a set of stems that play in lock-step, and states: a
+## clip and which of its layers are up. A clip's stems must share their length
+## and tempo, or the layers drift apart and bar-line cuts land off the beat.
+static func _validate_music(music: Dictionary, errors: Array[String]) -> void:
 	if float(music.get("fade", 1.5)) <= 0.0:
 		errors.append("music: fade must be > 0")
-	var layers: Dictionary = music.get("layers", {})
-	if layers.size() > 32:
-		errors.append("music: at most 32 layers")
-	for id: String in layers:
-		_validate_layer("music layer %s" % id, layers[id], errors)
-	for state: String in music.get("states", {}):
-		for layer: Variant in music.states[state]:
-			if not layers.has(layer):
-				errors.append("music state %s: unknown layer %s" % [state, layer])
+	var clips: Variant = music.get("clips", {})
+	if not clips is Dictionary or (clips as Dictionary).is_empty():
+		errors.append("music: clips must be a table of clips")
+		return
+	var shapes := {}  ## clip -> [loops, bpm, beats, samples] of its stems
+	var names := {}  ## every layer name in any clip
+	for id: String in clips:
+		if not clips[id] is Dictionary or not clips[id].get("layers") is Dictionary:
+			errors.append("music clip %s: needs a table of layers" % id)
+			continue
+		shapes[id] = _clip_shape("music clip %s" % id, clips[id], errors)
+		names.merge(clips[id].layers)
+	for id: String in shapes:
+		_validate_clip(id, clips, shapes, errors)
+	var states: Variant = music.get("states", {})
+	if not states is Dictionary:
+		errors.append("music: states must be a table of states")
+		return
+	for state: String in states:
+		_validate_state(state, states[state], shapes.keys(), clips, errors)
 	for layer: Variant in music.get("hush_layers", []):
-		if not layers.has(layer):
+		if not names.has(layer):
 			errors.append("music: unknown hush layer %s" % layer)
 
 
-## A music layer is a stem file that loops (set loop=true in its .import).
-static func _validate_layer(where: String, s: Dictionary, errors: Array[String]) -> void:
-	var file := str(s.get("file", ""))
-	if not ResourceLoader.exists(file):
-		errors.append("%s: stem not found %s" % [where, file])
-	elif not _loops(load(file)):
-		errors.append("%s: %s must be imported with loop on" % [where, file])
-	if not _num_in(s.get("volume_db", 0), -60.0, 12.0):
-		errors.append("%s: volume_db is -60..12" % where)
+static func _validate_clip(
+	id: String, clips: Dictionary, shapes: Dictionary, errors: Array[String]
+) -> void:
+	var where := "music clip %s" % id
+	var c: Dictionary = clips[id]
+	if not str(c.get("enter", "now")) in MUSIC_ENTRIES:
+		errors.append("%s: enter is now, beat or bar" % where)
+	if not str(c.get("fade", "out")) in ["out", "cross"]:
+		errors.append("%s: fade is out or cross" % where)
+	if not _num_in(c.get("fade_beats", 1), 0.0, 8.0):
+		errors.append("%s: fade_beats is 0..8" % where)
+	var once: Variant = c.get("once", false)
+	var from: Variant = c.get("intro_from", [])
+	if not once is bool or not from is Array:
+		errors.append("%s: once is true or false, intro_from a list of clips" % where)
+		return
+	var linked: Array = from.duplicate()
+	for k in ["intro", "then"]:
+		if c.has(k):
+			linked.append(c[k])
+	for other: Variant in linked:
+		if not shapes.has(str(other)):
+			errors.append("%s: unknown clip %s" % [where, other])
+	if c.has("then") and not once:
+		errors.append("%s: only a clip that plays once ends, to hand over to %s" % [where, c.then])
+	var intro := str(c.get("intro", ""))
+	if shapes.has(intro) and not clips[intro].get("once", false):
+		errors.append("%s: its intro must play once, or it would never start" % where)
+	var shape: Array = shapes[id]
+	if shape.is_empty():
+		return
+	if shape[0] == once:
+		errors.append("%s: stems must loop unless the clip plays once (and not if it does)" % where)
+	if str(c.get("enter", "now")) != "now" and float(shape[1]) <= 0.0:
+		errors.append("%s: entering on a beat or bar needs a bpm in its stems' .import" % where)
+	if float(shape[1]) > 0.0 and int(shape[2]) % 4 != 0:
+		errors.append("%s: %d beats isn't whole 4/4 bars" % [where, shape[2]])
+
+
+## A state's layers must belong to its clip, or to the clips that play for it:
+## its intro and the clip it hands over to.
+static func _validate_state(
+	state: String, s: Variant, ok: Array, clips: Dictionary, errors: Array[String]
+) -> void:
+	var where := "music state %s" % state
+	if not s is Dictionary or not s.get("layers", []) is Array:
+		errors.append("%s: needs a clip and a list of layers" % where)
+		return
+	var clip := str(s.get("clip", ""))
+	if clip != "" and not clip in ok:
+		errors.append("%s: unknown clip %s" % [where, clip])
+		return
+	var names := {}
+	if clip != "":
+		for c in [clip, str(clips[clip].get("intro", "")), str(clips[clip].get("then", ""))]:
+			if c in ok:
+				names.merge(clips[c].layers)
+	for layer: Variant in s.get("layers", []):
+		if not names.has(layer):
+			errors.append("%s: layer %s isn't in its clip" % [where, layer])
+
+
+## The shape every stem of a clip must share: [loops, bpm, beats, samples].
+static func _clip_shape(where: String, c: Dictionary, errors: Array[String]) -> Array:
+	var layers: Dictionary = c.get("layers", {})
+	if layers.is_empty() or layers.size() > 8:
+		errors.append("%s: needs 1..8 layers" % where)
+	var shape := []
+	for id: String in layers:
+		var s: Dictionary = layers[id]
+		var file := str(s.get("file", ""))
+		if not _num_in(s.get("volume_db", 0), -60.0, 12.0):
+			errors.append("%s layer %s: volume_db is -60..12" % [where, id])
+		if not ResourceLoader.exists(file):
+			errors.append("%s layer %s: stem not found %s" % [where, id, file])
+			continue
+		var stem: AudioStream = load(file)
+		var ogg := stem as AudioStreamOggVorbis
+		var bpm := ogg.bpm if ogg else 0.0
+		var beats := ogg.beat_count if ogg else 0
+		var samples := roundi(stem.get_length() * 44100.0)
+		var this := [_loops(stem), bpm, beats, samples]
+		if bpm > 0.0 and absi(samples - roundi(beats * 60.0 / bpm * 44100.0)) > 44:
+			errors.append(
+				"%s layer %s: %d beats at %d bpm isn't its length" % [where, id, beats, bpm]
+			)
+		if shape.is_empty():
+			shape = this
+		elif this != shape:
+			errors.append(
+				"%s layer %s: loop, tempo or length differs from the others" % [where, id]
+			)
+	return shape
 
 
 static func _loops(stream: Resource) -> bool:
@@ -369,6 +472,9 @@ static func _validate_synth(where: String, r: Dictionary, errors: Array[String])
 	for k in ["freq", "freq_end"]:
 		if not _num_in(r.get(k, 440), 1.0, 11000.0):
 			errors.append("%s: %s is 1..11000 Hz" % [where, k])
+	var top := maxf(float(r.get("freq", 440)), float(r.get("freq_end", r.get("freq", 440))))
+	if str(r.get("wave", "sine")) == "sine" and top < PHONE_LOW_HZ:
+		errors.append("%s: a sine under %d Hz is silent on a phone speaker" % [where, PHONE_LOW_HZ])
 	if not _num_in(r.get("decay", 0), 0.0, 100.0):
 		errors.append("%s: decay is 0..100" % where)
 	if not _num_in(r.get("noise", 0), 0.0, 1.0):

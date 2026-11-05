@@ -14,6 +14,6 @@ dest_files=["res://.godot/imported/hearth_warm.ogg-1a6e4037dafde7717534a3f7406ed
 
 loop=true
 loop_offset=0
-bpm=0
-beat_count=0
+bpm=92
+beat_count=64
 bar_beats=4

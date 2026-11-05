@@ -23,6 +23,7 @@ var world: WorldView
 var text: TextLayer
 var settings: GameSettings
 var feedback: FeedbackDirector
+var music_director := MusicDirector.new()
 var audio: AudioService
 var haptics: Haptics
 var menu_view: MenuView
@@ -308,22 +309,18 @@ func _play_feedback() -> void:
 			audio.duck()
 	world.shake = feedback.shake_offset()
 	audio.hush = FeedbackDirector.hush_closeness(run)
+	audio.muffle = music_muffled()
 	audio.set_music_state(music_state())
 
 
-## Which music layers fit the screen: see "states" in data/feedback.json.
+## Which music fits the screen: see "states" in data/feedback.json. A fight
+## picks its own stage (MusicDirector).
 func music_state() -> String:
-	if run == null or menu_base == "title":
+	if not _in_run():
 		return "chart"
 	match run_screen():
 		"fight":
-			if combat == null:
-				return "combat"
-			if combat.state != "fighting":
-				return "victory" if combat.state == "won" else "defeat"
-			var me := combat.player()
-			var low := float(me.hull) / me.max_hull <= FeedbackDirector.DANGER_HULL
-			return "danger" if low else "combat"
+			return "engage" if combat == null else music_director.state_for(combat)
 		"event", "outcome":
 			return "event"
 		"store":
@@ -331,6 +328,16 @@ func music_state() -> String:
 		"lost":
 			return "defeat"
 	return "chart"
+
+
+## A paused fight keeps its music, muffled, so coming back doesn't restart it.
+func music_muffled() -> bool:
+	return _in_run() and run_screen() == "fight" and paused
+
+
+## A run is on screen (not hidden under the title menu).
+func _in_run() -> bool:
+	return run != null and menu_base != "title"
 
 
 func flash_amount(side: int, room_id: String) -> float:

@@ -1,4 +1,4 @@
-"""Wickfarer music: "Hearth in the Cold" combat and chart loop, rendered as synced stems.
+"""Wickfarer music: "Hearth in the Cold", the chart, event and store loop, as synced stems.
 
 An "orchestral but pixely" palette: a small fixed set of chip-style voices
 (like a pixel palette), each one standing in for an acoustic instrument.
@@ -11,6 +11,8 @@ An "orchestral but pixely" palette: a small fixed set of chip-style voices
 Writes one 16-bar loop (41.7 s) as stems of exactly equal length; the game plays them
 together in an AudioStreamSynchronized and fades layers per music state
 (data/feedback.json "music"). The Hush filter is applied live by the game.
+Only pad, warm and pluck are written: the fight has its own score (ember_rising.py);
+the other parts still set the shared gain, so the written stems keep their level.
 Key D dorian, 92 bpm. Usage: python3 tools/music/hearth_stems.py audio/music
 Needs numpy, scipy and ffmpeg (for Ogg Vorbis). Never hand-edit the .ogg files:
 change this score and re-render.
@@ -24,6 +26,7 @@ import wave
 
 import numpy as np
 from scipy.signal import fftconvolve, lfilter
+from stem_io import write_import
 
 SR = 44100
 BPM = 92
@@ -269,6 +272,8 @@ for k, x in stems.items():
 # One gain for all stems, so their balance stays and the full mix never clips.
 full = sum(out.values())
 gain = 0.85 / np.max(np.abs(full))
-for k, lr in out.items():
-    write_ogg(f"{OUT}/hearth_{k}.ogg", lr * gain)
-print("loop %.3f s (%d samples), stems: %s" % (LOOP / SR, LOOP, ", ".join(out)))
+KEEP = ["pad", "warm", "pluck"]
+for k in KEEP:
+    write_ogg(f"{OUT}/hearth_{k}.ogg", out[k] * gain)
+    write_import(f"{OUT}/hearth_{k}.ogg", True, BPM, 64)
+print("loop %.3f s (%d samples), stems: %s" % (LOOP / SR, LOOP, ", ".join(KEEP)))

@@ -5,6 +5,7 @@ extends SceneTree
 const J = preload("res://scripts/core/json_util.gd")
 const MAIN = preload("res://scripts/view/main.gd")
 const MENU_TESTS = preload("res://tests/menu_tests.gd")
+const AUDIO_TESTS = preload("res://tests/audio_tests.gd")
 const STORY_TESTS = preload("res://tests/story_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
@@ -58,7 +59,9 @@ func _init() -> void:
 		"test_haptic_patterns",
 		"test_settings_save_and_fall_back",
 		"test_audio_service_and_music_states",
-		"test_music_layers_are_synced_stems",
+		"test_music_director_stages",
+		"test_music_clips_and_transitions",
+		"test_music_clips_are_synced_stems",
 		"test_menu_screens_on_every_screen",
 		"test_options_adjust_settings",
 	]:
@@ -743,14 +746,18 @@ func test_feedback_content_is_checked() -> void:
 	bad.cues["hit.us"].sound = "no_such_sound"
 	bad.haptics["tick"] = [[12, 3.0]]
 	bad.sounds["ui_tick"].synth.wave = "kazoo"
-	bad.music.states["chart"] = ["no_such_layer"]
+	bad.music.states["chart"].layers = ["no_such_layer"]
 	bad.cues["won"].hitstop = 1.0
 	bad.sounds["ui_nope"].pitch_jitter = 1.5
-	bad.music.layers.pulse = {"file": "res://audio/music/missing.ogg"}
+	bad.music.clips.engage.layers.core = {"file": "res://audio/music/missing.ogg"}
 	bad.cues["ui.tap"].priority = -1
+	bad.sounds["crew_bell"].synth.freq_end = 55  # stays a sine: under 150 Hz a phone is silent
+	bad.sounds["crew_bell"].synth.freq = 55
 	var errors: Array[String] = []
 	ContentDB._validate_feedback(bad, errors)
-	check(errors.size() == 8, "every broken feedback field is caught, got %s" % [errors])
+	check(errors.size() == 9, "every broken feedback field is caught, got %s" % [errors])
+	var cues: Dictionary = ContentDB.feedback.cues
+	check(cues.lost.sound != cues.won.sound, "losing doesn't sound like winning")
 
 
 func test_haptic_patterns() -> void:
@@ -808,73 +815,24 @@ func test_settings_save_and_fall_back() -> void:
 	SaveService.erase(GameSettings.SLOT, dir)
 
 
+# ------------------------------------------------------------------ audio
+# The bodies live in tests/audio_tests.gd to keep this file under the lint limit.
+
+
 func test_audio_service_and_music_states() -> void:
-	for id: String in ContentDB.feedback.sounds:
-		var w := SfxSynth.one_shot(ContentDB.feedback.sounds[id].synth)
-		check(w.data.size() > 100, "sound %s synthesises" % id)
-	# Headless tests run outside the scene tree, so players can't really play:
-	# check the voice choice on its own.
-	var voices: Array[Dictionary] = []
-	for i in 3:
-		voices.append({"playing": true, "priority": 2, "started": float(i)})
-	check(AudioService.pick_voice(voices, 0) == -1, "a tick can't cut louder cues")
-	check(AudioService.pick_voice(voices, 4) == 0, "a kill takes the oldest voice")
-	voices[1].priority = 1
-	check(AudioService.pick_voice(voices, 4) == 1, "the least important voice goes first")
-	voices[2].playing = false
-	check(AudioService.pick_voice(voices, 0) == 2, "a free voice is always used")
-	var a := AudioService.new()
-	a.setup()
-	check(not a.play("ui_tick"), "nothing plays until the sounds are built")
-	a.finish_build(true)
-	check(AudioServer.get_bus_index("SFX") != -1, "the SFX bus exists")
-	check(not a.play("no_such_sound"), "an unknown sound doesn't play")
-	check(a._streams.size() == ContentDB.feedback.sounds.size(), "every sound is built")
-	a.suspend(true)
-	a.set_music_state("chart")
-	check(not a._music_player.playing, "a suspended game starts no music")
-	a.suspend(false)
-	a.set_music_state("combat")
-	check(a.layer_targets().has("drum"), "combat brings in the drum")
-	a.set_music_state("chart")
-	var open: float = a.layer_targets().warm
-	a.hush = 1.0
-	check(a.layer_targets().warm < open, "the Hush eats the warm layer")
-	a.set_music_state("no_such_state")
-	check(a.music_state == "chart", "unknown states are ignored")
-	var s := GameSettings.new()
-	s.volume.Music = 0.0
-	a.apply_settings(s)
-	check(AudioServer.is_bus_mute(AudioServer.get_bus_index("Music")), "volume 0 mutes the bus")
-	a.queue_free()
-	var main: Node = MAIN.new()
-	main.run = Run.create(77)
-	check(main.music_state() == "chart", "the chart plays the chart music")
-	main.run._start_fight("ashmarket_skiff")
-	main.combat = main.run.combat
-	check(main.music_state() == "combat", "a fight plays the combat layers")
-	main.combat.player().hull = 1
-	check(main.music_state() == "danger", "low hull plays the danger layers")
-	main.free()
+	AUDIO_TESTS.service_and_states(self)
 
 
-## The fight music was one held synth chord: every layer must be a real stem,
-## imported to loop, and exactly as long as the others, or they drift apart.
-func test_music_layers_are_synced_stems() -> void:
-	var layers: Dictionary = ContentDB.feedback.music.layers
-	var samples := -1
-	for name: String in layers:
-		var file := str(layers[name].get("file", ""))
-		check(ResourceLoader.exists(file), "music layer %s is a real stem" % name)
-		if not ResourceLoader.exists(file):
-			continue
-		var stream: AudioStream = load(file)
-		check(ContentDB._loops(stream), "%s is imported to loop" % name)
-		var n := roundi(stream.get_length() * 44100.0)
-		if samples < 0:
-			samples = n
-		check(n == samples, "%s is %d samples, the others %d" % [name, n, samples])
-	check(samples > 20 * 44100, "the loop is long enough not to drone")
+func test_music_director_stages() -> void:
+	AUDIO_TESTS.director_stages(self)
+
+
+func test_music_clips_and_transitions() -> void:
+	AUDIO_TESTS.clips_and_transitions(self)
+
+
+func test_music_clips_are_synced_stems() -> void:
+	AUDIO_TESTS.clips_are_synced_stems(self)
 
 
 # ------------------------------------------------------------------ menus
