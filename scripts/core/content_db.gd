@@ -11,10 +11,14 @@ const FILES := {
 	"strings": "res://data/strings_en.json",
 	"events": "res://data/events.json",
 	"reaches": "res://data/reaches.json",
+	"feedback": "res://data/feedback.json",
 }
 
 const EVENT_EFFECTS := ["scrap", "light", "hull", "crew_hp", "hush", "fight", "fight_bonus_scrap"]
 const EVENT_REQUIRES := ["scrap", "light", "species"]
+const SOUND_BUSES: Array[String] = ["Music", "SFX", "UI"]  ## every bus a sound can play on
+const MAX_HITSTOP := 0.15  ## seconds; longer freezes read as lag
+const SYNTH_WAVES := ["sine", "tri", "square", "saw", "noise"]
 
 static var ships: Dictionary = {}
 static var weapons: Dictionary = {}
@@ -23,6 +27,7 @@ static var systems: Dictionary = {}
 static var strings: Dictionary = {}
 static var events: Dictionary = {}
 static var reaches: Dictionary = {}
+static var feedback: Dictionary = {}  ## sounds, haptics, cues and music layers
 static var loaded := false
 
 
@@ -36,6 +41,7 @@ static func load_all() -> void:
 	strings = _read(FILES.strings)
 	events = _read(FILES.events)
 	reaches = _read(FILES.reaches)
+	feedback = _read(FILES.feedback)
 	_install_translation()
 	loaded = true
 
@@ -97,6 +103,7 @@ static func validate() -> Array[String]:
 		_validate_event(eid, events[eid], errors)
 	for rid: String in reaches:
 		_validate_reach(rid, reaches[rid], errors)
+	_validate_feedback(feedback, errors)
 	return errors
 
 
@@ -245,3 +252,101 @@ static func _validate_event(eid: String, e: Dictionary, errors: Array[String]) -
 	# A player must never be stuck in an event they can't leave.
 	if not has_free_choice:
 		errors.append("%s: needs at least one choice with no requirement" % where)
+
+
+## Sounds, haptic patterns, cues and music layers, so a typo in a cue fails
+## here and not as a silent hit on someone's phone.
+static func _validate_feedback(f: Dictionary, errors: Array[String]) -> void:
+	var sounds: Dictionary = f.get("sounds", {})
+	var haptics: Dictionary = f.get("haptics", {})
+	for id: String in sounds:
+		_validate_sound("sound %s" % id, sounds[id], errors)
+		if not str(sounds[id].get("bus", "SFX")) in SOUND_BUSES:
+			errors.append("sound %s: unknown bus %s" % [id, sounds[id].bus])
+	for id: String in haptics:
+		var steps: Variant = haptics[id]
+		if not steps is Array or (steps as Array).is_empty():
+			errors.append("haptic %s: needs [ms, amplitude] steps" % id)
+			continue
+		for step: Variant in steps:
+			var ok: bool = step is Array and step.size() == 2
+			if not ok or float(step[0]) <= 0.0 or float(step[1]) < 0.0 or float(step[1]) > 1.0:
+				errors.append("haptic %s: each step is [ms > 0, amplitude 0..1]" % id)
+	for id: String in f.get("cues", {}):
+		var c: Dictionary = f.cues[id]
+		var where := "cue %s" % id
+		if c.has("sound") and not sounds.has(c.sound):
+			errors.append("%s: unknown sound %s" % [where, c.sound])
+		if c.has("haptic") and not haptics.has(c.haptic):
+			errors.append("%s: unknown haptic %s" % [where, c.haptic])
+		for k in ["shake", "kick", "hitstop", "cooldown"]:
+			if float(c.get(k, 0.0)) < 0.0:
+				errors.append("%s: %s can't be negative" % [where, k])
+		if float(c.get("shake", 0.0)) > 1.0:
+			errors.append("%s: shake is 0..1" % where)
+		if float(c.get("hitstop", 0.0)) > MAX_HITSTOP:
+			errors.append("%s: hitstop over %.2f s reads as lag" % [where, MAX_HITSTOP])
+		if not _int_in(c.get("priority", 0), 0, 9):
+			errors.append("%s: priority is a whole number 0..9" % where)
+		if not c.get("duck", false) is bool:
+			errors.append("%s: duck is true or false" % where)
+	var music: Dictionary = f.get("music", {})
+	if float(music.get("fade", 1.5)) <= 0.0:
+		errors.append("music: fade must be > 0")
+	var layers: Dictionary = music.get("layers", {})
+	if layers.size() > 32:
+		errors.append("music: at most 32 layers")
+	for id: String in layers:
+		_validate_sound("music layer %s" % id, layers[id], errors)
+	for state: String in music.get("states", {}):
+		for layer: Variant in music.states[state]:
+			if not layers.has(layer):
+				errors.append("music state %s: unknown layer %s" % [state, layer])
+	for layer: Variant in music.get("hush_layers", []):
+		if not layers.has(layer):
+			errors.append("music: unknown hush layer %s" % layer)
+
+
+static func _validate_sound(where: String, s: Dictionary, errors: Array[String]) -> void:
+	var file := str(s.get("file", ""))
+	if file != "" and not ResourceLoader.exists(file):
+		errors.append("%s: file not found %s" % [where, file])
+	if file == "" and not s.has("synth"):
+		errors.append("%s: needs a file or a synth recipe" % where)
+	if not _num_in(s.get("volume_db", 0), -60.0, 12.0):
+		errors.append("%s: volume_db is -60..12" % where)
+	if not _num_in(s.get("pitch_jitter", 0), 0.0, 0.5):
+		errors.append("%s: pitch_jitter is 0..0.5" % where)
+	if s.has("synth"):
+		_validate_synth(where, s.synth, errors)
+
+
+static func _validate_synth(where: String, r: Dictionary, errors: Array[String]) -> void:
+	if not str(r.get("wave", "sine")) in SYNTH_WAVES:
+		errors.append("%s: unknown wave %s" % [where, r.get("wave")])
+	if not _num_in(r.get("ms", 100), 1.0, 20000.0):
+		errors.append("%s: ms is 1..20000" % where)
+	for k in ["freq", "freq_end"]:
+		if not _num_in(r.get(k, 440), 1.0, 11000.0):
+			errors.append("%s: %s is 1..11000 Hz" % [where, k])
+	if not _num_in(r.get("decay", 0), 0.0, 100.0):
+		errors.append("%s: decay is 0..100" % where)
+	if not _num_in(r.get("noise", 0), 0.0, 1.0):
+		errors.append("%s: noise is 0..1" % where)
+	if not _int_in(r.get("beats", 0), 0, 32):
+		errors.append("%s: beats is a whole number 0..32" % where)
+	var notes: Variant = r.get("notes", [220])
+	if not notes is Array or (notes as Array).is_empty():
+		errors.append("%s: notes must be a list of frequencies" % where)
+	else:
+		for n: Variant in notes:
+			if not _num_in(n, 1.0, 11000.0):
+				errors.append("%s: note %s is not 1..11000 Hz" % [where, n])
+
+
+static func _num_in(v: Variant, lo: float, hi: float) -> bool:
+	return (v is float or v is int) and float(v) >= lo and float(v) <= hi
+
+
+static func _int_in(v: Variant, lo: int, hi: int) -> bool:
+	return _num_in(v, lo, hi) and float(v) == floorf(float(v))

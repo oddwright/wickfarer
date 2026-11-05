@@ -13,6 +13,7 @@ var icons: Texture2D
 var icon_index: Dictionary = {}
 var stars: Array = []
 var anim_time := 0.0
+var shake := Vector2i.ZERO  ## native pixels; moves the ships only, never the HUD or taps
 
 
 func setup(main_node: Node) -> void:
@@ -120,6 +121,8 @@ func _draw() -> void:
 	for s in stars:
 		draw_rect(Rect2(s[0], Vector2.ONE), Pixel.c(s[1]))
 	var frame := int(anim_time * 6.0) % 4
+	# Shake the ships, not the buttons: a jolt must never move a tap target.
+	draw_set_transform(Vector2(shake))
 	for side in 2:
 		var o := ship_origin(side)
 		var fs := ship_frames[side]
@@ -130,6 +133,7 @@ func _draw() -> void:
 	for side in 2:
 		_draw_crew(side)
 	_draw_projectiles()
+	draw_set_transform(Vector2.ZERO)
 	_draw_hud()
 	if main.paused or combat.state != "fighting":
 		draw_texture_rect(Pixel.dither("a", 2), Rect2(Vector2.ZERO, native), true)

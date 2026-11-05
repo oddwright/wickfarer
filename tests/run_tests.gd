@@ -3,6 +3,7 @@ extends SceneTree
 ## Exits with code 1 if anything fails, so CI goes red.
 
 const J = preload("res://scripts/core/json_util.gd")
+const MAIN = preload("res://scripts/view/main.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -47,6 +48,13 @@ func _init() -> void:
 		"test_layouts_on_every_screen",
 		"test_run_screens_on_every_screen",
 		"test_view_screens_follow_the_run",
+		"test_weapon_ready_event",
+		"test_feedback_cues_follow_events",
+		"test_feedback_shake_and_hitstop",
+		"test_feedback_content_is_checked",
+		"test_haptic_patterns",
+		"test_settings_save_and_fall_back",
+		"test_audio_service_and_music_states",
 	]:
 		current = t
 		call(t)
@@ -587,7 +595,7 @@ func test_run_screens_on_every_screen() -> void:
 
 
 func test_view_screens_follow_the_run() -> void:
-	var main: Node = load("res://scripts/view/main.gd").new()
+	var main: Node = MAIN.new()
 	main.screen = ScreenManager.compute(Vector2i(2400, 1080))
 	var r := Run.create(77)
 	main.run = r
@@ -597,4 +605,225 @@ func test_view_screens_follow_the_run() -> void:
 	check(main.run_screen() == "outcome", "an event result is shown before the fight it starts")
 	r.read_outcome()
 	check(main.run_screen() == "fight", "then the fight")
+	main.free()
+
+
+# ------------------------------------------------------------------ feedback
+
+
+func _feedback() -> FeedbackDirector:
+	return FeedbackDirector.new(ContentDB.feedback.cues, GameSettings.new())
+
+
+func test_weapon_ready_event() -> void:
+	var c := Combat.create(5)
+	var ready := 0
+	for i in 400:  # 20 s: an unaimed gun charges once and then waits
+		c.tick()
+		for e: Dictionary in c.events:
+			if e.type == "weapon_ready" and e.side == 0 and e.weapon == 0:
+				ready += 1
+	check(ready == 1, "an idle weapon says it is ready once, got %d" % ready)
+	var a := Combat.create(5)
+	var b := Combat.create(5)
+	aim_player(a)
+	aim_player(b)
+	run(a, 600)
+	run(b, 600)
+	check(J.canonical(a.to_dict()) == J.canonical(b.to_dict()), "ready events keep fights seeded")
+
+
+func test_feedback_cues_follow_events() -> void:
+	var c := Combat.create(3)
+	var f := _feedback()
+	check(f.cue_for({"type": "hit", "side": 0, "room": "helm"}, c) == "hit.us", "we were hit")
+	check(f.cue_for({"type": "hit", "side": 1, "room": "helm"}, c) == "hit.them", "we hit them")
+	check(
+		f.cue_for({"type": "fire", "side": 0, "weapon": 0}, c) == "fire.us.kinetic",
+		"a fire cue picks the weapon family"
+	)
+	check(
+		f.cue_for({"type": "fire", "side": 1, "weapon": 0}, c) == "fire.them",
+		"falls back to the side cue when there is no family cue"
+	)
+	check(f.cue_for({"type": "won"}, c) == "won", "won has no side")
+	check(f.cue_for({"type": "no_such_event", "side": 0}, c) == "", "unknown events are silent")
+	check(
+		f.cue_for({"type": "weapon_ready", "side": 0, "weapon": 0}, c) == "weapon_ready.us",
+		"an idle gun pings when ready"
+	)
+	aim_player(c)
+	check(
+		f.cue_for({"type": "weapon_ready", "side": 0, "weapon": 0}, c) == "",
+		"an aimed gun fires instead of pinging"
+	)
+	f.on_sim_events([{"type": "hit", "side": 0, "room": "helm"}], c)
+	var out := f.drain()
+	check(out.size() == 1 and out[0].sound == "hull_hit_heavy", "a hit on us plays the heavy hit")
+	check(out[0].haptic == "thud" and out[0].duck, "and thuds and ducks the music")
+	check(f.drain().is_empty(), "drain empties the queue")
+	f.on_sim_events([{"type": "hit", "side": 0, "room": "helm"}], c)
+	check(f.drain().is_empty(), "the same cue on the same frame is merged by its cooldown")
+	f.update(0.1)
+	f.on_sim_events([{"type": "hit", "side": 0, "room": "helm"}], c)
+	check(f.drain().size() == 1, "and plays again after it")
+	c.player().hull = 1
+	f.on_sim_events([], c)
+	f.on_sim_events([], c)
+	var danger := f.drain()
+	check(danger.size() == 1 and danger[0].sound == "heartbeat", "low hull warns once")
+
+
+func test_feedback_shake_and_hitstop() -> void:
+	var c := Combat.create(3)
+	var f := _feedback()
+	check(f.shake_offset() == Vector2i.ZERO and not f.frozen(), "calm at the start")
+	f.on_sim_events([{"type": "hit", "side": 0, "room": "helm"}], c)
+	check(f.frozen(), "a heavy hit on us freezes the sim briefly")
+	check(f.trauma > 0.0 and f.kick.x < 0.0, "and shoves the view toward our side")
+	var off := f.shake_offset()
+	check(off.x < 0, "the first jolt goes left, got %s" % off)
+	for i in 4:
+		f.update(0.02)
+	check(not f.frozen(), "hit-stop ends within 80 ms")
+	f.update(0.05)
+	f.on_sim_events([{"type": "crew_died", "side": 0, "uid": 1, "room": "helm"}], c)
+	check(not f.frozen(), "no second freeze right after the first: it would read as lag")
+	for i in 60:
+		f.update(0.05)
+	check(f.shake_offset() == Vector2i.ZERO, "shake settles to nothing")
+	f.on_sim_events([{"type": "won"}], c)
+	check(f.frozen() and f.hitstop <= FeedbackDirector.MAX_HITSTOP, "a kill freezes, capped")
+	var calm := FeedbackDirector.new(ContentDB.feedback.cues, GameSettings.new())
+	calm.settings.shake = 0.0
+	calm.settings.hitstop = false
+	calm.on_sim_events([{"type": "won"}], c)
+	check(calm.shake_offset() == Vector2i.ZERO, "shake 0 means no shake")
+	check(not calm.frozen(), "hit-stop off means no freeze")
+	var r := Run.create(8)
+	r.hush = float(r.here().col) - FeedbackDirector.HUSH_NEAR
+	check(FeedbackDirector.hush_closeness(r) == 0.0, "a far Hush leaves the music alone")
+	r.hush = float(r.here().col)
+	check(is_equal_approx(FeedbackDirector.hush_closeness(r), 1.0), "and eats it when it is here")
+
+
+func test_feedback_content_is_checked() -> void:
+	var bad: Dictionary = ContentDB.feedback.duplicate(true)
+	bad.cues["hit.us"].sound = "no_such_sound"
+	bad.haptics["tick"] = [[12, 3.0]]
+	bad.sounds["ui_tick"].synth.wave = "kazoo"
+	bad.music.states["chart"] = ["no_such_layer"]
+	bad.cues["won"].hitstop = 1.0
+	bad.sounds["ui_nope"].pitch_jitter = 1.5
+	bad.music.layers.pulse.synth.beats = 0.5
+	bad.cues["ui.tap"].priority = -1
+	var errors: Array[String] = []
+	ContentDB._validate_feedback(bad, errors)
+	check(errors.size() == 8, "every broken feedback field is caught, got %s" % [errors])
+
+
+func test_haptic_patterns() -> void:
+	var pulses: Array = []
+	var rec := func(ms: int, amp: float) -> void: pulses.append([ms, amp])
+	var h := Haptics.new(ContentDB.feedback.haptics, rec)
+	check(h.play("thud", 3), "thud plays")
+	check(pulses.size() == 1 and pulses[0][0] == 45, "its first pulse starts at once")
+	check(not h.play("tick", 0), "a lower priority pattern can't cut in")
+	h.update(0.05)
+	check(pulses.size() == 2 and is_equal_approx(pulses[1][1], 0.4), "the second pulse follows")
+	h.update(0.1)
+	check(h.play("tick", 0), "once it is done anything can play")
+	h.strength = 0.5
+	h.update(0.1)
+	h.play("tap", 0)
+	check(is_equal_approx(pulses[-1][1], 0.3), "strength scales the amplitude")
+	pulses.clear()
+	h.play("tick", 0)
+	check(pulses.is_empty(), "a new pattern waits out the gap after the last pulse")
+	h.update(Haptics.MIN_GAP)
+	check(pulses.size() == 1, "then plays")
+	h.strength = 0.0
+	check(not h.play("big_rumble", 4), "strength 0 is off")
+	check(not h.play("no_such_pattern", 4), "unknown patterns are ignored")
+
+
+func test_settings_save_and_fall_back() -> void:
+	var dir := "user://test_saves"
+	DirAccess.make_dir_recursive_absolute(dir)
+	SaveService.erase(GameSettings.SLOT, dir)
+	var fresh := GameSettings.load_or_default(dir)
+	check(fresh.hitstop and fresh.shake == 1.0, "no file means the defaults")
+	fresh.shake = 0.25
+	fresh.reduce_flashing = true
+	fresh.volume.Music = 0.0
+	check(fresh.save(dir), "settings save")
+	var back := GameSettings.load_or_default(dir)
+	check(back.shake == 0.25 and back.reduce_flashing, "and load back")
+	check(back.volume.Music == 0.0 and back.volume.SFX == 0.9, "per-bus volume survives")
+	var keys: Array = GameSettings.new().volume.keys()
+	keys.sort()
+	var buses: Array = ["Master"] + Array(ContentDB.SOUND_BUSES)
+	buses.sort()
+	check(keys == buses, "settings hold a volume for exactly the sound buses")
+	var raw: Variant = JSON.parse_string(
+		FileAccess.get_file_as_string("res://tests/fixtures/settings_v1.json")
+	)
+	var up := SaveService.upgrade(raw)
+	check(not up.is_empty(), "the settings fixture upgrades through the save versions")
+	var old := GameSettings.from_dict(up.get("data", {}))
+	check(old.shake == 0.25 and not old.hitstop and old.volume.Music == 0.0, "and loads as saved")
+	var odd := GameSettings.from_dict({"shake": "loud", "haptics": 7, "hitstop": "yes"})
+	check(odd.shake == 1.0 and odd.haptics == 1.0 and odd.hitstop, "bad values fall back or clamp")
+	SaveService.erase(GameSettings.SLOT, dir)
+
+
+func test_audio_service_and_music_states() -> void:
+	for id: String in ContentDB.feedback.sounds:
+		var w := SfxSynth.one_shot(ContentDB.feedback.sounds[id].synth)
+		check(w.data.size() > 100, "sound %s synthesises" % id)
+	var loop := SfxSynth.loop(ContentDB.feedback.music.layers.pad.synth)
+	check(loop.loop_mode == AudioStreamWAV.LOOP_FORWARD, "music layers loop")
+	# Headless tests run outside the scene tree, so players can't really play:
+	# check the voice choice on its own.
+	var voices: Array[Dictionary] = []
+	for i in 3:
+		voices.append({"playing": true, "priority": 2, "started": float(i)})
+	check(AudioService.pick_voice(voices, 0) == -1, "a tick can't cut louder cues")
+	check(AudioService.pick_voice(voices, 4) == 0, "a kill takes the oldest voice")
+	voices[1].priority = 1
+	check(AudioService.pick_voice(voices, 4) == 1, "the least important voice goes first")
+	voices[2].playing = false
+	check(AudioService.pick_voice(voices, 0) == 2, "a free voice is always used")
+	var a := AudioService.new()
+	a.setup()
+	check(not a.play("ui_tick"), "nothing plays until the sounds are built")
+	a.finish_build(true)
+	check(AudioServer.get_bus_index("SFX") != -1, "the SFX bus exists")
+	check(not a.play("no_such_sound"), "an unknown sound doesn't play")
+	check(a._streams.size() == ContentDB.feedback.sounds.size(), "every sound is built")
+	a.suspend(true)
+	a.set_music_state("chart")
+	check(not a._music_player.playing, "a suspended game starts no music")
+	a.suspend(false)
+	a.set_music_state("combat")
+	check(a.layer_targets().has("drum"), "combat brings in the drum")
+	a.set_music_state("chart")
+	var open: float = a.layer_targets().warm
+	a.hush = 1.0
+	check(a.layer_targets().warm < open, "the Hush eats the warm layer")
+	a.set_music_state("no_such_state")
+	check(a.music_state == "chart", "unknown states are ignored")
+	var s := GameSettings.new()
+	s.volume.Music = 0.0
+	a.apply_settings(s)
+	check(AudioServer.is_bus_mute(AudioServer.get_bus_index("Music")), "volume 0 mutes the bus")
+	a.queue_free()
+	var main: Node = MAIN.new()
+	main.run = Run.create(77)
+	check(main.music_state() == "chart", "the chart plays the chart music")
+	main.run._start_fight("ashmarket_skiff")
+	main.combat = main.run.combat
+	check(main.music_state() == "combat", "a fight plays the combat layers")
+	main.combat.player().hull = 1
+	check(main.music_state() == "danger", "low hull plays the danger layers")
 	main.free()

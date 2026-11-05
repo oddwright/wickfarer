@@ -311,7 +311,7 @@ func tick(dt: float, rng: RandomNumberGenerator, events: Array) -> void:
 	_tick_warmth(dt)
 	_tick_fire(dt, rng, events)
 	_tick_wards(dt)
-	_tick_weapons(dt)
+	_tick_weapons(dt, events)
 	quantize()
 
 
@@ -435,12 +435,15 @@ func _tick_wards(dt: float) -> void:
 		ward_regen = 0.0
 
 
-func _tick_weapons(dt: float) -> void:
+func _tick_weapons(dt: float, events: Array) -> void:
 	var boost := 1.1 if manned("weapons") else 1.0
 	for i in weapon_ids.size():
 		var full := float(ContentDB.weapons[weapon_ids[i]].charge)
 		if weapon_powered(i):
+			var was := weapon_charge[i]
 			weapon_charge[i] = minf(full, weapon_charge[i] + dt * boost)
+			if was < full and weapon_charge[i] >= full:
+				events.append({"type": "weapon_ready", "side": side, "weapon": i})
 		else:
 			weapon_charge[i] = maxf(0.0, weapon_charge[i] - dt * 2.0)
 
