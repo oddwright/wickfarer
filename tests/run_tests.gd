@@ -1,3 +1,5 @@
+# gdlint: disable=max-public-methods
+# (every test_ method is public by design: the runner calls them by name)
 extends SceneTree
 ## Headless test runner: godot --headless --path . -s tests/run_tests.gd
 ## Exits with code 1 if anything fails, so CI goes red.
@@ -8,6 +10,7 @@ const MENU_TESTS = preload("res://tests/menu_tests.gd")
 const AUDIO_TESTS = preload("res://tests/audio_tests.gd")
 const STORY_TESTS = preload("res://tests/story_tests.gd")
 const SCREEN_TESTS = preload("res://tests/screen_tests.gd")
+const RESUME_TESTS = preload("res://tests/resume_tests.gd")
 const TUTORIAL_TESTS = preload("res://tests/tutorial_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
@@ -834,8 +837,10 @@ func test_options_adjust_settings() -> void:
 	MENU_TESTS.options_adjust(self)
 
 
+## Also the cold-start resume: the app killed and reopened on its save.
 func test_menu_flow() -> void:
 	MENU_TESTS.flow(self)
+	RESUME_TESTS.flow(self)
 
 
 ## The training lessons, tips, saving mid-step and where the coach writes, everywhere.

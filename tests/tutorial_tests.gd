@@ -299,7 +299,9 @@ static func flow(t: SceneTree) -> void:
 	main.queue_free()
 	main = _open(t, dir)
 	_check(t, main.tutorial.lesson == "fight" and main.tutorial.step == step, "same step after")
-	main._tap_menu(_item_point(main, "continue"))
+	if main.menu == "title":
+		main._tap_menu(_item_point(main, "continue"))
+	_check(t, main.menu == "" and main.combat != null, "back in the training fight")
 	main._process(0.05)
 	_check(t, main.paused and main.tutorial.display.get("text") == "TUT_PLAY", "same words")
 	_tap(main, main.layout.button("pause").rect)
