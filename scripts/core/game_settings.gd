@@ -10,8 +10,9 @@ extends RefCounted
 const SLOT := "settings"
 const SETTINGS_VERSION := 2
 const STEP := 0.1  ## one tap of - or + on the options screen
-## UI size steps around the auto scale (see ScreenManager.compute): two smaller, one larger.
-const UI_SIZE_MIN := -2
+## UI size steps around the auto scale (see ScreenManager.compute): one smaller, one
+## larger. Two smaller would shrink tap targets well under a fingertip.
+const UI_SIZE_MIN := -1
 const UI_SIZE_MAX := 1
 
 var volume := {"Master": 0.8, "Music": 0.7, "SFX": 0.9, "UI": 0.7}  ## 0..1 per bus
@@ -23,7 +24,7 @@ var ui_size := 0  ## whole scale steps from auto; 0 is auto
 
 
 ## A setting's value by options-screen id: a bus name, "haptics" or "shake"
-## (0..1), "hitstop" / "reduce_flashing" (1 on, 0 off), or "ui_size" (a step, -2..1).
+## (0..1), "hitstop" / "reduce_flashing" (1 on, 0 off), or "ui_size" (a step, -1..1).
 func value(id: String) -> float:
 	if volume.has(id):
 		return float(volume[id])

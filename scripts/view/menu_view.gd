@@ -92,7 +92,7 @@ func _draw_options(l: MenuLayout) -> void:
 			var y := v.position.y + v.size.y / 2 + 3
 			_text(
 				Vector2(v.position.x, y),
-				main.ui_size_text(),
+				main.stepper_text(id),
 				5.0,
 				Pixel.c("w"),
 				HORIZONTAL_ALIGNMENT_CENTER,

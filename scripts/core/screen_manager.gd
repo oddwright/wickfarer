@@ -56,4 +56,6 @@ static func fit(window: Vector2i, layout: String, tight: bool) -> int:
 		return maxi(1, mini(short / MIN_SHORT, long / MIN_LONG))
 	if tight:
 		return maxi(1, mini(window.x / TIGHT_WIDTH_SQUARE, window.y / MIN_SHORT_SQUARE))
-	return maxi(1, mini(short / MIN_SHORT_SQUARE, long / MIN_LONG_SQUARE))
+	# Held upright, the canvas must still be wide enough for the two button clusters.
+	var across := window.x / TIGHT_WIDTH_SQUARE
+	return maxi(1, mini(mini(short / MIN_SHORT_SQUARE, long / MIN_LONG_SQUARE), across))

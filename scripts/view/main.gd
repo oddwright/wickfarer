@@ -683,8 +683,7 @@ func _press_option(b: Dictionary) -> void:
 		"less", "more":
 			var dir := -1 if b.kind == "less" else 1
 			if not option_can_step(str(b.id), dir):
-				ui_cue("refused")
-				return
+				return  # the tap cue has played; the greyed button says why
 			settings.adjust(str(b.id), dir)
 			_preview(str(b.id))
 		"toggle":
@@ -717,9 +716,14 @@ func option_can_step(id: String, dir: int) -> bool:
 	return ScreenManager.compute(window_size(), next).scale != screen.scale
 
 
+## A stepper row's value on the options screen, by row id.
+func stepper_text(id: String) -> String:
+	return ui_size_text() if id == "ui_size" else ""
+
+
 ## The UI size control's value: the current scale, and "auto" when it is the default.
 func ui_size_text() -> String:
-	var t := "%dX" % int(screen.get("scale", 1))
+	var t := tr("UI_SIZE_SCALE") % int(screen.get("scale", 1))
 	if settings.ui_size == 0:
 		t += " " + tr("UI_SIZE_AUTO")
 	return t.to_upper()

@@ -16,6 +16,8 @@ const SCREENS := {
 	"iPhone 16 (2556x1179)": Vector2i(2556, 1179),
 	"iPhone 16 Pro Max (2868x1320)": Vector2i(2868, 1320),
 	"iPad mini (2266x1488)": Vector2i(2266, 1488),
+	"iPhone 16, portrait (1179x2556)": Vector2i(1179, 2556),
+	"iPad mini, portrait (1488x2266)": Vector2i(1488, 2266),
 	"small 16:9 (1280x720)": Vector2i(1280, 720),
 	"desktop window (1200x540)": Vector2i(1200, 540),
 }

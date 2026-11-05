@@ -60,6 +60,9 @@ const FIRE: Array[String] = [
 
 static var _cache: Dictionary = {}
 
+## Pixel.used_rect results by texture path and frame size; sprites never change at runtime.
+static var _used_cache: Dictionary = {}
+
 
 static func c(key: String, alpha := 1.0) -> Color:
 	var col := Color(PAL[key])
@@ -143,6 +146,16 @@ static func menu_icon(ci: CanvasItem, r: Rect2i) -> void:
 ## The smallest box holding every drawn pixel of a strip of animation frames,
 ## in frame coordinates, so layouts can place a ship by its hull, not its frame.
 static func used_rect(tex: Texture2D, frame: Vector2i) -> Rect2i:
+	var key := "%s:%s" % [tex.resource_path, frame]
+	if tex.resource_path != "" and _used_cache.has(key):
+		return _used_cache[key]
+	var out := _scan_used(tex, frame)
+	if tex.resource_path != "":
+		_used_cache[key] = out
+	return out
+
+
+static func _scan_used(tex: Texture2D, frame: Vector2i) -> Rect2i:
 	var img := tex.get_image()
 	if img == null or frame.x <= 0:
 		return Rect2i(Vector2i.ZERO, frame)

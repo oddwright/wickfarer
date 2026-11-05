@@ -44,9 +44,9 @@ static func build(
 	else:
 		l.text_rect = Rect2i(12, TOP + 8, l.hinge.position.x - 20, h - TOP - 24)
 	l.menu_rect = MenuLayout.menu_button(l.native)
-	l._spread_columns(chart)
 	match mode:
 		"chart":
+			l._spread_columns(chart)
 			for n in chart.nodes:
 				var c := l.beacon_pos(n)
 				l._add(
@@ -96,6 +96,10 @@ func _spread_columns(chart: StarChart) -> void:
 		ys[-1] = mini(ys[-1], r.end.y)
 		for i in range(ys.size() - 2, -1, -1):
 			ys[i] = mini(ys[i], ys[i + 1] - gap)
+		# A column too tall for the chart overlaps rather than leaving it; the
+		# layout test reports the overlap.
+		for i in ys.size():
+			ys[i] = clampi(ys[i], r.position.y, r.end.y)
 		for i in ns.size():
 			_beacon_y[ns[i].id] = ys[i]
 
