@@ -158,8 +158,8 @@ func _draw() -> void:
 						ink
 					)
 			"ward":
-				_text(Vector2(r.position.x + 17, r.position.y + 25), "up", 4.5, quiet)
-				_text(Vector2(r.position.x + 17, r.position.y + 35), "low", 4.5, quiet)
+				_text(Vector2(r.position.x + 17, r.position.y + 25), tr("UI_WARD_UP"), 4.5, quiet)
+				_text(Vector2(r.position.x + 17, r.position.y + 35), tr("UI_WARD_LOW"), 4.5, quiet)
 	# cold rooms get a word, so warmth isn't read from colour alone
 	for side in 2:
 		for room in combat.ships[side].rooms:

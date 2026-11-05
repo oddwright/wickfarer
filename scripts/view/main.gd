@@ -121,13 +121,18 @@ func _save() -> void:
 
 func _notification(what: int) -> void:
 	# Phones don't promise a quit event, so save whenever we lose the screen.
-	match what:
-		NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT:
-			if combat and combat.state == "fighting":
-				_pause("UI_TAP_TO_RESUME")
-		NOTIFICATION_WM_CLOSE_REQUEST:
-			if combat and combat.state == "fighting":
-				_pause("UI_TAP_TO_RESUME")
+	const LEAVING: Array[int] = [
+		NOTIFICATION_APPLICATION_PAUSED,
+		NOTIFICATION_APPLICATION_FOCUS_OUT,
+		NOTIFICATION_WM_CLOSE_REQUEST,
+	]
+	if what in LEAVING:
+		_on_leave()
+
+
+func _on_leave() -> void:
+	if combat and combat.state == "fighting":
+		_pause("UI_TAP_TO_RESUME")
 
 
 # ------------------------------------------------------------------ loop

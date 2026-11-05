@@ -70,5 +70,9 @@ xvfb-run godot --path . -s tools/shot.gd -- 2400 1080 out.png   # screenshot at 
 ## Workflow
 
 - Branch from `main`, open a PR, keep it to one change. CI (tests, lint, Android build, layout
-  screenshots) and the automatic review must pass before merging.
+  screenshots) must pass before merging.
+- Every PR gets a high-effort code review from Claude in the project session (`/code-review high`),
+  not a GitHub Action. Fix what it confirms, or say in the PR why not, before merging.
+- CI runs Godot through `tools/ci_godot.sh`, which fails on any script error or hang, not just
+  the exit code.
 - Commit messages: imperative summary line, then why.

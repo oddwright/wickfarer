@@ -23,7 +23,7 @@ var ward_deck: int = 1
 var ward_layers: int = 0
 var ward_regen: float = 0.0
 var next_uid: int = 1
-var ladders: Array = []
+var ladders: Array[Dictionary] = []
 
 var _room_by_id: Dictionary = {}
 var _neighbors: Dictionary = {}  ## room id -> Array of [room id, seconds]
@@ -88,7 +88,7 @@ func _build_graph(c: Dictionary) -> void:
 		for i in range(row.size() - 1):
 			_neighbors[row[i].id].append([row[i + 1].id, WALK_TIME])
 			_neighbors[row[i + 1].id].append([row[i].id, WALK_TIME])
-	ladders = c.get("ladders", [])
+	ladders.assign(c.get("ladders", []))
 	for l: Dictionary in ladders:
 		_neighbors[l.upper].append([l.lower, LADDER_TIME])
 		_neighbors[l.lower].append([l.upper, LADDER_TIME])
