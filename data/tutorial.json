@@ -59,7 +59,7 @@
     },
     {
       "id": "gate",
-      "screen": "reach_done",
+      "screen": "won",
       "steps": [
         {"id": "done", "text": "TUT_DONE", "target": "next", "done": "left"}
       ]

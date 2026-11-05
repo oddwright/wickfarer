@@ -34,7 +34,9 @@ const TARGETS: Array[String] = [
 const ORDERS: Array[String] = ["aim", "move", "power_up", "power_down", "ward"]
 const TIP_MOMENTS: Array[String] = ["fire_start", "ward_block", "cold", "low_hull", "dark_jump"]
 ## Run screens a lesson can belong to (Main.run_screen(), and "fight" while it is on).
-const SCREENS: Array[String] = ["chart", "event", "outcome", "store", "fight", "reach_done", "lost"]
+const SCREENS: Array[String] = [
+	"chart", "event", "outcome", "store", "fight", "reach_done", "won", "lost"
+]
 
 var done := false  ## finished or skipped training at least once: New Run skips it from then on
 var coaching := true  ## off once skipped; a training run then plays without lessons
@@ -142,7 +144,7 @@ func _update_lesson(ctx: Dictionary) -> void:
 		for l: Dictionary in lessons():
 			if _can_start(l, screen):
 				_set_lesson(str(l.id))
-				if screen in ["reach_done", "lost"]:
+				if screen in Run.ENDINGS:
 					done = true  # the flight is over either way; the next New Run is real
 				break
 	if lesson == "":

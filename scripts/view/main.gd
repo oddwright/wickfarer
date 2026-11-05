@@ -127,7 +127,7 @@ func _load_saved() -> Run:
 	_saved_ui = ui if ui is Dictionary else {}
 	if data.has("run"):
 		var r := Run.from_dict(data.run)
-		if not r.state in ["lost", "reach_done"]:
+		if not r.is_over():
 			return r
 	return null
 
@@ -180,7 +180,10 @@ func _build_run_layout() -> void:
 			count = (run.event().get("choices", []) as Array).size()
 		"store":
 			mode = "store"
-			count = run.store_items().size() + 1  # and Leave
+			count = run.store_options().size()
+		"refit":
+			mode = "refit"
+			count = run.refit_options().size()
 	run_layout = RunLayout.build(screen, run.chart, mode, count)
 
 
@@ -248,7 +251,7 @@ func _pause(reason := "") -> void:
 func _save() -> void:
 	if run == null:
 		return
-	if run.state in ["lost", "reach_done"]:
+	if run.is_over():
 		_erase_save()
 		return
 	var payload := {"run": run.to_dict(), "ui": _ui_state()}
@@ -457,10 +460,12 @@ func music_state() -> String:
 			return "engage" if combat == null else music_director.state_for(combat)
 		"event", "outcome":
 			return "event"
-		"store":
+		"store", "refit":
 			return "store"
 		"lost":
 			return "defeat"
+		"won":
+			return "victory"
 	return "chart"
 
 
@@ -657,18 +662,25 @@ func _tap_run(p: Vector2i) -> void:
 				ui_cue("refused")
 				return
 			ui_cue("choose")
-		"store":
-			var items := run.store_items()
-			var i := int(b.id)
-			var done := run.buy(items[i]) if i < items.size() else run.leave_store()
-			if not done:
+		"store", "refit":
+			var opts := run.store_options() if b.kind == "store" else run.refit_options()
+			var option := opts[int(b.id)]
+			if not run.store_action(option):
 				ui_cue("refused")
 				return
-			ui_cue("buy" if i < items.size() else "tap")
+			var paid := (
+				option in Run.STORE_ITEMS or option in Run.REFIT_SYSTEMS or option == "stoke"
+			)
+			ui_cue("buy" if paid else "tap")
 		"next":
-			if run.state in ["lost", "reach_done"] and run.outcome == "":
+			if run.is_over() and run.outcome == "":
 				ui_cue("tap")
 				_set_run(Run.create(_fresh_seed()))
+				return
+			if run.state == "reach_done" and run.outcome == "":
+				run.next_reach()
+				ui_cue("jump")
+				_enter_screen()
 				return
 			if not run.read_outcome():
 				return
@@ -706,7 +718,7 @@ func menu_items(page: String) -> Array[String]:
 
 ## A lost or finished run waiting on its ending screen; nothing to continue.
 func run_over() -> bool:
-	return run != null and run.state in ["lost", "reach_done"]
+	return run != null and run.is_over()
 
 
 ## iOS apps must not quit themselves (Apple rejects it); Android and desktop may.

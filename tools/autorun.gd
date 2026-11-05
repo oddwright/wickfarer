@@ -1,5 +1,5 @@
 extends SceneTree
-## Plays whole Reach runs with the Autopilot and prints how they end.
+## Plays whole runs with the Autopilot and prints how far they get.
 ## godot --headless --path . -s tools/autorun.gd -- [runs]
 
 
@@ -9,20 +9,31 @@ func _init() -> void:
 	if args.size() > 0:
 		n = int(args[0])
 	var ends := {}
-	var hull_left := 0
+	var gates := {}
 	var jumps := 0
+	var earned := 0
+	var hull_left := 0
 	for i in n:
 		var run := Run.create(5000 + i)
-		var end := Autopilot.new().play(run)
+		var end := Autopilot.new().play(run, 1200)
 		ends[end] = int(ends.get(end, 0)) + 1
+		gates[run.reaches_crossed] = int(gates.get(run.reaches_crossed, 0)) + 1
 		jumps += run.jumps
-		if end == "reach_done":
+		earned += run.scrap_earned
+		if end == "won":
 			hull_left += run.ship.hull
-	var done := int(ends.get("reach_done", 0))
+	var won := int(ends.get("won", 0))
+	var first_gate := n - int(gates.get(0, 0))
 	print(
 		(
-			"runs %d  reached the Gate %d%%  endings %s  avg jumps %.1f  avg hull at the Gate %.1f"
-			% [n, 100 * done / n, ends, float(jumps) / n, float(hull_left) / maxf(1, done)]
+			"runs %d  won %d%%  crossed the first Gate %d%%  endings %s  Gates crossed %s"
+			% [n, 100 * won / n, 100 * first_gate / n, ends, gates]
+		)
+	)
+	print(
+		(
+			"avg jumps %.1f  avg scrap earned %.0f  avg hull at the end of a win %.1f"
+			% [float(jumps) / n, float(earned) / n, float(hull_left) / maxf(1, won)]
 		)
 	)
 	quit()

@@ -24,6 +24,7 @@ func center_x() -> float:
 func to_dict() -> Dictionary:
 	return {
 		"id": id,
+		"level": level,
 		"power": power,
 		"wanted_power": wanted_power,
 		"damage": damage,
@@ -33,6 +34,7 @@ func to_dict() -> Dictionary:
 
 
 func load_dict(d: Dictionary) -> void:
+	level = int(d.get("level", level))  # saves from before refits keep the hull's level
 	power = int(d.get("power", 0))
 	wanted_power = int(d.get("wanted_power", power))
 	damage = float(d.get("damage", 0.0))
