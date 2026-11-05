@@ -245,6 +245,7 @@ func _rebuild_layout() -> void:
 		world.ship_used[0],
 		world.ship_used[1]
 	)
+	roster.rebuild()  # the roster's buttons follow the screen too
 
 
 func _pause(reason := "") -> void:
@@ -957,9 +958,8 @@ func _press_option(b: Dictionary) -> void:
 	settings.save(save_dir)
 
 
-## Whether a - or + tap on the options screen would change anything. UI size
-## only steps away from auto when the scale really moves, so a tap that can't
-## fit is refused instead of saving a step that does nothing.
+## Whether a - or + tap on the options screen would change anything. UI size leaves
+## auto only when the scale really moves, so a tap that can't fit is refused.
 func option_can_step(id: String, dir: int) -> bool:
 	if id != "ui_size":
 		var v := settings.value(id)

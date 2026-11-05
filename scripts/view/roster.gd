@@ -68,6 +68,7 @@ func picks() -> Array[String]:
 func show() -> void:
 	var c: Combat = main.combat
 	if c == null or c.state != "fighting" or open:
+		main.ui_cue("refused")
 		return
 	main.ui_cue("tap")
 	paused_before = main.paused

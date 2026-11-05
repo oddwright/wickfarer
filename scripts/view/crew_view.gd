@@ -6,18 +6,27 @@ extends TextLayer
 
 const SKILL_PIP := 3
 
+var drawn_open := false  ## whether the last frame drew the roster, so closing clears it
+
 
 func _process(_delta: float) -> void:
-	if main and main.roster.open:
+	if needs_redraw():
 		queue_redraw()
 
 
+## While the roster is open, and once more after it closes to clear it away.
+func needs_redraw() -> bool:
+	return main != null and (main.roster.open or drawn_open)
+
+
 func _draw() -> void:
+	drawn_open = false
 	if main == null or not main.roster.open or main.combat == null:
 		return
-	if main.roster.layout == null or main.roster.layout.native != main.screen.native:
-		main.roster.rebuild()  # the screen changed (a fold) while the roster was open
 	var l: CrewLayout = main.roster.layout
+	if l == null:
+		return
+	drawn_open = true
 	var me: Ship = main.combat.player()
 	draw_rect(Rect2(Vector2.ZERO, l.native), Pixel.c("a", 0.93))
 	var crew: Array[Crew] = main.roster.crew()

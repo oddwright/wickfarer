@@ -312,7 +312,16 @@ static func roster_flow(t: SceneTree) -> void:
 	_check(t, not main.paused, "the fight runs")
 	_tap(main, main.layout.button("crew").rect)
 	_check(t, main.roster.open and main.paused, "Crew opens the roster and pauses")
-	_check(t, main.roster.view.visible, "the roster is drawn")
+	var view: CrewView = main.roster.view
+	_check(t, view.needs_redraw(), "the roster is drawn")
+	view.drawn_open = true  # as if a frame drew it (headless draws nothing)
+	t.root.size = Vector2i(2208, 1768)  # unfold: the roster's buttons move before any draw
+	main._on_resize()
+	_check(t, main.roster.layout.kind == main.screen.layout, "a fold rebuilds the roster")
+	t.root.size = Vector2i(2400, 1080)
+	main._on_resize()
+	_check(t, main.roster.paused_before, "a fold behind the roster stays paused after it")
+	main.roster.paused_before = false  # the rest of the flow wants the fight to resume
 	var t0: float = main.combat.time()
 	main._process(1.0)
 	_check(t, main.combat.time() == t0, "no ticks behind the roster")
@@ -326,6 +335,9 @@ static func roster_flow(t: SceneTree) -> void:
 	_check(t, main.combat.player().role_of(crew[0]) == "ROLE_STOKER", "and their role follows")
 	_tap(main, main.roster.layout.button("muster").rect)
 	_check(t, not main.roster.open and not main.paused, "Muster closes the roster and resumes")
+	_check(t, view.needs_redraw(), "closing redraws once to clear the roster away")
+	view._draw()
+	_check(t, not view.needs_redraw(), "and then stops drawing")
 	_check(t, crew[0].is_moving() and crew[0].path.back() == "ember", "Muster sends crew to posts")
 	# a fight paused before the roster stays paused after it
 	main.paused = true
