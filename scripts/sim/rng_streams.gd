@@ -5,7 +5,7 @@ extends RefCounted
 ## RNG state is a 64-bit int, so it is saved as a string: JSON numbers are
 ## doubles and would silently lose precision.
 
-const NAMES: Array[String] = ["map", "events", "combat", "loot", "ai"]
+const NAMES: Array[String] = ["map", "encounters", "events", "combat", "loot", "ai"]
 
 var run_seed: int = 0
 var _streams: Dictionary = {}
@@ -21,6 +21,23 @@ func _init(seed_value: int = 0) -> void:
 
 func stream(name: String) -> RandomNumberGenerator:
 	return _streams[name]
+
+
+## Picks an index with probability proportional to its weight, or -1 if every
+## weight is 0. Weights of 0 or less are never picked. The one shared roll for
+## charts, events and outcomes, so they all treat weights the same way.
+static func weighted_pick(weights: Array[int], rng: RandomNumberGenerator) -> int:
+	var total := 0
+	for w in weights:
+		total += maxi(0, w)
+	if total <= 0:
+		return -1
+	var roll := rng.randi_range(1, total)
+	for i in weights.size():
+		roll -= maxi(0, weights[i])
+		if roll <= 0:
+			return i
+	return weights.size() - 1
 
 
 func to_dict() -> Dictionary:

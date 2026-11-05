@@ -301,5 +301,140 @@
       "helm": 1
     },
     "ward_deck": 1
+  },
+  "ashmarket_skiff": {
+    "name": "SHIP_ASHMARKET_SKIFF",
+    "sprite": "res://art/ship_ashmarket_cutter.png",
+    "frame_size": [
+      196,
+      66
+    ],
+    "hull": 8,
+    "reactor": 8,
+    "rooms": [
+      {
+        "id": "helm",
+        "deck": 1,
+        "rect": [
+          54,
+          22,
+          71,
+          37
+        ],
+        "system": "helm",
+        "level": 1
+      },
+      {
+        "id": "weapons",
+        "deck": 1,
+        "rect": [
+          74,
+          22,
+          95,
+          37
+        ],
+        "system": "weapons",
+        "level": 1
+      },
+      {
+        "id": "wards",
+        "deck": 1,
+        "rect": [
+          98,
+          22,
+          119,
+          37
+        ],
+        "system": "wards",
+        "level": 2
+      },
+      {
+        "id": "stores",
+        "deck": 1,
+        "rect": [
+          122,
+          22,
+          145,
+          37
+        ],
+        "system": ""
+      },
+      {
+        "id": "engines",
+        "deck": 0,
+        "rect": [
+          52,
+          40,
+          73,
+          55
+        ],
+        "system": "engines",
+        "level": 1
+      },
+      {
+        "id": "ember",
+        "deck": 0,
+        "rect": [
+          76,
+          40,
+          97,
+          55
+        ],
+        "system": "ember",
+        "level": 2
+      },
+      {
+        "id": "mend",
+        "deck": 0,
+        "rect": [
+          100,
+          40,
+          121,
+          55
+        ],
+        "system": "mend",
+        "level": 1
+      },
+      {
+        "id": "hold",
+        "deck": 0,
+        "rect": [
+          124,
+          40,
+          151,
+          55
+        ],
+        "system": ""
+      }
+    ],
+    "ladders": [
+      {
+        "upper": "weapons",
+        "lower": "ember",
+        "x": 90
+      }
+    ],
+    "weapons": [
+      "rivet_gun"
+    ],
+    "crew": [
+      {
+        "name": "CREW_RAIDER_1",
+        "species": "drifter",
+        "room": "weapons"
+      },
+      {
+        "name": "CREW_RAIDER_2",
+        "species": "drifter",
+        "room": "helm"
+      }
+    ],
+    "start_power": {
+      "wards": 2,
+      "weapons": 1,
+      "helm": 1,
+      "engines": 1
+    },
+    "ward_deck": 1
   }
 }

@@ -11,7 +11,8 @@ godot --headless --path . --import                  # once after a fresh clone o
 godot --headless --path . -s tests/run_tests.gd     # all checks; must pass before every push
 gdformat -l 100 scripts tests tools                 # format (pip install "gdtoolkit==4.*")
 gdlint scripts tests tools                          # lint, config in gdlintrc
-godot --headless --path . -s tools/autobattle.gd -- 60   # balance report after any rules change
+godot --headless --path . -s tools/autobattle.gd -- 60   # fight balance after any rules change
+godot --headless --path . -s tools/autorun.gd -- 40      # whole-run balance (Gate rate)
 xvfb-run godot --path . -s tools/shot.gd -- 2400 1080 out.png   # screenshot at a screen size
 ```
 

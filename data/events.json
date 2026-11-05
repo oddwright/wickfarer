@@ -1,0 +1,399 @@
+{
+  "lantern_buoy": {
+    "text": "EV_LANTERN_BUOY",
+    "weight": 10,
+    "choices": [
+      {
+        "text": "EV_LANTERN_BUOY_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 7,
+            "text": "EV_LANTERN_BUOY_C1_O1",
+            "effects": {
+              "light": 2
+            }
+          },
+          {
+            "weight": 3,
+            "text": "EV_LANTERN_BUOY_C1_O2",
+            "effects": {
+              "light": 2,
+              "hush": 0.6
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_LANTERN_BUOY_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_LANTERN_BUOY_C2_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "ash_toll": {
+    "text": "EV_ASH_TOLL",
+    "weight": 10,
+    "choices": [
+      {
+        "text": "EV_ASH_TOLL_C1",
+        "requires": {
+          "scrap": 10
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_ASH_TOLL_C1_O1",
+            "effects": {
+              "scrap": -10
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_ASH_TOLL_C2",
+        "requires": {
+          "species": "kith"
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_ASH_TOLL_C2_O1",
+            "effects": {
+              "scrap": 5
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_ASH_TOLL_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_ASH_TOLL_C3_O1",
+            "effects": {
+              "fight": "ashmarket_cutter"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "frozen_hauler": {
+    "text": "EV_FROZEN_HAULER",
+    "weight": 10,
+    "choices": [
+      {
+        "text": "EV_FROZEN_HAULER_C1",
+        "requires": {
+          "light": 1
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_FROZEN_HAULER_C1_O1",
+            "effects": {
+              "light": -1,
+              "scrap": 15
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_FROZEN_HAULER_C1_O2",
+            "effects": {
+              "light": -1,
+              "crew_hp": -20
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_FROZEN_HAULER_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_FROZEN_HAULER_C2_O1",
+            "effects": {
+              "scrap": 10
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "tidewarden_patrol": {
+    "text": "EV_TIDEWARDEN_PATROL",
+    "weight": 10,
+    "choices": [
+      {
+        "text": "EV_TIDEWARDEN_PATROL_C1",
+        "requires": {"light": 1},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_TIDEWARDEN_PATROL_C1_O1",
+            "effects": {
+              "light": -1,
+              "hull": 4
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_TIDEWARDEN_PATROL_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_TIDEWARDEN_PATROL_C2_O1",
+            "effects": {
+              "hull": -2
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "choir_signal": {
+    "text": "EV_CHOIR_SIGNAL",
+    "weight": 10,
+    "choices": [
+      {
+        "text": "EV_CHOIR_SIGNAL_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CHOIR_SIGNAL_C1_O1",
+            "effects": {
+              "light": 2
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_CHOIR_SIGNAL_C1_O2",
+            "effects": {
+              "crew_hp": -15
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_CHOIR_SIGNAL_C2",
+        "requires": {
+          "species": "sable"
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CHOIR_SIGNAL_C2_O1",
+            "effects": {
+              "light": 1,
+              "scrap": 6
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_CHOIR_SIGNAL_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CHOIR_SIGNAL_C3_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "debris_field": {
+    "text": "EV_DEBRIS_FIELD",
+    "weight": 10,
+    "choices": [
+      {
+        "text": "EV_DEBRIS_FIELD_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 7,
+            "text": "EV_DEBRIS_FIELD_C1_O1",
+            "effects": {
+              "scrap": 8
+            }
+          },
+          {
+            "weight": 3,
+            "text": "EV_DEBRIS_FIELD_C1_O2",
+            "effects": {
+              "scrap": 4,
+              "hull": -2
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_DEBRIS_FIELD_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_DEBRIS_FIELD_C2_O1",
+            "effects": {
+              "hush": 0.4
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "cold_ember": {
+    "text": "EV_COLD_EMBER",
+    "weight": 10,
+    "choices": [
+      {
+        "text": "EV_COLD_EMBER_C1",
+        "requires": {
+          "light": 1
+        },
+        "outcomes": [
+          {
+            "weight": 6,
+            "text": "EV_COLD_EMBER_C1_O1",
+            "effects": {
+              "light": 2
+            }
+          },
+          {
+            "weight": 4,
+            "text": "EV_COLD_EMBER_C1_O2",
+            "effects": {
+              "light": -1
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_COLD_EMBER_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_COLD_EMBER_C2_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "salvage_dispute": {
+    "text": "EV_SALVAGE_DISPUTE",
+    "weight": 10,
+    "choices": [
+      {
+        "text": "EV_SALVAGE_DISPUTE_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_SALVAGE_DISPUTE_C1_O1",
+            "effects": {
+              "fight": "ashmarket_cutter",
+              "fight_bonus_scrap": 12
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_SALVAGE_DISPUTE_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_SALVAGE_DISPUTE_C2_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "quiet_station": {
+    "text": "EV_QUIET_STATION",
+    "weight": 10,
+    "choices": [
+      {
+        "text": "EV_QUIET_STATION_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_QUIET_STATION_C1_O1",
+            "effects": {
+              "crew_hp": 40
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_QUIET_STATION_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_QUIET_STATION_C2_O1",
+            "effects": {
+              "scrap": 12
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_QUIET_STATION_C2_O2",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "hush_pocket": {
+    "text": "EV_HUSH_POCKET",
+    "weight": 10,
+    "choices": [
+      {
+        "text": "EV_HUSH_POCKET_C1",
+        "requires": {
+          "light": 2
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_HUSH_POCKET_C1_O1",
+            "effects": {
+              "light": -2
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_HUSH_POCKET_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_HUSH_POCKET_C2_O1",
+            "effects": {
+              "hull": -3
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

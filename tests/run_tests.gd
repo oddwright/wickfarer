@@ -19,6 +19,13 @@ func _init() -> void:
 		"test_save_file_safety",
 		"test_old_save_is_migrated",
 		"test_every_save_fixture_still_loads",
+		"test_chart_is_connected_and_seeded",
+		"test_jumping_costs_light_and_the_hush_follows",
+		"test_events_apply_and_respect_requirements",
+		"test_store_and_fight_rewards",
+		"test_both_ships_dying_together_is_a_loss",
+		"test_run_saves_and_resumes_at_every_step",
+		"test_autopilot_runs_always_end",
 		"test_power_rules",
 		"test_every_room_reachable_and_ladders_used",
 		"test_wards_block_and_strip",
@@ -64,6 +71,26 @@ func test_content_is_valid() -> void:
 	for e in errors:
 		print("  content: ", e)
 	check(errors.is_empty(), "content has %d problems" % errors.size())
+	var bad: Array[String] = []
+	var reach: Dictionary = ContentDB.reaches.reach_1.duplicate(true)
+	reach.enemies = []
+	reach.kinds = {"fight": 0}
+	reach.columns = 2
+	ContentDB._validate_reach("bad", reach, bad)
+	check(bad.size() >= 3, "a reach with no enemies, no beacon weights or 2 columns is caught")
+	bad.clear()
+	var ev: Dictionary = ContentDB.events.lantern_buoy.duplicate(true)
+	ev.choices[1].outcomes[0]["effects"] = {"light": -2}
+	ContentDB._validate_event("bad", ev, bad)
+	check(not bad.is_empty(), "a choice that spends Light without requiring it is caught")
+	var r := RandomNumberGenerator.new()
+	var zero: Array[int] = [0, 0]
+	check(RngStreams.weighted_pick(zero, r) == -1, "all-zero weights pick nothing")
+	var only_last: Array[int] = [0, 0, 5]
+	var all_last := true
+	for i in 50:
+		all_last = all_last and RngStreams.weighted_pick(only_last, r) == 2
+	check(all_last, "a weight of 0 is never picked")
 
 
 func test_rng_streams_are_independent_and_saveable() -> void:
@@ -142,6 +169,12 @@ func test_old_save_is_migrated() -> void:
 	check(not SaveService.upgrade(empty).is_empty(), "a step that returns empty data still counts")
 	var from_future := {"version": SaveService.VERSION + 1, "data": {"x": 1}}
 	check(SaveService.upgrade(from_future).is_empty(), "a save from a newer game is refused")
+	var v1: Dictionary = JSON.parse_string(
+		FileAccess.get_file_as_string("res://tests/fixtures/save_v1.json")
+	)
+	var up1 := SaveService.upgrade(v1)
+	var room0: Dictionary = up1.data.combat.ships[0].rooms[0]
+	check(room0.wanted_power == room0.power, "v1 rooms get wanted_power from their power")
 	var original := J.canonical(v0)
 	SaveService.upgrade(v0)
 	check(J.canonical(v0) == original, "upgrading never edits the save it was given")
@@ -160,6 +193,22 @@ func test_power_rules() -> void:
 	check(s.available_power() == 6, "a damaged Ember loses 2 power per level")
 	check(s.used_power() <= 6, "systems shed power when the Ember is hurt")
 	check(s.system_power("wards") == 2, "wards are the last to lose power")
+	s.system_room("ember").damage = 0.0
+	s.system_room("weapons").damage = 3.0
+	s.enforce_power()
+	check(s.system_power("weapons") == 0, "a broken system loses its power")
+	s.system_room("weapons").damage = 0.0
+	s.enforce_power()
+	check(s.system_power("weapons") == 3, "a repaired system gets its power back")
+	# Once the captain moves power by hand, a broken system stops waiting for it.
+	s.system_room("weapons").damage = 2.0
+	s.enforce_power()
+	var spare_before := s.available_power() - s.used_power()
+	check(spare_before > 0, "damage frees power to spend")
+	check(s.power_up("helm") or s.power_up("engines"), "the captain spends it elsewhere")
+	s.system_room("weapons").damage = 0.0
+	s.enforce_power()
+	check(s.system_power("weapons") == 1, "a repair doesn't take back power moved elsewhere")
 
 
 func test_every_room_reachable_and_ladders_used() -> void:
@@ -324,3 +373,133 @@ func test_every_save_fixture_still_loads() -> void:
 		run(c, 200)
 		check(c.tick_count == before + 200, "%s resumes and plays on" % name)
 	check(found >= 1, "at least one save fixture")
+
+
+# ------------------------------------------------------------------ runs
+
+
+func test_chart_is_connected_and_seeded() -> void:
+	for seed_value in 30:
+		var r := Run.create(seed_value)
+		var seen := r.chart.reachable(r.chart.start_id())
+		check(seen.has(r.chart.gate_id()), "seed %d: the Gate is reachable" % seed_value)
+		for n in r.chart.nodes:
+			if n.kind != "gate":
+				check(
+					not (n.links as Array).is_empty(),
+					"seed %d: %s has a way on" % [seed_value, n.id]
+				)
+		var stores := r.chart.nodes.filter(func(n: Dictionary) -> bool: return n.kind == "store")
+		check(not stores.is_empty(), "seed %d: has a store" % seed_value)
+	var a := Run.create(77)
+	var b := Run.create(77)
+	check(J.canonical(a.chart.to_dict()) == J.canonical(b.chart.to_dict()), "same seed, same chart")
+
+
+func test_jumping_costs_light_and_the_hush_follows() -> void:
+	var r := Run.create(8)
+	var light := r.light
+	var hush := r.hush
+	check(not r.jump("nowhere"), "can't jump to an unlinked beacon")
+	var target: String = r.jump_targets()[0]
+	check(r.jump(target), "jump along a link")
+	check(r.light == light - 1 or r.state == "fight", "a jump costs 1 Light")
+	check(r.hush > hush, "the Hush moves up after every jump")
+	# Out of Light: jumping dark costs hull instead.
+	var r2 := Run.create(9)
+	r2.light = 0
+	var hull := r2.ship.hull
+	r2.jump(r2.jump_targets()[0])
+	check(r2.ship.hull <= hull - 2, "a dark jump costs hull")
+	# Caught by the Hush.
+	var r3 := Run.create(10)
+	r3.hush = 50.0
+	var hull3 := r3.ship.hull
+	r3.jump(r3.jump_targets()[0])
+	check(r3.ship.hull <= hull3 - 3, "a swallowed beacon damages the hull")
+
+
+func test_events_apply_and_respect_requirements() -> void:
+	var r := Run.create(12)
+	r.state = "event"
+	r.event_id = "ash_toll"
+	r.scrap = 0
+	check(not r.can_choose(0), "can't pay a toll with no scrap")
+	r.scrap = 30
+	check(r.can_choose(0), "can pay with scrap")
+	check(r.choose(0) and r.scrap == 20 and r.state == "chart", "paying takes 10 scrap")
+	r.state = "event"
+	r.event_id = "ash_toll"
+	check(r.choose(2) and r.state == "fight", "refusing starts a fight")
+	var r2 := Run.create(13)
+	r2.state = "event"
+	r2.event_id = "choir_signal"
+	check(r2.can_choose(1), "the Wren has a Sable aboard")
+	for c in r2.ship.crew:
+		if c.species == "sable":
+			c.hp = 0.0
+	check(not r2.can_choose(1), "a dead Sable can't answer the Choir")
+
+
+func test_both_ships_dying_together_is_a_loss() -> void:
+	var r := Run.create(21)
+	r._start_fight("ashmarket_skiff")
+	r.combat.player().hull = 0
+	r.combat.enemy().hull = 0
+	r.combat.tick()
+	check(r.combat.state == "lost", "a fight where both ships die is lost")
+	r.finish_fight()
+	check(r.state == "lost", "the run ends instead of carrying a dead ship on")
+	var r2 := Run.create(22)
+	r2._start_fight("ashmarket_skiff")
+	r2.combat.state = "won"  # as an older save could hold
+	r2.combat.player().hull = 0
+	r2.finish_fight()
+	check(r2.state == "lost", "finish_fight never pays out to a dead ship")
+
+
+func test_store_and_fight_rewards() -> void:
+	var r := Run.create(14)
+	r.state = "store"
+	r.scrap = 10
+	r.ship.hull = 15
+	check(r.buy("repair") and r.ship.hull == 16 and r.scrap == 7, "repair costs 3 scrap")
+	check(r.buy("light") and r.scrap == 2, "Light costs 5 scrap")
+	check(not r.buy("light"), "can't buy without scrap")
+	check(r.leave_store() and r.state == "chart", "leave the store")
+	r._start_fight("ashmarket_cutter")
+	r.combat.enemy().hull = 0
+	r.combat.tick()
+	var scrap := r.scrap
+	check(r.finish_fight() and r.state == "chart", "a won fight returns to the chart")
+	check(r.scrap > scrap, "a won fight pays scrap")
+	check(r.ship.system_room("weapons").damage == 0.0, "crew patch systems after a fight")
+
+
+func test_run_saves_and_resumes_at_every_step() -> void:
+	var pilot := Autopilot.new()
+	var r := Run.create(21)
+	for step in 12:
+		if r.state in ["reach_done", "lost"]:
+			break
+		var copy := Run.from_dict(JSON.parse_string(J.s(r.to_dict())))
+		check(
+			J.canonical(copy.to_dict()) == J.canonical(r.to_dict()),
+			"step %d: save round-trips" % step
+		)
+		pilot.play(r, 1)
+		Autopilot.new().play(copy, 1)
+		check(
+			J.canonical(copy.to_dict()) == J.canonical(r.to_dict()),
+			"step %d: resumed run plays the same" % step
+		)
+
+
+func test_autopilot_runs_always_end() -> void:
+	var ends := {}
+	for i in 12:
+		var r := Run.create(300 + i)
+		var end := Autopilot.new().play(r)
+		ends[end] = int(ends.get(end, 0)) + 1
+		check(end in ["reach_done", "lost"], "run %d ended properly (got %s)" % [i, end])
+	print("  autopilot run endings: ", ends)
