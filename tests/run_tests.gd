@@ -141,6 +141,16 @@ func test_old_save_is_migrated() -> void:
 	check(int(up.get("version", -1)) == SaveService.VERSION, "upgraded to the current version")
 	var restored := Combat.from_dict(up.data.combat)
 	check(restored.rng.run_seed == 5, "seed carried over from the old layout")
+	var big := {"version": 0, "data": {"rng_seed": 987654321, "combat": inner.duplicate(true)}}
+	var up_big := SaveService.upgrade(JSON.parse_string(J.s(big)))
+	check(str(up_big.data.combat.rng.seed) == "987654321", "a JSON seed is read as a whole number")
+	var empty := {"version": 0, "data": {}}
+	check(not SaveService.upgrade(empty).is_empty(), "a step that returns empty data still counts")
+	var from_future := {"version": SaveService.VERSION + 1, "data": {"x": 1}}
+	check(SaveService.upgrade(from_future).is_empty(), "a save from a newer game is refused")
+	var original := J.canonical(v0)
+	SaveService.upgrade(v0)
+	check(J.canonical(v0) == original, "upgrading never edits the save it was given")
 
 
 func test_power_rules() -> void:
@@ -312,14 +322,20 @@ func test_every_save_fixture_still_loads() -> void:
 		var raw: Variant = JSON.parse_string(
 			FileAccess.get_file_as_string("res://tests/fixtures/" + name)
 		)
+		if not raw is Dictionary:
+			check(false, "%s is not a JSON object" % name)
+			continue
 		var up := SaveService.upgrade(raw)
 		check(
 			int(up.get("version", -1)) == SaveService.VERSION,
 			"%s upgrades to the current version" % name
 		)
+		if up.is_empty():
+			continue  # already failed above; loading {} would only crash the runner
 		var c := Combat.from_dict(up.get("data", {}).get("combat", {}))
+		var before := c.tick_count
 		run(c, 200)
-		check(c.tick_count >= 400, "%s resumes and plays on" % name)
+		check(c.tick_count == before + 200, "%s resumes and plays on" % name)
 	check(found >= 1, "at least one save fixture")
 
 

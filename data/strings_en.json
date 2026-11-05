@@ -30,6 +30,8 @@
   "UI_MOVE_PROMPT": "Tap a room to send them there",
   "UI_WARD_DECK_UPPER": "Ward: upper deck",
   "UI_WARD_DECK_LOWER": "Ward: lower deck",
+  "UI_WARD_UP": "up",
+  "UI_WARD_LOW": "low",
   "UI_EVASION": "Evade",
   "UI_WON": "The cutter goes dark.",
   "UI_LOST": "The Ember gutters out.",
