@@ -10,6 +10,7 @@ const MENU_TESTS = preload("res://tests/menu_tests.gd")
 const AUDIO_TESTS = preload("res://tests/audio_tests.gd")
 const STORY_TESTS = preload("res://tests/story_tests.gd")
 const SCREEN_TESTS = preload("res://tests/screen_tests.gd")
+const CREW_TESTS = preload("res://tests/crew_tests.gd")
 const PROGRESS_TESTS = preload("res://tests/progress_tests.gd")
 const PROFILE_TESTS = preload("res://tests/profile_tests.gd")
 const RESUME_TESTS = preload("res://tests/resume_tests.gd")
@@ -53,6 +54,7 @@ func _init() -> void:
 		"test_event_results_and_messages_survive_saves",
 		"test_run_saves_and_resumes_at_every_step",
 		"test_autopilot_runs_always_end",
+		"test_crew_posts_and_skills",
 		"test_power_rules",
 		"test_every_room_reachable_and_ladders_used",
 		"test_wards_block_and_strip",
@@ -84,7 +86,7 @@ func _init() -> void:
 ## Tests that need the real scene in the tree run on the first frame, once the
 ## root has entered it (it hasn't during _init).
 func _process(_delta: float) -> bool:
-	for t in ["test_menu_flow", "_test_tutorial_flow"]:
+	for t in ["test_menu_flow", "_test_tutorial_flow", "_test_crew_roster_flow"]:
 		current = t
 		call(t)
 	_finish()
@@ -235,6 +237,15 @@ func test_old_save_is_migrated() -> void:
 	var original := J.canonical(v0)
 	SaveService.upgrade(v0)
 	check(J.canonical(v0) == original, "upgrading never edits the save it was given")
+
+
+func test_crew_posts_and_skills() -> void:
+	CREW_TESTS.posts_and_roles(self)
+	CREW_TESTS.learning(self)
+	CREW_TESTS.bonuses(self)
+	CREW_TESTS.ai_uses_posts(self)
+	CREW_TESTS.resume(self)
+	CREW_TESTS.layouts(self, SCREEN_TESTS.variants(SCREENS))
 
 
 func test_power_rules() -> void:
@@ -883,3 +894,8 @@ func test_tutorial() -> void:
 ## Private so the runner stays under gdlint's public method limit; called by name.
 func _test_tutorial_flow() -> void:
 	TUTORIAL_TESTS.flow(self)
+
+
+## The crew roster, driven through the real scene. Private like the tutorial flow.
+func _test_crew_roster_flow() -> void:
+	CREW_TESTS.roster_flow(self)

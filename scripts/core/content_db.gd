@@ -12,6 +12,7 @@ const FILES := {
 	"events": "res://data/events.json",
 	"reaches": "res://data/reaches.json",
 	"feedback": "res://data/feedback.json",
+	"skills": "res://data/skills.json",
 	"tutorial": "res://data/tutorial.json",
 	"unlocks": "res://data/unlocks.json",
 	"depths": "res://data/depths.json",
@@ -48,6 +49,7 @@ static var strings: Dictionary = {}
 static var events: Dictionary = {}
 static var reaches: Dictionary = {}
 static var feedback: Dictionary = {}  ## sounds, haptics, cues and music layers
+static var skills: Dictionary = {}  ## crew skills, ranks and how practice grows
 static var tutorial: Dictionary = {}  ## the training flight's lessons and the one-time tips
 static var unlocks: Dictionary = {}  ## unlock id -> {name, hint, stat, at_least}
 static var depths: Dictionary = {}  ## {"depths": [{name, text, effects}]}, depth 1 first
@@ -65,6 +67,7 @@ static func load_all() -> void:
 	events = _read(FILES.events)
 	reaches = _read(FILES.reaches)
 	feedback = _read(FILES.feedback)
+	skills = _read(FILES.skills)
 	tutorial = _read(FILES.tutorial)
 	unlocks = _read(FILES.unlocks)
 	depths = _read(FILES.depths)
@@ -138,6 +141,7 @@ static func validate() -> Array[String]:
 	_validate_unlocks(errors)
 	_validate_depths(errors)
 	_validate_feedback(feedback, errors)
+	Skills.validate(errors)
 	_validate_tutorial(tutorial, errors)
 	return errors
 
@@ -290,6 +294,15 @@ static func _check_string(key: String, where: String, errors: Array[String]) -> 
 		errors.append("%s: untranslated string '%s'" % [where, key])
 
 
+## For validators that live beside the rules they check (see Skills.validate).
+static func check_string(key: String, where: String, errors: Array[String]) -> void:
+	_check_string(key, where, errors)
+
+
+static func is_int_in(v: Variant, lo: int, hi: int) -> bool:
+	return _int_in(v, lo, hi)
+
+
 static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]) -> void:
 	var where := "ship %s" % ship_id
 	_check_string(s.get("name", ""), where, errors)
@@ -327,6 +340,7 @@ static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]
 		if not room_ids.has(c.room):
 			errors.append("%s: crew starts in unknown room %s" % [where, c.room])
 		_check_string(c.get("name", ""), where + " crew", errors)
+		Skills.validate_crew(where, c, room_ids, errors)
 	var total := 0
 	for sys: String in s.get("start_power", {}):
 		total += int(s.start_power[sys])

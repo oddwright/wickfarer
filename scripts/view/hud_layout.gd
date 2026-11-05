@@ -10,6 +10,9 @@ const WPN_W := 78
 const WPN_GAP := 82
 const ROW_H := 44
 const SMALL_W := 54
+const CREW_W := 34  ## the Crew and Muster buttons
+const CREW_H := 30
+const CREW_X := 128  ## clear of the longest ship name and hull count in the top bar
 
 var kind: String
 var native: Vector2i
@@ -63,6 +66,7 @@ static func build(
 			x += WPN_GAP
 		l._add("ward", 0, Rect2i(x, row_y, SMALL_W, ROW_H))
 		l._add("pause", 0, Rect2i(w - 34, row_y + 14, 30, 30))
+		l._add_crew_buttons(Vector2i(CREW_X, 4))
 		l.message_rect = Rect2i(
 			4,
 			l.player_origin.y + player_frame.y + 2,
@@ -89,11 +93,18 @@ static func build(
 		var row2 := row_y - ROW_H - 4
 		l._add("ward", 0, Rect2i(right, row2, SMALL_W, ROW_H))
 		l._add("pause", 0, Rect2i(w - 34, row2 + 14, 30, 30))
+		l._add_crew_buttons(Vector2i(right + SMALL_W + 4, row2 + ROW_H - CREW_H))
 		var msg_top := l.player_origin.y + player_frame.y + 2
 		l.message_rect = Rect2i(4, msg_top, w - 8, row2 - msg_top - 4)
 	l.player_body = Rect2i(l.player_origin + pu.position, pu.size)
 	l.enemy_body = Rect2i(l.enemy_origin + eu.position, eu.size)
 	return l
+
+
+## Crew opens the roster; Muster sends everyone to their posts.
+func _add_crew_buttons(at: Vector2i) -> void:
+	_add("crew", 0, Rect2i(at, Vector2i(CREW_W, CREW_H)))
+	_add("muster", 0, Rect2i(at + Vector2i(CREW_W + 4, 0), Vector2i(CREW_W, CREW_H)))
 
 
 func _add(kind_name: String, id: Variant, rect: Rect2i) -> void:

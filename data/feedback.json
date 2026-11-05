@@ -27,6 +27,7 @@
     "ward_chime": {"bus": "SFX", "volume_db": -8, "pitch_jitter": 0.03, "synth": {"wave": "sine", "freq": 2093, "freq_end": 2093, "ms": 450, "decay": 3}},
     "ward_crack": {"bus": "SFX", "volume_db": -6, "pitch_jitter": 0.05, "synth": {"wave": "tri", "freq": 2400, "freq_end": 700, "ms": 180, "decay": 4, "noise": 0.4}},
     "blaze": {"bus": "SFX", "volume_db": -8, "pitch_jitter": 0.05, "synth": {"wave": "noise", "freq": 300, "freq_end": 300, "ms": 500, "decay": 1.5, "noise": 1.0}},
+    "skill_chime": {"bus": "SFX", "volume_db": -10, "pitch_jitter": 0.0, "synth": {"wave": "tri", "freq": 660, "freq_end": 990, "ms": 220, "decay": 5}},
     "crew_bell": {"bus": "SFX", "volume_db": -6, "pitch_jitter": 0.0, "synth": {"wave": "sine", "freq": 196, "freq_end": 194, "ms": 1400, "decay": 2.5}},
     "enemy_break": {"bus": "SFX", "volume_db": -3, "pitch_jitter": 0.0, "synth": {"wave": "noise", "freq": 70, "freq_end": 30, "ms": 1100, "decay": 2, "noise": 1.0}},
     "heartbeat": {"bus": "SFX", "volume_db": -6, "pitch_jitter": 0.0, "synth": {"wave": "tri", "freq": 110, "freq_end": 60, "ms": 160, "decay": 7, "noise": 0.35}},
@@ -61,6 +62,7 @@
     "fire_spread.us": {"sound": "blaze", "priority": 1, "cooldown": 0.5},
     "crew_died.us": {"sound": "crew_bell", "haptic": "heartbeat", "hitstop": 0.09, "duck": true, "priority": 3, "cooldown": 0.3},
     "crew_died.them": {"sound": "crew_bell", "haptic": "tap", "priority": 2, "cooldown": 0.3},
+    "skill_up.us": {"sound": "skill_chime", "haptic": "tick", "priority": 1, "cooldown": 0.4},
     "danger": {"sound": "heartbeat", "haptic": "heartbeat", "priority": 3, "cooldown": 5.0},
     "won": {"sound": "enemy_break", "haptic": "big_rumble", "shake": 0.8, "hitstop": 0.09, "duck": true, "priority": 4, "cooldown": 1.0},
     "lost": {"sound": "our_break", "haptic": "big_rumble", "shake": 0.9, "hitstop": 0.12, "duck": true, "priority": 4, "cooldown": 1.0}

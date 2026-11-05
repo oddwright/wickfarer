@@ -70,7 +70,7 @@ static func targets(
 	if hud == null or combat == null:
 		return out
 	match kind:
-		"pause", "ward":
+		"pause", "ward", "muster":
 			_add(out, hud.button(kind))
 		"weapon":
 			_add(out, hud.button("weapon", int(arg)))

@@ -29,10 +29,13 @@ const TARGETS: Array[String] = [
 	"rooms",
 	"weapon",
 	"system",
-	"enemy_room"
+	"enemy_room",
+	"muster"
 ]
-const ORDERS: Array[String] = ["aim", "move", "power_up", "power_down", "ward"]
-const TIP_MOMENTS: Array[String] = ["fire_start", "ward_block", "cold", "low_hull", "dark_jump"]
+const ORDERS: Array[String] = ["aim", "move", "power_up", "power_down", "ward", "muster", "post"]
+const TIP_MOMENTS: Array[String] = [
+	"fire_start", "ward_block", "cold", "low_hull", "dark_jump", "rank_up"
+]
 ## Run screens a lesson can belong to (Main.run_screen(), and "fight" while it is on).
 const SCREENS: Array[String] = [
 	"chart", "event", "outcome", "store", "fight", "reach_done", "won", "lost"
@@ -113,6 +116,9 @@ func on_events(events: Array) -> void:
 			"ward_block":
 				if int(e.side) == 1:  # the player's shot hit the enemy's ward
 					_moments["ward_block"] = true
+			"skill_up":
+				if int(e.side) == 0:
+					_moments["rank_up"] = true
 
 
 ## Call once a frame while no menu is open. ctx: {screen, paused, weapon, crew, run,

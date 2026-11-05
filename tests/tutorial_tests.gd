@@ -53,13 +53,14 @@ static func lessons(t: SceneTree) -> void:
 	_check(t, tut.display.text == "TUT_AIM_ROOM", "a selected gun moves the pointer to the room")
 	_check(t, tut.display.target == "enemy_room:weapons", "to their weapons room")
 	r.combat.apply({"type": "aim", "weapon": 0, "room": "weapons"})
-	# play, pause, crew (select, then move), power down, power up, ward, then play to win
+	# play, pause, crew (select, then move), muster, power down, power up, ward, then play to win
 	var script: Array = [
 		[true, -1, ""],
 		[false, -1, ""],
 		[true, -1, ""],
 		[true, 1, ""],
 		[true, -1, "move"],
+		[true, -1, "muster"],
 		[true, -1, "power_down:helm"],
 		[true, -1, "power_down:mend"],
 		[true, -1, "power_up:mend"],
@@ -78,6 +79,7 @@ static func lessons(t: SceneTree) -> void:
 		"TUT_PAUSE",
 		"TUT_CREW",
 		"TUT_CREW_ROOM",
+		"TUT_MUSTER",
 		"TUT_POWER_DOWN",
 		"TUT_POWER_DOWN",
 		"TUT_POWER_UP",
@@ -137,6 +139,17 @@ static func tips(t: SceneTree) -> void:
 	_check(t, not tut.update(_ctx(r, "fight")), "a tip shows once ever")
 	r.combat.player().hull = 2
 	_check(t, tut.update(_ctx(r, "fight")) and tut.tip == "low_hull", "low hull has a tip")
+	var calm := Run.create(9)
+	_fight(calm)
+	var ranks := Tutorial.new()
+	ranks.on_events([{"type": "skill_up", "side": 1}])
+	_check(t, not ranks.update(_ctx(calm, "fight")), "an enemy ranking up shows no tip")
+	ranks.on_events([{"type": "skill_up", "side": 0}])
+	_check(
+		t,
+		ranks.update(_ctx(calm, "fight")) and ranks.tip == "post",
+		"our first rank shows the post tip"
+	)
 	var chart := Run.create(9)
 	chart.messages.append("UI_DARK_JUMP")
 	var dark := Tutorial.new()

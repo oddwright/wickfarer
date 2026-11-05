@@ -42,6 +42,7 @@ var profile: Profile  ## records, unlocks and the Hush Depth ladder; outlives ru
 var fresh_unlocks: Array[String] = []  ## what this run opened, for its end screens
 var coach: CoachView
 var menu_layout: MenuLayout
+var roster := Roster.new(self)  ## the crew roster, Muster and posting crew
 ## The open menu page: "" (playing), "title", "pause", "options" or "confirm".
 var menu := ""
 ## The page Back returns to: "title" hides the game, "pause" dims it.
@@ -90,6 +91,7 @@ func _ready() -> void:
 	run_view = RunView.new()
 	viewport.add_child(run_view)
 	run_view.setup(self)
+	roster.attach(viewport)
 	coach = CoachView.new()
 	viewport.add_child(coach)  # over the fight and run screens, under the menus
 	coach.setup(self)
@@ -162,8 +164,7 @@ func _enter_screen(save := true) -> void:
 		_save()
 
 
-## The fight and run screens are hidden under the title menu, and dimmed
-## under the others.
+## The fight and run screens hide under the title menu and dim under the others.
 func _show_game(on: bool) -> void:
 	var fighting := run != null and run_screen() == "fight"
 	world.visible = on and fighting
@@ -202,6 +203,7 @@ func _start(c: Combat) -> void:
 	pause_reason = ""
 	selected_weapon = -1
 	selected_crew = -1
+	roster.reset()
 	floaters.clear()
 	flashes.clear()
 	if feedback:
@@ -243,11 +245,13 @@ func _rebuild_layout() -> void:
 		world.ship_used[0],
 		world.ship_used[1]
 	)
+	roster.rebuild()  # the roster's buttons follow the screen too
 
 
 func _pause(reason := "") -> void:
 	if menu != "":
 		_paused_before_menu = true  # a fold or a trip away while in the menu still counts
+	roster.paused_before = roster.paused_before or roster.open  # and in the roster
 	paused = true
 	pause_reason = reason
 	_save()
@@ -423,8 +427,8 @@ func _tick_game(delta: float) -> void:
 
 ## Lets the coach look at the screen, and holds the fight's clock while a step waits.
 func _coach() -> void:
-	if tutorial == null:
-		return
+	if tutorial == null or roster.open:
+		return  # the roster covers the coach, and its pause isn't the player pausing
 	var on := run_screen()
 	if combat and combat.state != "fighting":
 		on = "fight_over"
@@ -508,6 +512,7 @@ func _on_events(events: Array) -> void:
 		feedback.on_sim_events(events, combat)
 	if tutorial:
 		tutorial.on_events(events)
+	roster.on_events(events)
 	for e: Dictionary in events:
 		match e.type:
 			"hit":
@@ -565,7 +570,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var key := (event as InputEventKey).keycode
 		if key == KEY_ESCAPE:
 			back()
-		elif key == KEY_SPACE and combat and menu == "":
+		elif key == KEY_SPACE and combat and menu == "" and not roster.open:
 			_toggle_pause()  # pause only means something in a fight
 
 
@@ -587,6 +592,8 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 		_tap_menu(p)
 		return
 	if run == null:
+		return
+	if roster.tap(p):
 		return
 	if MenuLayout.menu_button(screen.native).grow(2).has_point(p):
 		ui_cue("tap")
@@ -622,9 +629,7 @@ func _tap_fight(p: Vector2i, long: bool) -> void:
 		return
 	var c := world.crew_at(0, p)
 	if c:
-		selected_crew = -1 if selected_crew == c.uid else c.uid
-		selected_weapon = -1
-		ui_cue("select")
+		roster.tap_crew(c, long)
 		return
 	var my_room := world.room_at(0, p)
 	if selected_crew >= 0 and my_room:
@@ -662,6 +667,8 @@ func _press_button(b: Dictionary, long: bool) -> void:
 			_order("ward")
 		"pause":
 			ui_cue("tap" if _toggle_pause() else "refused")
+		"crew", "muster":
+			roster.press(b.kind)
 
 
 func _tap_run(p: Vector2i) -> void:
@@ -780,7 +787,7 @@ func _build_menu_layout() -> void:
 func back() -> void:
 	match menu:
 		"":
-			if run != null:
+			if not roster.close() and run != null:
 				open_menu("pause")
 		"options", "confirm", "depth", "log":
 			open_menu(menu_base)
@@ -951,9 +958,8 @@ func _press_option(b: Dictionary) -> void:
 	settings.save(save_dir)
 
 
-## Whether a - or + tap on the options screen would change anything. UI size
-## only steps away from auto when the scale really moves, so a tap that can't
-## fit is refused instead of saving a step that does nothing.
+## Whether a - or + tap on the options screen would change anything. UI size leaves
+## auto only when the scale really moves, so a tap that can't fit is refused.
 func option_can_step(id: String, dir: int) -> bool:
 	if id != "ui_size":
 		var v := settings.value(id)
