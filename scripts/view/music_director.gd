@@ -56,6 +56,26 @@ func _begin(combat: Combat) -> void:
 	_full = combat.time() >= FULL_AFTER
 
 
+## The stage flags for the save's ui block, so a resumed fight plays the stage it
+## left on. Empty when this director isn't following `combat`.
+func to_dict(combat: Combat) -> Dictionary:
+	if combat == null or combat != _combat:
+		return {}
+	return {"theme": _theme, "full": _full, "start_hull": Array(_start_hull)}
+
+
+## Follows `combat` from a saved to_dict(); an empty one starts it fresh.
+func restore(d: Dictionary, combat: Combat) -> void:
+	_begin(combat)
+	if d.is_empty():
+		return
+	_theme = bool(d.get("theme", _theme))
+	_full = bool(d.get("full", _full))
+	var hulls: Array = d.get("start_hull", [])
+	if hulls.size() == 2:
+		_start_hull = [int(hulls[0]), int(hulls[1])]
+
+
 static func _burning(ship: Ship) -> bool:
 	for r in ship.rooms:
 		if r.fire > 0.0:

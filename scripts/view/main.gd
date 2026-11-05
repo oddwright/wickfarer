@@ -7,7 +7,11 @@ extends Node
 const SAVE_SLOT := "run"
 const OLD_FIGHT_SLOT := "combat"  ## Phase 0 saved a lone fight here
 const LONG_PRESS := 0.4
-const AUTOSAVE_EVERY := 10.0
+## A live fight saves this often as well as on every order, because iOS kills a
+## swiped-away app without a callback and a crash sends none either.
+const AUTOSAVE_EVERY := 2.0
+## Menu pages a cold start can reopen; anything else falls back to the title.
+const RESUMABLE_PAGES: Array[String] = ["title", "pause", "options", "confirm"]
 const MAX_STEPS_PER_FRAME := 5
 
 var save_dir := SaveService.DIR  ## tests point this at a scratch folder
@@ -47,6 +51,8 @@ var _press_pos := Vector2.ZERO
 var _press_time := 0
 var _pressing := false
 var _paused_before_menu := false
+var _saved_ui: Dictionary = {}  ## the ui block of the save we opened with
+var _last_save := ""  ## the payload last written, so an unchanged state isn't rewritten
 
 
 func _ready() -> void:
@@ -81,7 +87,8 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_on_resize)
 	_on_resize()
 	run = _load_saved()
-	open_menu("title")
+	if not _restore_ui(_saved_ui):
+		open_menu("title")
 
 
 func _setup_feedback() -> void:
@@ -104,6 +111,8 @@ func ui_cue(what: String) -> void:
 func _load_saved() -> Run:
 	SaveService.erase(OLD_FIGHT_SLOT, save_dir)
 	var data := SaveService.read(SAVE_SLOT, save_dir)
+	var ui: Variant = data.get("ui", {})
+	_saved_ui = ui if ui is Dictionary else {}
 	if data.has("run"):
 		var r := Run.from_dict(data.run)
 		if not r.state in ["lost", "reach_done"]:
@@ -227,9 +236,82 @@ func _save() -> void:
 	if run == null:
 		return
 	if run.state in ["lost", "reach_done"]:
-		SaveService.erase(SAVE_SLOT, save_dir)
-	else:
-		SaveService.write(SAVE_SLOT, {"run": run.to_dict()}, save_dir)
+		_erase_save()
+		return
+	var payload := {"run": run.to_dict(), "ui": _ui_state()}
+	var text_now := JsonUtil.s(payload)
+	if text_now == _last_save:
+		return  # nothing moved, e.g. a paused fight: spare the flash
+	if SaveService.write(SAVE_SLOT, payload, save_dir):
+		_last_save = text_now
+
+
+func _erase_save() -> void:
+	SaveService.erase(SAVE_SLOT, save_dir)
+	_last_save = ""
+
+
+## What the screen shows, beside the run, so a cold start reopens it (docs/SAVES.md).
+func _ui_state() -> Dictionary:
+	return {
+		"menu": menu,
+		"menu_base": menu_base,
+		"confirm": confirm_action,
+		"paused": paused,
+		"paused_before_menu": _paused_before_menu,
+		"weapon": selected_weapon,
+		"crew": selected_crew,
+		"music": music_director.to_dict(combat),
+	}
+
+
+## Puts the screen back the way a save left it. Returns false when there is
+## nothing to go back to, and the app opens on the title instead.
+func _restore_ui(d: Dictionary) -> bool:
+	var page := str(d.get("menu", ""))
+	var base := str(d.get("menu_base", ""))
+	if (
+		run == null
+		or d.is_empty()
+		or base == "title"
+		or not (page == "" or page in RESUMABLE_PAGES)
+	):
+		return false
+	_enter_screen()
+	if combat:
+		music_director.restore(d.get("music", {}), combat)
+		if combat.state == "fighting":
+			# never drop a player straight back into a live fight
+			paused = true
+			pause_reason = "UI_TAP_TO_RESUME"
+		var w := int(d.get("weapon", -1))
+		selected_weapon = w if w >= 0 and w < combat.player().weapon_ids.size() else -1
+		var uid := int(d.get("crew", -1))
+		selected_crew = uid if _player_has_crew(uid) else -1
+	if page != "":
+		confirm_action = str(d.get("confirm", ""))
+		_paused_before_menu = bool(d.get("paused_before_menu", false))
+		menu_base = base if base in RESUMABLE_PAGES else "pause"
+		menu = page
+		_build_menu_layout()
+		_show_game(true)
+	_save()
+	return true
+
+
+func _player_has_crew(uid: int) -> bool:
+	for c in combat.player().crew:
+		if c.uid == uid:
+			return true
+	return false
+
+
+## Sends an order to the fight and saves it at once if it was taken.
+func _order(cmd: Dictionary) -> bool:
+	var ok := combat.apply(cmd)
+	if ok:
+		_save()
+	return ok
 
 
 func _notification(what: int) -> void:
@@ -447,7 +529,7 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 		return
 	var enemy_room := world.room_at(1, p)
 	if selected_weapon >= 0 and enemy_room:
-		var aimed := combat.apply({"type": "aim", "weapon": selected_weapon, "room": enemy_room.id})
+		var aimed := _order({"type": "aim", "weapon": selected_weapon, "room": enemy_room.id})
 		ui_cue("aim" if aimed else "refused")
 		selected_weapon = -1
 		return
@@ -459,7 +541,7 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 		return
 	var my_room := world.room_at(0, p)
 	if selected_crew >= 0 and my_room:
-		var moved := combat.apply({"type": "move", "crew": selected_crew, "room": my_room.id})
+		var moved := _order({"type": "move", "crew": selected_crew, "room": my_room.id})
 		ui_cue("tap" if moved else "refused")
 		selected_crew = -1
 		return
@@ -471,12 +553,12 @@ func _press_button(b: Dictionary, long: bool) -> void:
 	match b.kind:
 		"system":
 			var cmd := "power_down" if long else "power_up"
-			var ok := combat.apply({"type": cmd, "system": b.id})
+			var ok := _order({"type": cmd, "system": b.id})
 			ui_cue(cmd if ok else "refused")
 		"weapon":
 			var i := int(b.id)
 			if long:
-				combat.apply({"type": "aim", "weapon": i, "room": ""})
+				_order({"type": "aim", "weapon": i, "room": ""})
 				selected_weapon = -1
 				ui_cue("power_down")
 			else:
@@ -484,7 +566,7 @@ func _press_button(b: Dictionary, long: bool) -> void:
 				selected_crew = -1
 				ui_cue("select")
 		"ward":
-			combat.apply({"type": "ward_deck", "deck": 1 - combat.player().ward_deck})
+			_order({"type": "ward_deck", "deck": 1 - combat.player().ward_deck})
 			ui_cue("tap")
 		"pause":
 			_toggle_pause()
@@ -577,6 +659,7 @@ func close_menu() -> void:
 	menu_base = ""
 	menu_layout = null
 	_show_game(true)
+	_save()
 
 
 func _build_menu_layout() -> void:
@@ -669,7 +752,7 @@ func _new_run() -> void:
 
 ## Ends the run for good: the save goes, and the title has no Continue.
 func _abandon() -> void:
-	SaveService.erase(SAVE_SLOT, save_dir)
+	_erase_save()
 	run = null
 	combat = null
 	layout = null
