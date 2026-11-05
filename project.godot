@@ -3,8 +3,9 @@ config_version=5
 
 [application]
 
-config/name="Emberwake"
+config/name="Wickfarer"
 config/description="Phase 0 combat prototype"
+config/icon="res://art/icon_1024.png"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 boot_splash/bg_color=Color(0.031, 0.031, 0.102, 1)

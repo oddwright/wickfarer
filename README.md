@@ -1,4 +1,4 @@
-# Emberwake: Phase 0 combat prototype
+# Wickfarer: Phase 0 combat prototype
 
 One fight between the Tallow Wren and an Ashmarket Cutter, touch only.
 Godot 4.7.2, GDScript, Compatibility renderer.
@@ -6,8 +6,9 @@ Godot 4.7.2, GDScript, Compatibility renderer.
 ## Run it
 - Open this folder in Godot 4.7.2 and press Play. On desktop, a left click is a tap,
   holding the click (or a right click) is a long press, and Space pauses.
-- On an Android phone: Godot's one-click deploy (Remote Deploy) once the Android
-  export templates and SDK are installed. iOS needs a Mac with Xcode.
+- On an Android phone: install the latest build from GitHub Releases, or let Obtainium keep it
+  up to date. See [docs/INSTALL.md](docs/INSTALL.md). Every green build of `main` is published.
+- On an iPhone: TestFlight. Main builds upload there nightly; see docs/INSTALL.md.
 
 ## Controls
 - Tap a weapon, then an enemy room, to aim it. Long-press a weapon to stop firing.
