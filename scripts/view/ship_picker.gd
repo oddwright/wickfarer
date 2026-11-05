@@ -52,6 +52,16 @@ static func swipe_step(preview: Rect2i, hinge: Rect2i, from: Vector2, to: Vector
 	return -1 if d.x > 0 else 1
 
 
+## Opens ship select. From an end screen, the finished run goes and the page
+## sits over the title.
+static func open(main: Node) -> void:
+	if main.menu == "":
+		if main.run_over():
+			main._clear_run()
+		main.open_menu("title")
+	main.open_menu("ship")
+
+
 ## A tap on one of the page's buttons, by kind.
 static func press(main: Node, kind: String) -> void:
 	var me: ShipPicker = main.ships

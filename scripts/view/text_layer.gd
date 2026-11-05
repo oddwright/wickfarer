@@ -158,6 +158,16 @@ func _draw() -> void:
 						5.5,
 						ink
 					)
+			"crew", "muster":
+				var label := tr("UI_CREW") if b.kind == "crew" else tr("UI_MUSTER")
+				_text(
+					Vector2(r.position.x, r.position.y + r.size.y / 2 + 3),
+					label,
+					5.0,
+					ink,
+					HORIZONTAL_ALIGNMENT_CENTER,
+					r.size.x
+				)
 			"ward":
 				_text(Vector2(r.position.x + 17, r.position.y + 25), tr("UI_WARD_UP"), 4.5, quiet)
 				_text(Vector2(r.position.x + 17, r.position.y + 35), tr("UI_WARD_LOW"), 4.5, quiet)
@@ -201,7 +211,8 @@ func _draw() -> void:
 		)
 	# The menu says it, and so does a coach step that holds the clock ("time is stopped").
 	var held: bool = main.tutorial != null and main.tutorial.holds()
-	if main.paused and combat.state == "fighting" and main.menu == "" and not held:
+	var said: bool = main.menu != "" or held or main.roster.open
+	if main.paused and combat.state == "fighting" and not said:
 		_text(
 			Vector2(0, l.native.y / 2 - 26),
 			tr("UI_PAUSED"),
@@ -237,3 +248,18 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_CENTER,
 			l.native.x
 		)
+		if combat.state == "won":
+			_draw_promotions(me, Vector2i(0, ar.end.y + 22), l.native.x)
+
+
+## The crew who earned a rank this fight; it is theirs once the player continues.
+func _draw_promotions(me: Ship, at: Vector2i, width: int) -> void:
+	var y := at.y
+	for p in me.promotions().slice(0, 4):
+		var c := me.crew_by_uid(int(p.uid))
+		var line := (
+			tr("UI_PROMOTED")
+			% [tr(c.name), tr(Skills.rank_name(int(p.rank))), tr(Skills.spec(p.skill).name)]
+		)
+		_text(Vector2(at.x, y), line, 5.0, Pixel.c("v"), HORIZONTAL_ALIGNMENT_CENTER, width)
+		y += 8

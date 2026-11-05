@@ -1,6 +1,6 @@
 {
-  "drifter": {"name": "SPECIES_DRIFTER", "hp": 100, "speed": 1.0,  "repair": 1.5, "firefight": 1.0, "cold_proof": false},
-  "kith":    {"name": "SPECIES_KITH",    "hp": 90,  "speed": 1.3,  "repair": 1.0, "firefight": 1.5, "cold_proof": false},
-  "oru":     {"name": "SPECIES_ORU",     "hp": 140, "speed": 0.8,  "repair": 1.0, "firefight": 1.0, "cold_proof": false},
-  "sable":   {"name": "SPECIES_SABLE",   "hp": 100, "speed": 1.0,  "repair": 1.0, "firefight": 1.0, "cold_proof": true}
+  "drifter": {"name": "SPECIES_DRIFTER", "hp": 100, "speed": 1.0, "repair": 1.5, "firefight": 1.0, "cold_proof": false, "learns": {"patch": 1.5}},
+  "kith": {"name": "SPECIES_KITH", "hp": 90, "speed": 1.3, "repair": 1.0, "firefight": 1.5, "cold_proof": false, "learns": {"steer": 1.5}},
+  "oru": {"name": "SPECIES_ORU", "hp": 140, "speed": 0.8, "repair": 1.0, "firefight": 1.0, "cold_proof": false, "learns": {"wards": 1.5}},
+  "sable": {"name": "SPECIES_SABLE", "hp": 100, "speed": 1.0, "repair": 1.0, "firefight": 1.0, "cold_proof": true, "learns": {"stoke": 1.5}}
 }

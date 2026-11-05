@@ -36,6 +36,7 @@
           "done": "did:move",
           "then": {"when": "crew_selected", "text": "TUT_CREW_ROOM", "target": "rooms"}
         },
+        {"id": "muster", "text": "TUT_MUSTER", "target": "muster", "hold": true, "done": "did:muster"},
         {"id": "power_down", "text": "TUT_POWER_DOWN", "target": "system:mend", "hold": true, "done": "did:power_down:mend"},
         {"id": "power_up", "text": "TUT_POWER_UP", "target": "system:mend", "hold": true, "done": "did:power_up:mend"},
         {"id": "ward", "text": "TUT_WARD", "target": "ward", "hold": true, "done": "did:ward"},
@@ -77,6 +78,7 @@
     {"id": "ward_block", "on": "ward_block", "text": "TIP_WARD_BLOCK"},
     {"id": "cold", "on": "cold", "text": "TIP_COLD"},
     {"id": "low_hull", "on": "low_hull", "text": "TIP_LOW_HULL"},
-    {"id": "dark_jump", "on": "dark_jump", "text": "TIP_DARK_JUMP"}
+    {"id": "dark_jump", "on": "dark_jump", "text": "TIP_DARK_JUMP"},
+    {"id": "post", "on": "rank_up", "text": "TIP_POST"}
   ]
 }
