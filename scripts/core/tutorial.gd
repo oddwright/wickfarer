@@ -16,6 +16,7 @@ const TUTORIAL_VERSION := 1
 const TRAINING_REACH := "training"
 ## Every condition a step can wait for; "aimed:<slot>" and "did:<order>" take an argument.
 const CONDITIONS: Array[String] = ["left", "running", "paused", "aimed", "did"]
+## "weapon_selected:<slot>" names the gun; "crew_selected" is any crew member.
 const WHENS: Array[String] = ["weapon_selected", "crew_selected"]
 const TARGETS: Array[String] = [
 	"",
@@ -49,7 +50,9 @@ var display: Dictionary = {}
 var dirty := false  ## progress changed since the last save
 
 var _did: Dictionary = {}  ## orders given since the step began (not saved: redo one tap)
-var _moments: Dictionary = {}  ## tip moments from this frame's sim events
+## Tip moments from sim events, kept until a tip can show (a lesson or another tip may
+## be talking) and dropped when the fight ends.
+var _moments: Dictionary = {}
 
 
 static func lessons() -> Array:
@@ -91,9 +94,12 @@ func skip() -> void:
 	dirty = true
 
 
-## The player gave an order (see ORDERS); some steps wait for one.
-func on_order(what: String) -> void:
+## The player gave an order (see ORDERS), on a system or weapon if detail is set.
+## A step can wait for "did:power_down" (any system) or "did:power_down:mend".
+func on_order(what: String, detail := "") -> void:
 	_did[what] = true
+	if detail != "":
+		_did[what + ":" + detail] = true
 
 
 func on_events(events: Array) -> void:
@@ -120,7 +126,8 @@ func update(ctx: Dictionary) -> bool:
 	var fresh := false
 	if lesson == "" and tip == "":
 		fresh = _maybe_tip(ctx)
-	_moments.clear()
+	if str(ctx.screen) != "fight":
+		_moments.clear()
 	_refresh_display(ctx)
 	return fresh
 
@@ -184,7 +191,7 @@ func _met(cond: String, ctx: Dictionary) -> bool:
 		"paused":
 			return bool(ctx.paused)
 		"did":
-			return _did.has(arg)
+			return _did.has(cond.substr(4))
 		"aimed":
 			var c: Combat = ctx.get("combat")
 			var i := int(arg)
@@ -197,9 +204,11 @@ func _met(cond: String, ctx: Dictionary) -> bool:
 
 
 func _when(cond: String, ctx: Dictionary) -> bool:
-	match cond:
+	match cond.get_slice(":", 0):
 		"weapon_selected":
-			return int(ctx.get("weapon", -1)) >= 0
+			var want := cond.get_slice(":", 1)
+			var got := int(ctx.get("weapon", -1))
+			return got >= 0 and (want == "" or got == int(want))
 		"crew_selected":
 			return int(ctx.get("crew", -1)) >= 0
 	return false
@@ -229,6 +238,7 @@ func _maybe_tip(ctx: Dictionary) -> bool:
 		if tips_seen.has(id) or not _moment(str(t.on), ctx):
 			continue
 		tips_seen.append(id)
+		_moments.erase(str(t.on))
 		tip = id
 		tip_screen = str(ctx.screen)
 		tip_paused = bool(ctx.paused)
@@ -242,7 +252,9 @@ func _moment(on: String, ctx: Dictionary) -> bool:
 	var run: Run = ctx.get("run")
 	var c: Combat = ctx.get("combat")
 	if on == "dark_jump":
-		return screen == "chart" and run != null and run.messages.has("UI_DARK_JUMP")
+		# A jump lands on a story more often than the chart; the note lives until the
+		# next action clears the run's messages.
+		return run != null and run.messages.has("UI_DARK_JUMP")
 	if screen != "fight" or c == null:
 		return false
 	match on:
@@ -294,8 +306,16 @@ func _refresh_display(ctx: Dictionary) -> void:
 # ------------------------------------------------------------------ save
 
 
+## A player from before the coach (a run or settings already saved, but no tutorial
+## file) has learned the game, so New Run doesn't send them into training.
 static func load_or_default(dir := SaveService.DIR) -> Tutorial:
-	return from_dict(SaveService.read(SLOT, dir))
+	var saved := SaveService.read(SLOT, dir)
+	var t := from_dict(saved)
+	if saved.is_empty():
+		for slot in ["run", GameSettings.SLOT]:
+			if FileAccess.file_exists(SaveService.path_for(slot, dir)):
+				t.done = true
+	return t
 
 
 func save(dir := SaveService.DIR) -> bool:

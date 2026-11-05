@@ -199,8 +199,9 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_CENTER,
 			mr.size.x
 		)
-	# The menu says it, and so does the coach: a banner would compete with its words.
-	if main.paused and combat.state == "fighting" and main.menu == "" and not main.coach_speaking():
+	# The menu says it, and so does a coach step that holds the clock ("time is stopped").
+	var held: bool = main.tutorial != null and main.tutorial.holds()
+	if main.paused and combat.state == "fighting" and main.menu == "" and not held:
 		_text(
 			Vector2(0, l.native.y / 2 - 26),
 			tr("UI_PAUSED"),

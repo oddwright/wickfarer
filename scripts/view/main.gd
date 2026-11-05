@@ -315,11 +315,11 @@ func _tick_game(delta: float) -> void:
 func _coach() -> void:
 	if tutorial == null:
 		return
-	var screen := run_screen()
+	var on := run_screen()
 	if combat and combat.state != "fighting":
-		screen = "fight_over"
+		on = "fight_over"
 	var ctx := {
-		"screen": screen,
+		"screen": on,
 		"paused": paused,
 		"weapon": selected_weapon,
 		"crew": selected_crew,
@@ -340,9 +340,9 @@ func coach_speaking() -> bool:
 	return tutorial != null and menu == "" and not tutorial.display.is_empty()
 
 
-func _order(what: String) -> void:
+func _order(what: String, detail := "") -> void:
 	if tutorial:
-		tutorial.on_order(what)
+		tutorial.on_order(what, detail)
 
 
 func _play_feedback() -> void:
@@ -528,7 +528,7 @@ func _press_button(b: Dictionary, long: bool) -> void:
 			var ok := combat.apply({"type": cmd, "system": b.id})
 			ui_cue(cmd if ok else "refused")
 			if ok:
-				_order(cmd)
+				_order(cmd, str(b.id))
 		"weapon":
 			var i := int(b.id)
 			if long:

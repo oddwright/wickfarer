@@ -24,7 +24,7 @@
           "target": "weapon:0",
           "hold": true,
           "done": "aimed:0",
-          "then": {"when": "weapon_selected", "text": "TUT_AIM_ROOM", "target": "enemy_room:weapons"}
+          "then": {"when": "weapon_selected:0", "text": "TUT_AIM_ROOM", "target": "enemy_room:weapons"}
         },
         {"id": "play", "text": "TUT_PLAY", "target": "pause", "done": "running"},
         {"id": "pause", "text": "TUT_PAUSE", "target": "pause", "done": "paused"},
@@ -36,8 +36,8 @@
           "done": "did:move",
           "then": {"when": "crew_selected", "text": "TUT_CREW_ROOM", "target": "rooms"}
         },
-        {"id": "power_down", "text": "TUT_POWER_DOWN", "target": "system:mend", "hold": true, "done": "did:power_down"},
-        {"id": "power_up", "text": "TUT_POWER_UP", "target": "system:mend", "hold": true, "done": "did:power_up"},
+        {"id": "power_down", "text": "TUT_POWER_DOWN", "target": "system:mend", "hold": true, "done": "did:power_down:mend"},
+        {"id": "power_up", "text": "TUT_POWER_UP", "target": "system:mend", "hold": true, "done": "did:power_up:mend"},
         {"id": "ward", "text": "TUT_WARD", "target": "ward", "hold": true, "done": "did:ward"},
         {"id": "win", "text": "TUT_WIN", "target": "pause", "done": "running"}
       ]

@@ -33,6 +33,13 @@ func _draw() -> void:
 
 func _words(r: Rect2i, d: Dictionary) -> void:
 	var s := tr(str(d.text))
+	if main.combat == null and not main.run.messages.is_empty():
+		# The coach has the message line, so it carries the last jump's news first,
+		# or only the news where both don't fit (a short chart): the news is what hurt.
+		var news := tr(main.run.messages[-1])
+		s = news + " " + s
+		if not fits(s, r):
+			s = news
 	if d.get("tip", false) and str(d.target) == "pause":
 		s += " " + tr("TIP_GO_ON")
 	var lines := _wrap(s.to_upper(), r.size.x - 4, 1)
@@ -53,3 +60,8 @@ func _words(r: Rect2i, d: Dictionary) -> void:
 			HORIZONTAL_ALIGNMENT_CENTER,
 			r.size.x
 		)
+
+
+## Whether s, in 3x5 text, fits the coach's line r (tests check every step does).
+func fits(s: String, r: Rect2i) -> bool:
+	return _wrap(s.to_upper(), r.size.x - 4, 1).size() * LINE + 3 <= r.size.y + 2

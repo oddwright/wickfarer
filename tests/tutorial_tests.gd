@@ -47,6 +47,8 @@ static func lessons(t: SceneTree) -> void:
 	tut.update(ctx)
 	steps.append(str(tut.display.text))
 	_check(t, tut.holds(), "the first fight's first step holds the clock")
+	tut.update(_ctx(r, "fight", true, 1))
+	_check(t, tut.display.text == "TUT_AIM", "the wrong gun keeps pointing at the Rivet Gun")
 	tut.update(_ctx(r, "fight", true, 0))
 	_check(t, tut.display.text == "TUT_AIM_ROOM", "a selected gun moves the pointer to the room")
 	_check(t, tut.display.target == "enemy_room:weapons", "to their weapons room")
@@ -58,14 +60,15 @@ static func lessons(t: SceneTree) -> void:
 		[true, -1, ""],
 		[true, 1, ""],
 		[true, -1, "move"],
-		[true, -1, "power_down"],
-		[true, -1, "power_up"],
+		[true, -1, "power_down:helm"],
+		[true, -1, "power_down:mend"],
+		[true, -1, "power_up:mend"],
 		[true, -1, "ward"],
 		[false, -1, ""],
 	]
 	for s: Array in script:
 		if s[2] != "":
-			tut.on_order(s[2])
+			tut.on_order(str(s[2]).get_slice(":", 0), str(s[2]).get_slice(":", 1))
 		tut.update(_ctx(r, "fight", s[0], -1, s[1]))
 		if not tut.display.is_empty():
 			steps.append(str(tut.display.text))
@@ -75,6 +78,7 @@ static func lessons(t: SceneTree) -> void:
 		"TUT_PAUSE",
 		"TUT_CREW",
 		"TUT_CREW_ROOM",
+		"TUT_POWER_DOWN",
 		"TUT_POWER_DOWN",
 		"TUT_POWER_UP",
 		"TUT_WARD",
@@ -144,6 +148,14 @@ static func tips(t: SceneTree) -> void:
 	busy.on_events([{"type": "fire_start", "side": 0, "room": "helm"}])
 	_fight(lane)
 	_check(t, not busy.update(_ctx(lane, "fight")), "tips wait while a lesson talks")
+	busy.skip()
+	busy.update(_ctx(lane, "fight"))
+	_check(t, busy.tip == "fire", "and show once it stops")
+	var jumped := Run.create(9)
+	jumped.state = "event"
+	jumped.messages.append("UI_DARK_JUMP")
+	var story := Tutorial.new()
+	_check(t, story.update(_ctx(jumped, "event")), "a dark jump that lands on a story tips too")
 
 
 static func saves(t: SceneTree, dir: String) -> void:
@@ -174,13 +186,36 @@ static func saves(t: SceneTree, dir: String) -> void:
 	var past := Tutorial.from_dict({"lesson": "fight", "step": 99.0})
 	_check(t, past.step == Tutorial.lessons()[2].steps.size(), "a step past the end is clamped")
 	SaveService.erase(Tutorial.SLOT, dir)
+	SaveService.erase("run", dir)
+	SaveService.erase(GameSettings.SLOT, dir)
 	_check(t, Tutorial.load_or_default(dir).to_dict() == Tutorial.new().to_dict(), "no file: new")
+	SaveService.write("run", {"run": {}}, dir)
+	_check(t, Tutorial.load_or_default(dir).done, "a player from before the coach skips training")
+	SaveService.erase("run", dir)
+	var raw: Variant = JSON.parse_string(
+		FileAccess.get_file_as_string("res://tests/fixtures/tutorial_v1.json")
+	)
+	var v1 := Tutorial.from_dict(SaveService.upgrade(raw).get("data", {}))
+	_check(t, v1.lesson == "fight" and v1.step == 1, "the v1 tutorial fixture loads mid-step")
+	_check(t, v1.tips_seen == ["fire"] and v1.lessons_done.size() == 2, "with what it had seen")
+	var bad: Array[String] = []
+	ContentDB._validate_tutorial(
+		{
+			"lessons":
+			[{"id": "a", "screen": "chart", "after": "a", "steps": [{"text": "TUT_JUMP"}]}, 3],
+			"tips": [{"id": "x", "on": "cold", "text": "TIP_COLD"}, {"id": "x", "on": "fire_start"}]
+		},
+		bad
+	)
+	var joined := " | ".join(bad)
+	for want in ["earlier lesson", "done condition", "must be an object", "unique id"]:
+		_check(t, joined.contains(want), "bad tutorial data is reported: %s" % want)
 
 
 ## The coach writes in the screen's message line: clear of buttons and inside the
 ## canvas on every screen, with room for the longest step, and its fight targets exist.
 static func layouts(t: SceneTree, screens: Dictionary) -> void:
-	var tl := TextLayer.new()
+	var tl := CoachView.new()
 	TextLayer.glyph_index = JSON.parse_string(
 		FileAccess.get_file_as_string("res://art/font_3x5.json")
 	)
@@ -189,7 +224,7 @@ static func layouts(t: SceneTree, screens: Dictionary) -> void:
 	for l: Dictionary in Tutorial.lessons():
 		for s: Dictionary in l.steps:
 			var into := fight_texts if l.screen == "fight" else run_texts
-			into.append(str(s.text))
+			into.append(tr_key(str(s.text)))
 			if s.has("then"):
 				into.append(str(s.then.text))
 	for tip: Dictionary in Tutorial.tips():
@@ -223,12 +258,12 @@ static func tr_key(key: String) -> String:
 	return TranslationServer.translate(key)
 
 
-static func _fits(tl: TextLayer, r: Rect2i, keys: Array[String]) -> Array[String]:
+## Every step's words, and every jump note the chart's coach may show alone instead.
+static func _fits(tl: CoachView, r: Rect2i, keys: Array[String]) -> Array[String]:
 	var out: Array[String] = []
-	for k in keys:
-		var lines := tl._wrap(tr_key(k).to_upper(), r.size.x - 4, 1)
-		if lines.size() * TextLayer.LINE + 3 > r.size.y + 2:
-			out.append("%s needs %d lines in %d px" % [k.left(14), lines.size(), r.size.y])
+	for k in keys + ["UI_HUSH_HIT", "UI_DARK_JUMP"]:
+		if not tl.fits(tr_key(k), r):
+			out.append("%s does not fit in %d px" % [k.left(14), r.size.y])
 	return out
 
 

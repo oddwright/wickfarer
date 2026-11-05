@@ -499,25 +499,36 @@ static func _int_in(v: Variant, lo: int, hi: int) -> bool:
 ## so a typo fails here instead of leaving a step that can never finish.
 static func _validate_tutorial(t: Dictionary, errors: Array[String]) -> void:
 	var ids: Array[String] = []
-	for l: Dictionary in t.get("lessons", []):
+	for l: Variant in _array(t.get("lessons")):
+		if not l is Dictionary:
+			errors.append("tutorial: every lesson must be an object")
+			continue
 		var where := "lesson %s" % l.get("id", "?")
 		if str(l.get("id", "")) == "" or ids.has(str(l.id)):
 			errors.append("%s: needs a unique id" % where)
-		ids.append(str(l.get("id", "")))
 		if not str(l.get("screen", "")) in Tutorial.SCREENS:
 			errors.append("%s: unknown screen %s" % [where, l.get("screen", "")])
 		var after := str(l.get("after", ""))
-		if after != "" and not ids.has(after):
+		if after != "" and not ids.has(after):  # checked before this id joins the list
 			errors.append("%s: after must name an earlier lesson" % where)
-		var steps: Array = l.get("steps", [])
+		ids.append(str(l.get("id", "")))
+		var steps := _array(l.get("steps"))
 		if steps.is_empty():
 			errors.append("%s: needs steps" % where)
-		for s: Dictionary in steps:
+		for s: Variant in steps:
+			if not s is Dictionary:
+				errors.append("%s: every step must be an object" % where)
+				continue
 			_validate_step("%s step %s" % [where, s.get("id", "?")], s, errors)
-	for tip: Dictionary in t.get("tips", []):
+	var tip_ids: Array[String] = []
+	for tip: Variant in _array(t.get("tips")):
+		if not tip is Dictionary:
+			errors.append("tutorial: every tip must be an object")
+			continue
 		var where := "tip %s" % tip.get("id", "?")
-		if str(tip.get("id", "")) == "":
-			errors.append("%s: needs an id" % where)
+		if str(tip.get("id", "")) == "" or tip_ids.has(str(tip.id)):
+			errors.append("%s: needs a unique id" % where)
+		tip_ids.append(str(tip.get("id", "")))
 		if not str(tip.get("on", "")) in Tutorial.TIP_MOMENTS:
 			errors.append("%s: unknown moment %s" % [where, tip.get("on", "")])
 		_check_string(str(tip.get("text", "")), where, errors)
@@ -536,9 +547,12 @@ static func _validate_step(where: String, s: Dictionary, errors: Array[String]) 
 	if s.has("hold") and not s.hold is bool:
 		errors.append("%s: hold must be true or false" % where)
 	_validate_target(where, str(s.get("target", "")), errors)
+	if s.has("then") and not s.then is Dictionary:
+		errors.append("%s: then must be an object" % where)
+		return
 	var then: Dictionary = s.get("then", {})
 	if not then.is_empty():
-		if not str(then.get("when", "")) in Tutorial.WHENS:
+		if not str(then.get("when", "")).get_slice(":", 0) in Tutorial.WHENS:
 			errors.append("%s: unknown then.when %s" % [where, then.get("when", "")])
 		_check_string(str(then.get("text", "")), where + " then", errors)
 		_validate_target(where + " then", str(then.get("target", "")), errors)
@@ -552,3 +566,7 @@ static func _validate_target(where: String, target: String, errors: Array[String
 		errors.append("%s: unknown system in %s" % [where, target])
 	elif kind == "weapon" and not target.get_slice(":", 1).is_valid_int():
 		errors.append("%s: weapon target needs a slot" % where)
+
+
+static func _array(v: Variant) -> Array:
+	return v if v is Array else []
