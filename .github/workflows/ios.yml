@@ -85,13 +85,15 @@ jobs:
           key: godot-macos-${{ env.GODOT_VERSION }}
       - name: Install Godot and the export templates
         if: steps.changed.outputs.skip != 'true' && steps.godot_cache.outputs.cache-hit != 'true'
+        # A stalled download once held this step for 45 minutes; fail fast and retry instead.
+        timeout-minutes: 15
         run: |
           mkdir -p ~/godot-bin
           base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
-          curl -sSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_macos.universal.zip"
-          unzip -q godot.zip -d ~/godot-bin
-          curl -sSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
-          unzip -q templates.tpz
+          curl -fsSL --retry 3 --connect-timeout 30 --max-time 300 -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_macos.universal.zip"
+          unzip -oq godot.zip -d ~/godot-bin
+          curl -fsSL --retry 3 --connect-timeout 30 --max-time 600 -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -oq templates.tpz
           dest="$HOME/Library/Application Support/Godot/export_templates/${GODOT_VERSION}.stable"
           mkdir -p "$(dirname "$dest")"
           mv templates "$dest"
