@@ -8,23 +8,45 @@ extends RefCounted
 ## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
-const VERSION := 1
+const VERSION := 2
 const DIR := "user://"
 
 
-## Upgrades a version n save to version n + 1. Returns {} if there is no step.
+## Upgrades a version n save's data to version n + 1, or returns null if there
+## is no step. (An empty dictionary is a valid result, so it can't mean "no step".)
 ## Never delete a step: a player who skipped many updates still needs it.
-static func migrate(from_version: int, d: Dictionary) -> Dictionary:
+static func migrate(from_version: int, d: Dictionary) -> Variant:
 	match from_version:
 		0:
 			# Version 0 kept the seed at the top level as "rng_seed".
 			var combat: Dictionary = d.get("combat", {})
 			if d.has("rng_seed") and not combat.has("rng"):
-				combat["rng"] = {"seed": str(d.rng_seed), "states": {}}
+				combat["rng"] = {"seed": str(int(d.rng_seed)), "states": {}}
 			d.erase("rng_seed")
 			d["combat"] = combat
 			return d
-	return {}
+		1:
+			# Version 2 rooms remember the power the captain asked for. A version 1
+			# save never shed power for damage it could restore, so what it has is
+			# what was asked for.
+			for ship: Dictionary in _saved_ships(d):
+				for room: Dictionary in ship.get("rooms", []):
+					if not room.has("wanted_power"):
+						room["wanted_power"] = room.get("power", 0)
+			return d
+	return null
+
+
+## Every saved ship in a save's data, whether it holds a lone fight or a run.
+static func _saved_ships(d: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for holder: Dictionary in [d.get("combat", {}), d.get("run", {}).get("combat", {})]:
+		for ship: Dictionary in holder.get("ships", []):
+			out.append(ship)
+	var run_ship: Dictionary = d.get("run", {}).get("ship", {})
+	if not run_ship.is_empty():
+		out.append(run_ship)
+	return out
 
 
 static func path_for(slot: String, dir := DIR) -> String:
@@ -71,20 +93,23 @@ static func read(slot: String, dir := DIR) -> Dictionary:
 	return {}
 
 
+## Returns the save upgraded to VERSION, or {} if it can't be. Works on a copy,
+## so a save that fails half way through is left exactly as it was read.
 static func upgrade(d: Dictionary) -> Dictionary:
 	var v := int(d.get("version", 0))  # JSON numbers are floats: always int() them
 	if v > VERSION:
 		push_warning("Save is from a newer version (%d > %d); leaving it alone" % [v, VERSION])
 		return {}
+	var out := d.duplicate(true)
 	while v < VERSION:
-		var inner: Dictionary = migrate(v, d.get("data", {}))
-		if inner.is_empty():
+		var inner: Variant = migrate(v, out.get("data", {}))
+		if not inner is Dictionary:
 			push_error("No migration from save version %d" % v)
 			return {}
-		d["data"] = inner
+		out["data"] = inner
 		v += 1
-		d["version"] = v
-	return d
+		out["version"] = v
+	return out
 
 
 static func erase(slot: String, dir := DIR) -> void:

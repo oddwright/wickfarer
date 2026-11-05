@@ -107,3 +107,26 @@ static func dither(key: String, density: int) -> ImageTexture:
 	var tex := ImageTexture.create_from_image(img)
 	_cache[ck] = tex
 	return tex
+
+
+## A HUD panel: dark fill, a lit top edge, and a bright outline when active.
+## Shared by every view so buttons look the same on every screen.
+static func panel(ci: CanvasItem, r: Rect2i, active: bool) -> void:
+	ci.draw_rect(Rect2(r), c("b"))
+	ci.draw_rect(Rect2(r.position, Vector2(r.size.x, 1)), c("e"))
+	ci.draw_rect(Rect2(r), c("v") if active else c("d"), false, 1.0)
+
+
+## Corner brackets n pixels long, used for aim marks and selections.
+static func corners(ci: CanvasItem, r: Rect2i, col: Color, n: int) -> void:
+	var p := r.position
+	var e := r.end - Vector2i.ONE
+	for k in n:
+		ci.draw_rect(Rect2(p.x + k, p.y, 1, 1), col)
+		ci.draw_rect(Rect2(p.x, p.y + k, 1, 1), col)
+		ci.draw_rect(Rect2(e.x - k, p.y, 1, 1), col)
+		ci.draw_rect(Rect2(e.x, p.y + k, 1, 1), col)
+		ci.draw_rect(Rect2(p.x + k, e.y, 1, 1), col)
+		ci.draw_rect(Rect2(p.x, e.y - k, 1, 1), col)
+		ci.draw_rect(Rect2(e.x - k, e.y, 1, 1), col)
+		ci.draw_rect(Rect2(e.x, e.y - k, 1, 1), col)

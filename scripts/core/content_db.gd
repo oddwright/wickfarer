@@ -96,15 +96,56 @@ static func validate() -> Array[String]:
 	for eid: String in events:
 		_validate_event(eid, events[eid], errors)
 	for rid: String in reaches:
-		var r: Dictionary = reaches[rid]
-		_check_string(r.get("name", ""), "reach %s" % rid, errors)
-		for e: String in r.get("enemies", []):
-			if not ships.has(e):
-				errors.append("reach %s: unknown enemy ship %s" % [rid, e])
-		for k: String in r.get("kinds", {}):
-			if not k in ["fight", "event", "store", "empty"]:
-				errors.append("reach %s: unknown beacon kind %s" % [rid, k])
+		_validate_reach(rid, reaches[rid], errors)
 	return errors
+
+
+## Every field a Run or StarChart reads, so a bad reach fails here and not
+## half way through a run.
+static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -> void:
+	var where := "reach %s" % rid
+	_check_string(r.get("name", ""), where, errors)
+	var enemies: Array = r.get("enemies", [])
+	if enemies.is_empty():
+		errors.append("%s: needs at least one enemy" % where)
+	for e: String in enemies:
+		if not ships.has(e):
+			errors.append("%s: unknown enemy ship %s" % [where, e])
+	var kinds: Dictionary = r.get("kinds", {})
+	var kind_total := 0
+	for k: String in kinds:
+		kind_total += int(kinds[k])
+		if not k in ["fight", "event", "store", "empty"]:
+			errors.append("%s: unknown beacon kind %s" % [where, k])
+		if int(kinds[k]) < 0:
+			errors.append("%s: beacon kind %s has a negative weight" % [where, k])
+	if kind_total <= 0:
+		errors.append("%s: beacon kind weights must add up to more than 0" % where)
+	if int(r.get("columns", 0)) < 3:
+		errors.append("%s: needs at least 3 columns (start, a beacon, the Gate)" % where)
+	var rows: Array = r.get("rows", [])
+	if rows.size() != 2 or int(rows[0]) < 1 or int(rows[1]) < int(rows[0]):
+		errors.append("%s: rows must be [min, max] with 1 <= min <= max" % where)
+	for f in ["jump_light", "dark_jump_hull", "hush_hull"]:
+		if not r.has(f) or int(r[f]) < 0:
+			errors.append("%s: %s must be a number of 0 or more" % [where, f])
+	for f in ["hush_start", "hush_per_jump", "hush_per_light"]:
+		if not r.has(f):
+			errors.append("%s: missing %s" % [where, f])
+	var start: Dictionary = r.get("start", {})
+	if not (start.has("scrap") and start.has("light")):
+		errors.append("%s: start needs scrap and light" % where)
+	var reward: Dictionary = r.get("fight_reward", {})
+	for f in ["scrap", "light"]:
+		var span: Array = reward.get(f, [])
+		if span.size() != 2 or int(span[0]) > int(span[1]):
+			errors.append("%s: fight_reward.%s must be [min, max]" % [where, f])
+	var store: Dictionary = r.get("store", {})
+	for item in Run.STORE_ITEMS:
+		_check_string("UI_STORE_" + item.to_upper(), "store item %s" % item, errors)
+	for f in ["repair_scrap", "light_scrap"]:
+		if int(store.get(f, 0)) <= 0:
+			errors.append("%s: store.%s must be a price above 0" % [where, f])
 
 
 static func _check_string(key: String, where: String, errors: Array[String]) -> void:
@@ -193,6 +234,14 @@ static func _validate_event(eid: String, e: Dictionary, errors: Array[String]) -
 			var fight: String = o.get("effects", {}).get("fight", "")
 			if fight != "" and not ships.has(fight):
 				errors.append("%s: fights unknown ship %s" % [where, fight])
+			# A choice that spends scrap or Light must require it, or a player
+			# with none gets the reward for free (spending clamps at 0).
+			for res in ["scrap", "light"]:
+				var cost := -int(o.get("effects", {}).get(res, 0))
+				if cost > int(req.get(res, 0)):
+					errors.append(
+						"%s: a choice can cost %d %s but requires less" % [where, cost, res]
+					)
 	# A player must never be stuck in an event they can't leave.
 	if not has_free_choice:
 		errors.append("%s: needs at least one choice with no requirement" % where)

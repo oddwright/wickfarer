@@ -13,7 +13,6 @@ var run: Run
 var combat: Combat  ## the run's current fight, kept after it ends until Continue
 var run_layout: RunLayout
 var run_view: RunView
-var outcome := ""  ## an event's result, shown until the player taps Continue
 var screen: Dictionary = {}
 var layout: HudLayout
 var container: SubViewportContainer
@@ -62,6 +61,8 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_on_resize)
 	_on_resize()
 	_set_run(_load_or_new())
+	if run.state == "fight" and run.outcome == "" and run.combat.state == "fighting":
+		_pause("UI_TAP_TO_RESUME")  # never drop a player straight back into a live fight
 
 
 func _load_or_new() -> Run:
@@ -70,27 +71,23 @@ func _load_or_new() -> Run:
 	if data.has("run"):
 		var r := Run.from_dict(data.run)
 		if not r.state in ["lost", "reach_done"]:
-			if r.state == "fight" and r.combat.state == "fighting":
-				paused = true
-				pause_reason = "UI_TAP_TO_RESUME"
 			return r
 	return Run.create(_fresh_seed())
 
 
 ## Which run screen is showing: a Run state, or "outcome" for an event's result.
 func run_screen() -> String:
-	return "outcome" if outcome != "" else run.state
+	return "outcome" if run.outcome != "" else run.state
 
 
 func _set_run(r: Run) -> void:
 	run = r
-	outcome = ""
 	_enter_screen()
 
 
 ## Call after every run action: shows the right screen and saves.
 func _enter_screen() -> void:
-	var fighting := run.state == "fight" and outcome == ""
+	var fighting := run_screen() == "fight"
 	world.visible = fighting
 	text.visible = fighting
 	run_view.visible = not fighting
@@ -116,6 +113,7 @@ func _build_run_layout() -> void:
 			count = (run.event().get("choices", []) as Array).size()
 		"store":
 			mode = "store"
+			count = run.store_items().size() + 1  # and Leave
 	run_layout = RunLayout.build(screen, run.chart, mode, count)
 
 
@@ -125,6 +123,8 @@ func _fresh_seed() -> int:
 
 func _start(c: Combat) -> void:
 	combat = c
+	paused = false
+	pause_reason = ""
 	selected_weapon = -1
 	selected_crew = -1
 	floaters.clear()
@@ -182,11 +182,13 @@ func _save() -> void:
 
 func _notification(what: int) -> void:
 	# Phones don't promise a quit event, so save whenever we lose the screen.
-	match what:
-		NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT:
-			_on_leave()
-		NOTIFICATION_WM_CLOSE_REQUEST:
-			_on_leave()
+	const LEAVING: Array[int] = [
+		NOTIFICATION_APPLICATION_PAUSED,
+		NOTIFICATION_APPLICATION_FOCUS_OUT,
+		NOTIFICATION_WM_CLOSE_REQUEST,
+	]
+	if what in LEAVING:
+		_on_leave()
 
 
 func _on_leave() -> void:
@@ -286,8 +288,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			_tap(mb.position, true)  # right click stands in for a long press on desktop
 	elif event is InputEventKey and event.pressed and not event.echo:
-		if (event as InputEventKey).keycode == KEY_SPACE:
-			_toggle_pause()
+		if (event as InputEventKey).keycode == KEY_SPACE and combat:
+			_toggle_pause()  # pause only means something in a fight
 
 
 func _toggle_pause() -> void:
@@ -367,19 +369,16 @@ func _tap_run(p: Vector2i) -> void:
 		"choice":
 			if not run.choose(int(b.id)):
 				return
-			outcome = run.messages[-1] if not run.messages.is_empty() else ""
 		"store":
-			match int(b.id):
-				0:
-					run.buy("repair")
-				1:
-					run.buy("light")
-				2:
-					run.leave_store()
+			var items := run.store_items()
+			var i := int(b.id)
+			var done := run.buy(items[i]) if i < items.size() else run.leave_store()
+			if not done:
+				return
 		"next":
-			if outcome != "":
-				outcome = ""
-			elif run.state in ["lost", "reach_done"]:
+			if run.state in ["lost", "reach_done"] and run.outcome == "":
 				_set_run(Run.create(_fresh_seed()))
+				return
+			if not run.read_outcome():
 				return
 	_enter_screen()

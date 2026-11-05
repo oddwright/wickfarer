@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install "gdtoolkit==4.*"
+      - run: pip install "gdtoolkit==4.5.0"  # pinned: formatter output must not drift
       - name: Check formatting
         run: gdformat --check -l 100 scripts tests tools
       - name: Lint
@@ -28,25 +28,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Godot
-        run: |
-          curl -sSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
-          unzip -q godot.zip
-          sudo mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
-      - name: Import project
-        run: godot --headless --path . --import || true
+      - uses: ./.github/actions/setup-godot
+        with:
+          version: ${{ env.GODOT_VERSION }}
       - name: Run tests
-        run: godot --headless --path . -s tests/run_tests.gd
+        run: tools/ci_godot.sh --headless --path . -s tests/run_tests.gd
       - name: Balance report (40 seeded fights per policy)
-        run: godot --headless --path . -s tools/autobattle.gd -- 40 | tee balance.txt
-      - name: Run report (40 seeded Reach runs by the autopilot)
-        run: godot --headless --path . -s tools/autorun.gd -- 40 | tee -a balance.txt
-      - name: Add balance to the run summary
         run: |
-          echo '### Auto-battle balance' >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          grep -E 'wins|runs' balance.txt >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tools/ci_godot.sh --headless --path . -s tools/autobattle.gd -- 40
+          cp godot.log balance.txt
+      - name: Run report (40 seeded Reach runs by the autopilot)
+        run: |
+          tools/ci_godot.sh --headless --path . -s tools/autorun.gd -- 40
+          cat godot.log >> balance.txt
+      - name: Add balance to the run summary
+        if: always()
+        run: |
+          {
+            echo '### Auto-battle balance'
+            echo '```'
+            grep -E 'wins|runs' balance.txt || echo 'no balance output (see the step log)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   android:
     name: Android debug APK
@@ -58,11 +61,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Install Godot
-        run: |
-          curl -sSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
-          unzip -q godot.zip
-          sudo mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+      - uses: ./.github/actions/setup-godot
+        with:
+          version: ${{ env.GODOT_VERSION }}
       - name: Cache export templates
         id: templates
         uses: actions/cache@v4
@@ -88,15 +89,27 @@ jobs:
           export/android/java_sdk_path = "$JAVA_HOME"
           CFG
           done
+      - name: Restore the debug keystore
+        id: keystore
+        uses: actions/cache@v4
+        with:
+          # One keystore for every build, so a tester can install a new APK over
+          # the old one and keep their saves.
+          path: debug.keystore
+          key: android-debug-keystore-v1
       - name: Make a debug keystore
+        if: steps.keystore.outputs.cache-hit != 'true'
         run: |
           keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey \
             -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+      - name: Use the debug keystore
+        run: |
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$PWD/debug.keystore" >> "$GITHUB_ENV"
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
-      - name: Import project
-        run: godot --headless --path . --import || true
+      - name: Number this build
+        # Each CI build gets a higher versionCode, so devices and testers can tell builds apart.
+        run: sed -i "s/^version\/code=.*/version\/code=${{ github.run_number }}/" export_presets.cfg
       - name: Export APK
         run: |
           mkdir -p build
@@ -115,21 +128,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Godot and a virtual display
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1 > /dev/null
-          curl -sSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
-          unzip -q godot.zip
-          sudo mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
-      - name: Import project
-        run: godot --headless --path . --import || true
+      - name: Install a virtual display
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1 > /dev/null
+      - uses: ./.github/actions/setup-godot
+        with:
+          version: ${{ env.GODOT_VERSION }}
       - name: Capture phone and foldable layouts
         run: |
           mkdir -p screens
           while read -r w h name; do
             for screen in fight chart event store; do
               xvfb-run -a -s "-screen 0 2600x2300x24" godot --path . --rendering-driver opengl3 \
-                -s tools/shot.gd -- "$w" "$h" "screens/$name-$screen.png" 300 "$screen"
+                -s tools/shot.gd -- "$w" "$h" "screens/$name-$screen.png" 300 "$screen" < /dev/null
               test -s "screens/$name-$screen.png"
             done
           done <<LIST

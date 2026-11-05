@@ -23,7 +23,7 @@ var ward_deck: int = 1
 var ward_layers: int = 0
 var ward_regen: float = 0.0
 var next_uid: int = 1
-var ladders: Array = []
+var ladders: Array[Dictionary] = []
 
 var _room_by_id: Dictionary = {}
 var _neighbors: Dictionary = {}  ## room id -> Array of [room id, seconds]
@@ -89,7 +89,7 @@ func _build_graph(c: Dictionary) -> void:
 		for i in range(row.size() - 1):
 			_neighbors[row[i].id].append([row[i + 1].id, WALK_TIME])
 			_neighbors[row[i + 1].id].append([row[i].id, WALK_TIME])
-	ladders = c.get("ladders", [])
+	ladders.assign(c.get("ladders", []))
 	for l: Dictionary in ladders:
 		_neighbors[l.upper].append([l.lower, LADDER_TIME])
 		_neighbors[l.lower].append([l.upper, LADDER_TIME])
@@ -173,7 +173,7 @@ func power_up(sys: String) -> bool:
 	if r.power >= r.effective_level() or used_power() >= available_power():
 		return false
 	r.power += 1
-	r.wanted_power = r.power
+	_captain_set_power()
 	return true
 
 
@@ -182,8 +182,16 @@ func power_down(sys: String) -> bool:
 	if r == null or r.power <= 0:
 		return false
 	r.power -= 1
-	r.wanted_power = r.power
+	_captain_set_power()
 	return true
+
+
+## A manual power change is the captain's new plan: it also drops any power
+## other systems were waiting to get back after repairs, so freed power never
+## jumps back into a system the captain has since moved on from.
+func _captain_set_power() -> void:
+	for r in rooms:
+		r.wanted_power = r.power
 
 
 ## Damage and a hurt Ember take power away; once fixed, systems get back what

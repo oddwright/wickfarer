@@ -49,7 +49,7 @@ static func build(
 		"event":
 			l._choices(maxi(choice_count, 1), "choice")
 		"store":
-			l._choices(3, "store")
+			l._choices(maxi(choice_count, 1), "store")
 		"next":
 			l._add("next", 0, l._button_column(1)[0])
 	return l

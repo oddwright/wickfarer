@@ -234,17 +234,7 @@ func _draw_aims() -> void:
 
 
 func _corners(r: Rect2i, col: Color, n: int) -> void:
-	var p := r.position
-	var e := r.end - Vector2i.ONE
-	for k in n:
-		draw_rect(Rect2(p.x + k, p.y, 1, 1), col)
-		draw_rect(Rect2(p.x, p.y + k, 1, 1), col)
-		draw_rect(Rect2(e.x - k, p.y, 1, 1), col)
-		draw_rect(Rect2(e.x, p.y + k, 1, 1), col)
-		draw_rect(Rect2(p.x + k, e.y, 1, 1), col)
-		draw_rect(Rect2(p.x, e.y - k, 1, 1), col)
-		draw_rect(Rect2(e.x - k, e.y, 1, 1), col)
-		draw_rect(Rect2(e.x, e.y - k, 1, 1), col)
+	Pixel.corners(self, r, col, n)
 
 
 func _draw_crew(side: int) -> void:
@@ -307,10 +297,7 @@ func _draw_projectiles() -> void:
 
 
 func _draw_panel(r: Rect2i, active: bool) -> void:
-	draw_rect(Rect2(r), Pixel.c("b"))
-	draw_rect(Rect2(r.position, Vector2(r.size.x, 1)), Pixel.c("e"))
-	var edge := Pixel.c("v") if active else Pixel.c("d")
-	draw_rect(Rect2(r), edge, false, 1.0)
+	Pixel.panel(self, r, active)
 
 
 func _draw_hud() -> void:

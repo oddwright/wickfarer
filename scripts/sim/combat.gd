@@ -23,12 +23,7 @@ static func create(
 	seed_value: int, player_ship := "tallow_wren", enemy_ship := "ashmarket_cutter"
 ) -> Combat:
 	ContentDB.load_all()
-	var c := Combat.new()
-	c.rng = RngStreams.new(seed_value)
-	c.ships.append(Ship.from_content(player_ship, 0))
-	c.ships.append(Ship.from_content(enemy_ship, 1))
-	c.ai = CombatAI.new()
-	return c
+	return from_ship(seed_value, Ship.from_content(player_ship, 0), enemy_ship)
 
 
 ## A fight inside a run: the player's ship carries over between fights.
@@ -100,12 +95,14 @@ func tick() -> void:
 	tick_count += 1
 	for s in ships:
 		s.quantize()  # hits after the ship ticks change values too
-	if enemy().is_dead():
-		state = "won"
-		events.append({"type": "won"})
-	elif player().is_dead():
+	# If both ships die on the same tick the player loses: a dead ship can't
+	# carry on through the run.
+	if player().is_dead():
 		state = "lost"
 		events.append({"type": "lost"})
+	elif enemy().is_dead():
+		state = "won"
+		events.append({"type": "won"})
 
 
 func _fire_weapons() -> void:

@@ -106,18 +106,7 @@ func _draw_beacon(run: Run, l: RunLayout, n: Dictionary, target: bool, blink: bo
 		draw_rect(core.grow(3), Pixel.c("w"), false, 1.0)
 	elif target and blink:
 		var box := Rect2i(c - Vector2i(5, 5), Vector2i(11, 11))
-		_corners(box, Pixel.c("o") if swallowed else Pixel.c("v"))
-
-
-func _corners(r: Rect2i, col: Color) -> void:
-	for p in [r.position, Vector2i(r.end.x - 2, r.position.y)]:
-		draw_rect(Rect2(p, Vector2(2, 1)), col)
-	for p in [Vector2i(r.position.x, r.end.y - 1), Vector2i(r.end.x - 2, r.end.y - 1)]:
-		draw_rect(Rect2(p, Vector2(2, 1)), col)
-	draw_rect(Rect2(r.position, Vector2(1, 2)), col)
-	draw_rect(Rect2(Vector2i(r.end.x - 1, r.position.y), Vector2(1, 2)), col)
-	draw_rect(Rect2(Vector2i(r.position.x, r.end.y - 2), Vector2(1, 2)), col)
-	draw_rect(Rect2(Vector2i(r.end.x - 1, r.end.y - 2), Vector2(1, 2)), col)
+		Pixel.corners(self, box, Pixel.c("o") if swallowed else Pixel.c("v"), 2)
 
 
 # ------------------------------------------------------------------ panels
@@ -138,9 +127,7 @@ func _text_block(r: Rect2i, s: String, col: Color) -> void:
 
 ## A red note means the player is short of it; a grey one is just the price.
 func _button(r: Rect2i, label: String, enabled := true, note := "", short := false) -> void:
-	draw_rect(Rect2(r), Pixel.c("b"))
-	draw_rect(Rect2(r.position, Vector2(r.size.x, 1)), Pixel.c("e"))
-	draw_rect(Rect2(r), Pixel.c("v") if enabled else Pixel.c("d"), false, 1.0)
+	Pixel.panel(self, r, enabled)
 	var col := Pixel.c("w") if enabled else Pixel.c("f")
 	var note_col := Pixel.c("U") if short else (Pixel.c("g") if enabled else Pixel.c("f"))
 	var y := r.position.y + r.size.y / 2 + 3
@@ -196,16 +183,16 @@ func _needs(req: Dictionary) -> String:
 
 func _draw_store(run: Run, l: RunLayout) -> void:
 	_story(l, tr("UI_STORE_TEXT"))
-	var labels := ["UI_REPAIR", "UI_BUY_LIGHT", "UI_LEAVE"]
-	var items := ["repair", "light", ""]
+	var items := run.store_items()
 	for b in l.buttons:
 		var i := int(b.id)
-		if items[i] == "":
-			_button(b.rect, tr(labels[i]))
-		else:
-			var note := "%d %s" % [run.price(items[i]), tr("UI_SCRAP")]
-			var short := run.scrap < run.price(items[i])
-			_button(b.rect, tr(labels[i]), run.can_buy(items[i]), note, short)
+		if i >= items.size():
+			_button(b.rect, tr("UI_LEAVE"))
+			continue
+		var item := items[i]
+		var note := "%d %s" % [run.price(item), tr("UI_SCRAP")]
+		var short := run.scrap < run.price(item)
+		_button(b.rect, tr("UI_STORE_" + item.to_upper()), run.can_buy(item), note, short)
 
 
 func _draw_next(run: Run, l: RunLayout) -> void:
@@ -214,7 +201,7 @@ func _draw_next(run: Run, l: RunLayout) -> void:
 	var label := "UI_CONTINUE"
 	match main.run_screen():
 		"outcome":
-			body = tr(main.outcome)
+			body = tr(run.outcome)
 		"reach_done":
 			title = tr("UI_REACH_DONE_TITLE")
 			body = tr("UI_REACH_DONE")
