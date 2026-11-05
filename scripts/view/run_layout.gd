@@ -21,6 +21,8 @@ var chart_rect: Rect2i  ## the area beacons are spread over
 var text_rect: Rect2i  ## the story or store text
 var message_rect: Rect2i  ## a one or two line note at the bottom
 var buttons: Array[Dictionary] = []  ## {kind, id, rect}
+## Opens the pause menu; it sits in the status bar, so it is kept out of buttons.
+var menu_rect: Rect2i
 
 
 ## mode is "chart", "event", "store" or "next" (one Continue button).
@@ -39,6 +41,7 @@ static func build(
 		l.text_rect = Rect2i(12, TOP + 8, w - 24, 60)
 	else:
 		l.text_rect = Rect2i(12, TOP + 8, l.hinge.position.x - 20, h - TOP - 24)
+	l.menu_rect = MenuLayout.menu_button(l.native)
 	match mode:
 		"chart":
 			for n in chart.nodes:
@@ -133,4 +136,8 @@ func problems() -> Array[String]:
 		for o in buttons:
 			if o != b and r.grow(1).intersects(o.rect):
 				out.append("%s %s and %s %s overlap" % [b.kind, b.id, o.kind, o.id])
+		if r.grow(1).intersects(menu_rect):
+			out.append("%s %s covers the menu button" % [b.kind, b.id])
+	if not canvas.encloses(menu_rect) or (hinge.size.x > 0 and menu_rect.intersects(hinge)):
+		out.append("the menu button is off the canvas or on the fold")
 	return out

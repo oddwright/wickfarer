@@ -186,7 +186,7 @@ jobs:
         run: |
           mkdir -p screens
           while read -r w h name; do
-            for screen in fight chart event store; do
+            for screen in fight chart event store title pause options; do
               xvfb-run -a -s "-screen 0 2600x2300x24" godot --path . --rendering-driver opengl3 \
                 -s tools/shot.gd -- "$w" "$h" "screens/$name-$screen.png" 300 "$screen" < /dev/null
               test -s "screens/$name-$screen.png"

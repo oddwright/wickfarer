@@ -43,6 +43,8 @@
     "ui.jump": {"sound": "ui_jump", "haptic": "rumble", "priority": 1, "cooldown": 0.5},
     "ui.choose": {"sound": "ui_select", "haptic": "tick", "priority": 0, "cooldown": 0.1},
     "ui.buy": {"sound": "ui_buy", "haptic": "tap", "priority": 1, "cooldown": 0.1},
+    "ui.preview_haptics": {"haptic": "thud", "priority": 9, "cooldown": 0.1},
+    "ui.preview_sfx": {"sound": "hull_hit_light", "priority": 9, "cooldown": 0.1},
     "weapon_ready.us": {"sound": "ready_ping", "priority": 0, "cooldown": 0.3},
     "fire.us.kinetic": {"sound": "rivet_fire", "haptic": "tap", "priority": 1, "cooldown": 0.06},
     "fire.us.torch": {"sound": "torch_fire", "haptic": "tap", "priority": 1, "cooldown": 0.06},

@@ -4,6 +4,7 @@ extends SceneTree
 
 const J = preload("res://scripts/core/json_util.gd")
 const MAIN = preload("res://scripts/view/main.gd")
+const MENU_TESTS = preload("res://tests/menu_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -56,9 +57,24 @@ func _init() -> void:
 		"test_settings_save_and_fall_back",
 		"test_audio_service_and_music_states",
 		"test_music_layers_are_synced_stems",
+		"test_menu_screens_on_every_screen",
+		"test_options_adjust_settings",
 	]:
 		current = t
 		call(t)
+
+
+## Tests that need the real scene in the tree run on the first frame, once the
+## root has entered it (it hasn't during _init).
+func _process(_delta: float) -> bool:
+	for t in ["test_menu_flow"]:
+		current = t
+		call(t)
+	_finish()
+	return false
+
+
+func _finish() -> void:
 	print("")
 	if failures.is_empty():
 		print("ALL %d CHECKS PASSED" % passed)
@@ -585,8 +601,9 @@ func test_run_screens_on_every_screen() -> void:
 		for mode in ["event", "store", "next"]:
 			var l := RunLayout.build(scr, chart0, mode, 3)
 			probs.append_array(l.problems())
-			if l.buttons.is_empty():
-				probs.append("%s has no buttons" % mode)
+			var own := {"event": "choice", "store": "store", "next": "next"}
+			if l.button(own[mode]).is_empty():
+				probs.append("%s has no %s button" % [mode, own[mode]])
 			for b in l.buttons:
 				if (b.rect as Rect2i).end.y > scr.native.y - 4:
 					probs.append("%s button falls off the bottom" % mode)
@@ -845,3 +862,19 @@ func test_music_layers_are_synced_stems() -> void:
 			samples = n
 		check(n == samples, "%s is %d samples, the others %d" % [name, n, samples])
 	check(samples > 20 * 44100, "the loop is long enough not to drone")
+
+
+# ------------------------------------------------------------------ menus
+# The bodies live in tests/menu_tests.gd to keep this file under the lint limit.
+
+
+func test_menu_screens_on_every_screen() -> void:
+	MENU_TESTS.screens(self, SCREENS)
+
+
+func test_options_adjust_settings() -> void:
+	MENU_TESTS.options_adjust(self)
+
+
+func test_menu_flow() -> void:
+	MENU_TESTS.flow(self)
