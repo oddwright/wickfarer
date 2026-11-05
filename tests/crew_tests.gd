@@ -252,6 +252,23 @@ static func resume(t: SceneTree) -> void:
 	_check(t, not posted.is_empty(), "v2 crew standing at stations keep them as posts")
 
 
+## Stands in for the coach: records the orders and updates it gets.
+class _Ear:
+	extends Tutorial
+	var orders: Array
+	var updates := 0
+
+	func _init(into: Array) -> void:
+		orders = into
+
+	func on_order(what: String, _detail := "") -> void:
+		orders.append(what)
+
+	func update(_ctx: Dictionary) -> bool:
+		updates += 1
+		return false
+
+
 ## Stands in for the enemy captain so nothing moves on its own.
 class _NoAI:
 	extends CombatAI
@@ -323,6 +340,21 @@ static func roster_flow(t: SceneTree) -> void:
 	_check(t, main.paused, "leaving the app with the roster open still pauses the fight")
 	main.paused = false
 	main.pause_reason = ""
+	# Muster with everyone already in place still counts for the coach
+	var real_coach: Tutorial = main.tutorial
+	var told := []
+	main.tutorial = _Ear.new(told)
+	main.roster.muster()
+	main.roster.muster()
+	_check(t, told.count("muster") == 2, "Muster always reaches the coach")
+	# the roster's pause is not the player pausing
+	var heard := _Ear.new([])
+	main.tutorial = heard
+	main.roster.show()
+	main._coach()
+	_check(t, heard.updates == 0, "the coach sits out while the roster is open")
+	main.roster.close()
+	main.tutorial = real_coach
 	# long press on a crew member makes their room their post
 	var c := crew[1]
 	var fp: Vector2 = main.world.crew_pos(0, c) + Vector2(0, -6)

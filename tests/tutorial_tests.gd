@@ -139,6 +139,17 @@ static func tips(t: SceneTree) -> void:
 	_check(t, not tut.update(_ctx(r, "fight")), "a tip shows once ever")
 	r.combat.player().hull = 2
 	_check(t, tut.update(_ctx(r, "fight")) and tut.tip == "low_hull", "low hull has a tip")
+	var calm := Run.create(9)
+	_fight(calm)
+	var ranks := Tutorial.new()
+	ranks.on_events([{"type": "skill_up", "side": 1}])
+	_check(t, not ranks.update(_ctx(calm, "fight")), "an enemy ranking up shows no tip")
+	ranks.on_events([{"type": "skill_up", "side": 0}])
+	_check(
+		t,
+		ranks.update(_ctx(calm, "fight")) and ranks.tip == "post",
+		"our first rank shows the post tip"
+	)
 	var chart := Run.create(9)
 	chart.messages.append("UI_DARK_JUMP")
 	var dark := Tutorial.new()

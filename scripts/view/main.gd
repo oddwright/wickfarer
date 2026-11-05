@@ -41,7 +41,7 @@ var tutorial: Tutorial  ## the training flight's coach and the one-time tips
 var coach: CoachView
 var menu_layout: MenuLayout
 var crew_view: CrewView
-var roster: Roster  ## the crew roster, Muster and posting crew
+var roster := Roster.new(self)  ## the crew roster, Muster and posting crew
 ## The open menu page: "" (playing), "title", "pause", "options" or "confirm".
 var menu := ""
 ## The page Back returns to: "title" hides the game, "pause" dims it.
@@ -66,7 +66,6 @@ var _last_save := ""  ## the payload last written, so an unchanged state isn't r
 
 
 func _ready() -> void:
-	roster = Roster.new(self)
 	ContentDB.load_all()
 	var errors := ContentDB.validate()
 	for e in errors:
@@ -416,8 +415,8 @@ func _tick_game(delta: float) -> void:
 
 ## Lets the coach look at the screen, and holds the fight's clock while a step waits.
 func _coach() -> void:
-	if tutorial == null:
-		return
+	if tutorial == null or roster.open:
+		return  # the roster covers the coach, and its pause isn't the player pausing
 	var on := run_screen()
 	if combat and combat.state != "fighting":
 		on = "fight_over"

@@ -866,12 +866,6 @@ func test_options_adjust_settings() -> void:
 	MENU_TESTS.options_adjust(self)
 
 
-## The menus and the crew roster, driven through the real scene.
-func test_scene_flows() -> void:
-	MENU_TESTS.flow(self)
-	CREW_TESTS.roster_flow(self)
-
-
 ## Also the cold-start resume: the app killed and reopened on its save.
 func test_menu_flow() -> void:
 	MENU_TESTS.flow(self)

@@ -8,7 +8,7 @@ const BLINK := 3.0  ## frame blinks a second
 
 
 func _draw() -> void:
-	if main == null or main.menu != "" or main.tutorial == null:
+	if main == null or main.menu != "" or main.tutorial == null or main.roster.open:
 		return
 	var d: Dictionary = main.tutorial.display
 	if d.is_empty():

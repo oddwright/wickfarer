@@ -108,12 +108,13 @@ func tap(p: Vector2i) -> void:
 	rebuild()
 
 
-## Sends everyone to their posts (from the HUD or the roster).
+## Sends everyone to their posts (from the HUD or the roster). Counts as the
+## order for the coach even when everyone is already in place, or its Muster
+## step could never finish.
 func muster() -> void:
 	var ok: bool = main.combat.apply({"type": "muster"})
 	main.ui_cue("tap" if ok else "refused")
-	if ok:
-		main._order("muster")
+	main._order("muster")
 
 
 ## Long press on a crew member: where they stand (or are headed) becomes their post.
