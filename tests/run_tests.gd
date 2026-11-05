@@ -28,9 +28,12 @@ var passed := 0
 var current := ""
 
 
+## A test is a method here by name, or a helper's static func that takes this
+## runner: listing helpers directly keeps this file under the lint limit on
+## public methods.
 func _init() -> void:
 	ContentDB.load_all()
-	for t in [
+	for t: Variant in [
 		"test_content_is_valid",
 		"test_rng_streams_are_independent_and_saveable",
 		"test_same_seed_same_fight",
@@ -53,7 +56,7 @@ func _init() -> void:
 		"test_warmth_needs_the_ember",
 		"test_fire_spreads_and_crew_put_it_out",
 		"test_layouts_on_every_screen",
-		"test_ui_size_setting",
+		SCREEN_TESTS.ui_size,
 		"test_run_screens_on_every_screen",
 		"test_view_screens_follow_the_run",
 		"test_weapon_ready_event",
@@ -62,15 +65,14 @@ func _init() -> void:
 		"test_feedback_content_is_checked",
 		"test_haptic_patterns",
 		"test_settings_save_and_fall_back",
-		"test_audio_service_and_music_states",
-		"test_music_director_stages",
-		"test_music_clips_and_transitions",
-		"test_music_clips_are_synced_stems",
+		AUDIO_TESTS.service_and_states,
+		AUDIO_TESTS.director_stages,
+		AUDIO_TESTS.clips_and_transitions,
+		AUDIO_TESTS.clips_are_synced_stems,
 		"test_menu_screens_on_every_screen",
-		"test_options_adjust_settings",
+		MENU_TESTS.options_adjust,
 	]:
-		current = t
-		call(t)
+		_run_test(t)
 
 
 ## Tests that need the real scene in the tree run on the first frame, once the
@@ -93,6 +95,16 @@ func _finish() -> void:
 			printerr("FAIL ", f)
 		print("%d passed, %d failed" % [passed, failures.size()])
 		quit(1)
+
+
+func _run_test(t: Variant) -> void:
+	if t is Callable:
+		var c: Callable = t
+		current = "%s.%s" % [c.get_object().resource_path.get_file().get_basename(), c.get_method()]
+		c.call(self)
+	else:
+		current = t
+		call(t)
 
 
 func check(cond: bool, what: String) -> void:
@@ -356,10 +368,6 @@ func test_fire_spreads_and_crew_put_it_out() -> void:
 
 func test_layouts_on_every_screen() -> void:
 	SCREEN_TESTS.hud(self, SCREEN_TESTS.variants(SCREENS))
-
-
-func test_ui_size_setting() -> void:
-	SCREEN_TESTS.ui_size(self)
 
 
 ## Saves from every released version live in tests/fixtures. They must always load and play on.
@@ -800,36 +808,12 @@ func test_settings_save_and_fall_back() -> void:
 	SaveService.erase(GameSettings.SLOT, dir)
 
 
-# ------------------------------------------------------------------ audio
-# The bodies live in tests/audio_tests.gd to keep this file under the lint limit.
-
-
-func test_audio_service_and_music_states() -> void:
-	AUDIO_TESTS.service_and_states(self)
-
-
-func test_music_director_stages() -> void:
-	AUDIO_TESTS.director_stages(self)
-
-
-func test_music_clips_and_transitions() -> void:
-	AUDIO_TESTS.clips_and_transitions(self)
-
-
-func test_music_clips_are_synced_stems() -> void:
-	AUDIO_TESTS.clips_are_synced_stems(self)
-
-
 # ------------------------------------------------------------------ menus
 # The bodies live in tests/menu_tests.gd to keep this file under the lint limit.
 
 
 func test_menu_screens_on_every_screen() -> void:
 	MENU_TESTS.screens(self, SCREEN_TESTS.variants(SCREENS))
-
-
-func test_options_adjust_settings() -> void:
-	MENU_TESTS.options_adjust(self)
 
 
 func test_menu_flow() -> void:

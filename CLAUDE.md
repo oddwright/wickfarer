@@ -60,6 +60,9 @@ xvfb-run godot --path . -s tools/shot.gd -- 2400 1080 out.png   # screenshot at 
 ## Tests
 
 - Every rules change gets a test in `tests/run_tests.gd` (add the name to the list in `_init`).
+  That file is near the lint limit of 40 public methods: put new test bodies in a helper file
+  under `tests/` as a `static func name(t: SceneTree)` and list it in `_init` directly
+  (`AUDIO_TESTS.director_stages`), with no wrapper method.
 - Every bug fix gets a test that failed before the fix.
 - Run the auto-battle report after balance or AI changes and put the numbers in the PR.
 
