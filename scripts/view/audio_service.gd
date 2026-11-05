@@ -170,7 +170,10 @@ static func pick_voice(voices: Array[Dictionary], priority: int) -> int:
 static func _load_or_synth(entry: Dictionary, looped: bool) -> AudioStream:
 	var file := str(entry.get("file", ""))
 	if file != "" and ResourceLoader.exists(file):
-		return load(file)
+		var stream: AudioStream = load(file)
+		if looped and stream is AudioStreamOggVorbis:
+			(stream as AudioStreamOggVorbis).loop = true  # stems must loop together
+		return stream
 	if entry.has("synth"):
 		return SfxSynth.loop(entry.synth) if looped else SfxSynth.one_shot(entry.synth)
 	return null

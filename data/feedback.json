@@ -66,21 +66,22 @@
   },
   "music": {
     "fade": 1.5,
-    "hush_layers": ["warm"],
+    "hush_layers": ["warm", "pluck"],
     "layers": {
-      "pad": {"file": "", "volume_db": -20, "synth": {"wave": "sine", "notes": [110, 164.8, 220, 277.2], "ms": 5000, "beats": 0, "decay": 0}},
-      "warm": {"file": "", "volume_db": -24, "synth": {"wave": "tri", "notes": [329.6, 440], "ms": 5000, "beats": 0, "decay": 0}},
-      "pulse": {"file": "", "volume_db": -18, "synth": {"wave": "sine", "notes": [55], "ms": 2500, "beats": 4, "decay": 8}},
-      "drum": {"file": "", "volume_db": -16, "synth": {"wave": "noise", "notes": [80], "ms": 2500, "beats": 2, "decay": 14}},
-      "heart": {"file": "", "volume_db": -12, "synth": {"wave": "sine", "notes": [50], "ms": 1250, "beats": 1, "decay": 10}}
+      "pad": {"file": "res://audio/music/hearth_pad.ogg", "volume_db": -3},
+      "warm": {"file": "res://audio/music/hearth_warm.ogg", "volume_db": -3},
+      "pluck": {"file": "res://audio/music/hearth_pluck.ogg", "volume_db": -4},
+      "pulse": {"file": "res://audio/music/hearth_pulse.ogg", "volume_db": -3},
+      "drum": {"file": "res://audio/music/hearth_drum.ogg", "volume_db": -3},
+      "heart": {"file": "res://audio/music/hearth_heart.ogg", "volume_db": -3}
     },
     "states": {
-      "chart": ["pad", "warm"],
-      "event": ["pad"],
-      "store": ["pad", "warm", "pulse"],
-      "combat": ["pad", "warm", "pulse", "drum"],
-      "danger": ["pad", "pulse", "drum", "heart"],
-      "victory": ["pad", "warm"],
+      "chart": ["pad", "warm", "pluck"],
+      "event": ["pad", "pluck"],
+      "store": ["pad", "pluck", "warm"],
+      "combat": ["pad", "warm", "pluck", "pulse", "drum"],
+      "danger": ["pad", "pluck", "pulse", "drum", "heart"],
+      "victory": ["pad", "warm", "pluck"],
       "defeat": [],
       "silent": []
     }
