@@ -18,6 +18,8 @@ var player_origin: Vector2i
 var enemy_origin: Vector2i
 var buttons: Array[Dictionary] = []  ## {kind, id, rect}
 var message_rect: Rect2i  ## where prompts and hints are written
+## Opens the pause menu; kept out of buttons, which are the fight controls.
+var menu_rect: Rect2i
 
 
 static func build(
@@ -34,6 +36,7 @@ static func build(
 	var w := l.native.x
 	var h := l.native.y
 	var row_y := h - ROW_H - 4
+	l.menu_rect = MenuLayout.menu_button(l.native)
 	if l.kind == "wide":
 		# Centre the ships in the band between the top bar and the buttons,
 		# leaving a line underneath for prompts.
@@ -115,7 +118,7 @@ func problems(player_frame: Vector2i, enemy_frame: Vector2i) -> Array[String]:
 			out.append("ship outside the canvas %s" % r)
 	if player_rect.intersects(enemy_rect):
 		out.append("ships overlap")
-	for b in buttons:
+	for b in buttons + [{"kind": "menu", "rect": menu_rect}]:
 		var r: Rect2i = b.rect
 		if not canvas.encloses(r):
 			out.append("%s button outside the canvas" % b.kind)

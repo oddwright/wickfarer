@@ -130,3 +130,11 @@ static func corners(ci: CanvasItem, r: Rect2i, col: Color, n: int) -> void:
 		ci.draw_rect(Rect2(p.x, e.y - k, 1, 1), col)
 		ci.draw_rect(Rect2(e.x - k, e.y, 1, 1), col)
 		ci.draw_rect(Rect2(e.x, e.y - k, 1, 1), col)
+
+
+## The menu button: a panel with three bars, the same on every screen.
+static func menu_icon(ci: CanvasItem, r: Rect2i) -> void:
+	panel(ci, r, true)
+	var x := r.position.x + (r.size.x - 12) / 2
+	for k in 3:
+		ci.draw_rect(Rect2(x, r.position.y + 3 + k * 3, 12, 2), c("w"))
