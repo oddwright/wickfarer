@@ -5,6 +5,7 @@ extends SceneTree
 const J = preload("res://scripts/core/json_util.gd")
 const MAIN = preload("res://scripts/view/main.gd")
 const MENU_TESTS = preload("res://tests/menu_tests.gd")
+const STORY_TESTS = preload("res://tests/story_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -37,6 +38,7 @@ func _init() -> void:
 		"test_jumping_costs_light_and_the_hush_follows",
 		"test_events_apply_and_respect_requirements",
 		"test_store_and_fight_rewards",
+		"test_beacon_openers",
 		"test_both_ships_dying_together_is_a_loss",
 		"test_event_results_and_messages_survive_saves",
 		"test_run_saves_and_resumes_at_every_step",
@@ -555,6 +557,17 @@ func test_store_and_fight_rewards() -> void:
 	check(r.finish_fight() and r.state == "chart", "a won fight returns to the chart")
 	check(r.scrap > scrap, "a won fight pays scrap")
 	check(r.ship.system_room("weapons").damage == 0.0, "crew patch systems after a fight")
+
+
+# The opener bodies live in tests/story_tests.gd to keep this file under the lint limit.
+
+
+## Every beacon opens with a story; see tests/story_tests.gd for each check.
+func test_beacon_openers() -> void:
+	STORY_TESTS.every_beacon(self)
+	STORY_TESTS.lead_in(self)
+	STORY_TESTS.effects_checked(self)
+	STORY_TESTS.text_fits(self, SCREENS)
 
 
 func test_run_saves_and_resumes_at_every_step() -> void:
