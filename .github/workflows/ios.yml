@@ -37,7 +37,7 @@ jobs:
       GH_REPO: ${{ github.repository }}
       UPLOAD: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Skip if main has not changed since the last upload
         id: changed
         if: github.event_name == 'schedule'
