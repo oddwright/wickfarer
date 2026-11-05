@@ -78,9 +78,8 @@ func _init() -> void:
 ## Tests that need the real scene in the tree run on the first frame, once the
 ## root has entered it (it hasn't during _init).
 func _process(_delta: float) -> bool:
-	for t in ["test_menu_flow"]:
-		current = t
-		call(t)
+	for t: Variant in [MENU_TESTS.flow]:
+		_run_test(t)
 	_finish()
 	return false
 
@@ -97,14 +96,29 @@ func _finish() -> void:
 		quit(1)
 
 
+## A test that can't be called fails the run instead of being skipped: unlike
+## a wrapper method, a listed Callable's shape is only known when it runs.
 func _run_test(t: Variant) -> void:
-	if t is Callable:
-		var c: Callable = t
-		current = "%s.%s" % [c.get_object().resource_path.get_file().get_basename(), c.get_method()]
-		c.call(self)
-	else:
+	if t is String and has_method(t):
 		current = t
 		call(t)
+	elif t is Callable and _is_helper_test(t):
+		var c: Callable = t
+		var script_name: String = c.get_object().resource_path.get_file().get_basename()
+		current = c.get_method() if script_name.is_empty() else script_name + "." + c.get_method()
+		c.call(self)
+	else:
+		current = str(t)
+		check(false, "list a test method by name, or a helper's static func(t: SceneTree)")
+
+
+func _is_helper_test(c: Callable) -> bool:
+	return (
+		c.is_valid()
+		and c.get_object() != self
+		and c.get_object() is Script
+		and c.get_argument_count() == 1
+	)
 
 
 func check(cond: bool, what: String) -> void:
@@ -814,7 +828,3 @@ func test_settings_save_and_fall_back() -> void:
 
 func test_menu_screens_on_every_screen() -> void:
 	MENU_TESTS.screens(self, SCREEN_TESTS.variants(SCREENS))
-
-
-func test_menu_flow() -> void:
-	MENU_TESTS.flow(self)
