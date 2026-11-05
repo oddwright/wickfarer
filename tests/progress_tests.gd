@@ -52,7 +52,15 @@ static func reaches_chain(t: SceneTree) -> void:
 		r.next_reach()
 		guard += 1
 	_check(t, r.state == "won" and r.is_over(), "the last Gate wins the run")
-	_check(t, r.reaches_crossed == ContentDB.reaches.size(), "after crossing every Reach")
+	var chain := 0
+	var rid := "reach_1"
+	while rid != "":
+		chain += 1
+		rid = str(ContentDB.reaches[rid].get("next", ""))
+	_check(t, r.reaches_crossed == chain, "after crossing every Reach")
+	var training := Run.create(4, "tallow_wren", "training")
+	_arrive_at_gate(training)
+	_check(t, training.state == "won", "the training flight's one Gate ends it")
 	_check(t, not r.next_reach() and r.jump_targets().is_empty(), "a won run goes nowhere")
 
 

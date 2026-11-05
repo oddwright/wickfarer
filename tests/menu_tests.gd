@@ -86,7 +86,7 @@ static func _tap_menu(main: Node, id: String) -> bool:
 static func flow(t: SceneTree) -> void:
 	var dir := "user://test_saves"
 	DirAccess.make_dir_recursive_absolute(dir)
-	for slot in ["run", GameSettings.SLOT]:
+	for slot in ["run", GameSettings.SLOT, Tutorial.SLOT]:
 		SaveService.erase(slot, dir)
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	main.save_dir = dir
@@ -95,6 +95,7 @@ static func flow(t: SceneTree) -> void:
 	_check(t, main.menu == "title", "the app opens on the title menu")
 	_check(t, main.menu_items("title") == ["new_run", "options", "quit"], "no save, no Continue")
 	_check(t, not main.world.visible and not main.run_view.visible, "the title hides the game")
+	main.tutorial.skip()  # a returning player: tests/tutorial_tests.gd covers training
 	_tap_menu(main, "new_run")
 	_check(t, main.menu == "" and main.run != null, "New run starts a run")
 	_check(t, main.run_view.visible, "on the chart")

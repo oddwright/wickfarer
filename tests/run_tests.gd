@@ -1,3 +1,5 @@
+# gdlint: disable=max-public-methods
+# (every test_ method is public by design: the runner calls them by name)
 extends SceneTree
 ## Headless test runner: godot --headless --path . -s tests/run_tests.gd
 ## Exits with code 1 if anything fails, so CI goes red.
@@ -9,6 +11,8 @@ const AUDIO_TESTS = preload("res://tests/audio_tests.gd")
 const STORY_TESTS = preload("res://tests/story_tests.gd")
 const SCREEN_TESTS = preload("res://tests/screen_tests.gd")
 const PROGRESS_TESTS = preload("res://tests/progress_tests.gd")
+const RESUME_TESTS = preload("res://tests/resume_tests.gd")
+const TUTORIAL_TESTS = preload("res://tests/tutorial_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -70,6 +74,7 @@ func _init() -> void:
 		"test_menu_screens_on_every_screen",
 		"test_options_adjust_settings",
 		"test_progression",
+		"test_tutorial",
 	]:
 		current = t
 		call(t)
@@ -78,7 +83,7 @@ func _init() -> void:
 ## Tests that need the real scene in the tree run on the first frame, once the
 ## root has entered it (it hasn't during _init).
 func _process(_delta: float) -> bool:
-	for t in ["test_menu_flow"]:
+	for t in ["test_menu_flow", "_test_tutorial_flow"]:
 		current = t
 		call(t)
 	_finish()
@@ -850,5 +855,22 @@ func test_options_adjust_settings() -> void:
 	MENU_TESTS.options_adjust(self)
 
 
+## Also the cold-start resume: the app killed and reopened on its save.
 func test_menu_flow() -> void:
 	MENU_TESTS.flow(self)
+	RESUME_TESTS.flow(self)
+
+
+## The training lessons, tips, saving mid-step and where the coach writes, everywhere.
+func test_tutorial() -> void:
+	TUTORIAL_TESTS.lessons(self)
+	TUTORIAL_TESTS.tips(self)
+	var dir := "user://test_saves"
+	DirAccess.make_dir_recursive_absolute(dir)
+	TUTORIAL_TESTS.saves(self, dir)
+	TUTORIAL_TESTS.layouts(self, SCREEN_TESTS.variants(SCREENS))
+
+
+## Private so the runner stays under gdlint's public method limit; called by name.
+func _test_tutorial_flow() -> void:
+	TUTORIAL_TESTS.flow(self)
