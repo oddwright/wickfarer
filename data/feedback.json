@@ -29,8 +29,6 @@
     "blaze": {"bus": "SFX", "volume_db": -8, "pitch_jitter": 0.05, "synth": {"wave": "noise", "freq": 300, "freq_end": 300, "ms": 500, "decay": 1.5, "noise": 1.0}},
     "crew_bell": {"bus": "SFX", "volume_db": -6, "pitch_jitter": 0.0, "synth": {"wave": "sine", "freq": 196, "freq_end": 194, "ms": 1400, "decay": 2.5}},
     "enemy_break": {"bus": "SFX", "volume_db": -3, "pitch_jitter": 0.0, "synth": {"wave": "noise", "freq": 70, "freq_end": 30, "ms": 1100, "decay": 2, "noise": 1.0}},
-    "victory_sting": {"bus": "Music", "volume_db": -6, "pitch_jitter": 0.0, "synth": {"wave": "tri", "freq": 523, "freq_end": 784, "ms": 900, "decay": 1.5}},
-    "defeat_swell": {"bus": "Music", "volume_db": -6, "pitch_jitter": 0.0, "synth": {"wave": "sine", "freq": 55, "freq_end": 41, "ms": 2500, "decay": 1.2}},
     "heartbeat": {"bus": "SFX", "volume_db": -6, "pitch_jitter": 0.0, "synth": {"wave": "sine", "freq": 60, "freq_end": 40, "ms": 180, "decay": 6}}
   },
   "cues": {
@@ -64,28 +62,33 @@
     "crew_died.them": {"sound": "crew_bell", "haptic": "tap", "priority": 2, "cooldown": 0.3},
     "danger": {"sound": "heartbeat", "haptic": "heartbeat", "priority": 3, "cooldown": 5.0},
     "won": {"sound": "enemy_break", "haptic": "big_rumble", "shake": 0.8, "hitstop": 0.09, "duck": true, "priority": 4, "cooldown": 1.0},
-    "lost": {"sound": "defeat_swell", "haptic": "big_rumble", "shake": 0.9, "hitstop": 0.12, "duck": true, "priority": 4, "cooldown": 1.0}
+    "lost": {"sound": "enemy_break", "haptic": "big_rumble", "shake": 0.9, "hitstop": 0.12, "duck": true, "priority": 4, "cooldown": 1.0}
   },
   "music": {
     "fade": 1.5,
     "hush_layers": ["warm", "pluck"],
-    "layers": {
-      "pad": {"file": "res://audio/music/hearth_pad.ogg", "volume_db": -3},
-      "warm": {"file": "res://audio/music/hearth_warm.ogg", "volume_db": -3},
-      "pluck": {"file": "res://audio/music/hearth_pluck.ogg", "volume_db": -4},
-      "pulse": {"file": "res://audio/music/hearth_pulse.ogg", "volume_db": -3},
-      "drum": {"file": "res://audio/music/hearth_drum.ogg", "volume_db": -3},
-      "heart": {"file": "res://audio/music/hearth_heart.ogg", "volume_db": -3}
+    "clips": {
+      "hearth": {"enter": "now", "fade": "cross", "fade_beats": 2, "layers": {"pad": {"file": "res://audio/music/hearth_pad.ogg", "volume_db": -3}, "warm": {"file": "res://audio/music/hearth_warm.ogg", "volume_db": -3}, "pluck": {"file": "res://audio/music/hearth_pluck.ogg", "volume_db": -4}}},
+      "arrival": {"enter": "now", "fade_beats": 2, "layers": {"core": {"file": "res://audio/music/ember_arrival_core.ogg", "volume_db": 0}}},
+      "engage": {"enter": "bar", "fade_beats": 1, "intro": "arrival", "layers": {"core": {"file": "res://audio/music/ember_engage_core.ogg", "volume_db": 0}, "ostinato": {"file": "res://audio/music/ember_engage_ostinato.ogg", "volume_db": 0}, "lead": {"file": "res://audio/music/ember_engage_lead.ogg", "volume_db": 0}, "pressure": {"file": "res://audio/music/ember_engage_pressure.ogg", "volume_db": 0}}},
+      "danger": {"enter": "bar", "fade_beats": 1, "layers": {"core": {"file": "res://audio/music/ember_danger_core.ogg", "volume_db": 0}, "ostinato": {"file": "res://audio/music/ember_danger_ostinato.ogg", "volume_db": 0}, "lead": {"file": "res://audio/music/ember_danger_lead.ogg", "volume_db": 0}}},
+      "surge": {"enter": "bar", "fade_beats": 1, "layers": {"core": {"file": "res://audio/music/ember_surge_core.ogg", "volume_db": 0}}},
+      "kill": {"enter": "bar", "fade_beats": 1, "intro": "surge", "intro_from": ["engage"], "layers": {"core": {"file": "res://audio/music/ember_kill_core.ogg", "volume_db": 0}, "ostinato": {"file": "res://audio/music/ember_kill_ostinato.ogg", "volume_db": 0}, "lead": {"file": "res://audio/music/ember_kill_lead.ogg", "volume_db": 0}, "pressure": {"file": "res://audio/music/ember_kill_pressure.ogg", "volume_db": 0}}},
+      "victory": {"enter": "beat", "fade_beats": 1, "then": "hearth", "layers": {"core": {"file": "res://audio/music/ember_victory_core.ogg", "volume_db": 0}}},
+      "defeat": {"enter": "now", "fade_beats": 0.5, "layers": {"core": {"file": "res://audio/music/ember_defeat_core.ogg", "volume_db": 0}}}
     },
     "states": {
-      "chart": ["pad", "warm", "pluck"],
-      "event": ["pad", "pluck"],
-      "store": ["pad", "pluck", "warm"],
-      "combat": ["pad", "warm", "pluck", "pulse", "drum"],
-      "danger": ["pad", "pluck", "pulse", "drum", "heart"],
-      "victory": ["pad", "warm", "pluck"],
-      "defeat": [],
-      "silent": []
+      "chart": {"clip": "hearth", "layers": ["pad", "warm", "pluck"]},
+      "event": {"clip": "hearth", "layers": ["pad", "pluck"]},
+      "store": {"clip": "hearth", "layers": ["pad", "pluck", "warm"]},
+      "engage": {"clip": "engage", "layers": ["core", "ostinato"]},
+      "engage_theme": {"clip": "engage", "layers": ["core", "ostinato", "lead"]},
+      "engage_full": {"clip": "engage", "layers": ["core", "ostinato", "lead", "pressure"]},
+      "danger": {"clip": "danger", "layers": ["core", "ostinato", "lead"]},
+      "kill": {"clip": "kill", "layers": ["core", "ostinato", "lead", "pressure"]},
+      "victory": {"clip": "victory", "layers": ["core", "pad", "warm", "pluck"]},
+      "defeat": {"clip": "defeat", "layers": ["core"]},
+      "silent": {"clip": "", "layers": []}
     }
   }
 }
