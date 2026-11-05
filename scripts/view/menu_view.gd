@@ -23,6 +23,8 @@ func _draw() -> void:
 			_draw_options(l)
 		"confirm":
 			_draw_confirm(l)
+		"depth", "log":
+			_draw_profile_page(l)
 		_:
 			_draw_list(l)
 
@@ -66,6 +68,37 @@ func _draw_list(l: MenuLayout) -> void:
 		)
 	for b in l.buttons:
 		_button(b.rect, tr("UI_MENU_" + str(b.id).to_upper()), true)
+
+
+## The Hush Depth picker or the Wake Log: a heading, wrapped lines under it,
+## as many as fit, then the page's buttons.
+func _draw_profile_page(l: MenuLayout) -> void:
+	var r := l.title_rect
+	var lines: Array[String] = []
+	var heading := tr("UI_LOG_TITLE")
+	if main.menu == "depth":
+		var t := ProfilePages.depth_text(main.profile)
+		heading = t[0]
+		lines.append(t[1])
+	else:
+		lines = ProfilePages.log_lines(main.profile)
+	_text(Vector2(r.position.x, r.position.y + 10), heading, 10.0, Pixel.c("w"))
+	var y := r.position.y + 22
+	for line in lines:
+		for part in _wrap(line.to_upper(), r.size.x, 1):
+			if y + LINE > r.end.y + 4:
+				break
+			_text(Vector2(r.position.x, y), part, 5.0, Pixel.c("h"))
+			y += LINE
+		if line == "":
+			y += LINE / 2
+	for b in l.buttons:
+		var on := true
+		if b.id == "depth_less":
+			on = main.profile.depth > 0
+		elif b.id == "depth_more":
+			on = main.profile.depth < main.profile.depth_open
+		_button(b.rect, tr("UI_MENU_" + str(b.id).to_upper()), on)
 
 
 ## A small lit ember under the title, the one warm thing on the screen.

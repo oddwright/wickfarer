@@ -272,7 +272,7 @@ static func _fits(tl: CoachView, r: Rect2i, keys: Array[String]) -> Array[String
 static func flow(t: SceneTree) -> void:
 	var dir := "user://test_saves"
 	DirAccess.make_dir_recursive_absolute(dir)
-	for slot in ["run", GameSettings.SLOT, Tutorial.SLOT]:
+	for slot in ["run", GameSettings.SLOT, Tutorial.SLOT, Profile.SLOT]:
 		SaveService.erase(slot, dir)
 	var main := _open(t, dir)
 	_check(t, main.menu_items("title") == ["new_run", "options", "quit"], "no Training yet")
@@ -315,7 +315,7 @@ static func flow(t: SceneTree) -> void:
 	main._abandon()
 	_check(t, main.menu_items("title").has("training"), "the title offers Training after")
 	main.queue_free()
-	for slot in ["run", GameSettings.SLOT, Tutorial.SLOT]:
+	for slot in ["run", GameSettings.SLOT, Tutorial.SLOT, Profile.SLOT]:
 		SaveService.erase(slot, dir)
 
 

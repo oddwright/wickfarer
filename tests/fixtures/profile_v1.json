@@ -1,0 +1,47 @@
+{
+  "data": {
+    "depth": 1,
+    "depth_open": 1,
+    "history": [
+      {
+        "depth": 0,
+        "end": "won",
+        "gates": 3,
+        "seed": 502,
+        "ship": "tallow_wren"
+      },
+      {
+        "depth": 0,
+        "end": "lost",
+        "gates": 2,
+        "seed": 501,
+        "ship": "tallow_wren"
+      },
+      {
+        "depth": 0,
+        "end": "lost",
+        "gates": 1,
+        "seed": 500,
+        "ship": "tallow_wren"
+      }
+    ],
+    "profile_version": 1,
+    "recorded": [
+      "fixture-2",
+      "fixture-1",
+      "fixture-0"
+    ],
+    "stats": {
+      "best_gates": 3,
+      "deepest_win": 0,
+      "fights_won": 12,
+      "jumps": 0,
+      "runs": 3,
+      "scrap_earned": 0,
+      "wins": 1
+    },
+    "unlocked": []
+  },
+  "saved_at": 0,
+  "version": 4
+}
