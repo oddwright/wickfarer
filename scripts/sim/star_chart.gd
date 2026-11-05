@@ -53,15 +53,13 @@ static func generate(reach: Dictionary, rng: RandomNumberGenerator) -> StarChart
 
 
 static func _pick_kind(weights: Dictionary, rng: RandomNumberGenerator) -> String:
-	var total := 0
+	var kinds: Array[String] = []
+	var w: Array[int] = []
 	for k: String in weights:
-		total += int(weights[k])
-	var roll := rng.randi_range(1, total)
-	for k: String in weights:
-		roll -= int(weights[k])
-		if roll <= 0:
-			return k
-	return "empty"
+		kinds.append(k)
+		w.append(int(weights[k]))
+	var i := RngStreams.weighted_pick(w, rng)
+	return kinds[i] if i >= 0 else "empty"
 
 
 func _link(by_col: Array, rng: RandomNumberGenerator) -> void:

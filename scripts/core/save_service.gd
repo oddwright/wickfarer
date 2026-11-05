@@ -8,7 +8,7 @@ extends RefCounted
 ## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
-const VERSION := 1
+const VERSION := 2
 const DIR := "user://"
 
 
@@ -25,7 +25,28 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 			d.erase("rng_seed")
 			d["combat"] = combat
 			return d
+		1:
+			# Version 2 rooms remember the power the captain asked for. A version 1
+			# save never shed power for damage it could restore, so what it has is
+			# what was asked for.
+			for ship: Dictionary in _saved_ships(d):
+				for room: Dictionary in ship.get("rooms", []):
+					if not room.has("wanted_power"):
+						room["wanted_power"] = room.get("power", 0)
+			return d
 	return null
+
+
+## Every saved ship in a save's data, whether it holds a lone fight or a run.
+static func _saved_ships(d: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for holder: Dictionary in [d.get("combat", {}), d.get("run", {}).get("combat", {})]:
+		for ship: Dictionary in holder.get("ships", []):
+			out.append(ship)
+	var run_ship: Dictionary = d.get("run", {}).get("ship", {})
+	if not run_ship.is_empty():
+		out.append(run_ship)
+	return out
 
 
 static func path_for(slot: String, dir := DIR) -> String:

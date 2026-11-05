@@ -173,7 +173,7 @@ func power_up(sys: String) -> bool:
 	if r.power >= r.effective_level() or used_power() >= available_power():
 		return false
 	r.power += 1
-	r.wanted_power = r.power
+	_captain_set_power()
 	return true
 
 
@@ -182,8 +182,16 @@ func power_down(sys: String) -> bool:
 	if r == null or r.power <= 0:
 		return false
 	r.power -= 1
-	r.wanted_power = r.power
+	_captain_set_power()
 	return true
+
+
+## A manual power change is the captain's new plan: it also drops any power
+## other systems were waiting to get back after repairs, so freed power never
+## jumps back into a system the captain has since moved on from.
+func _captain_set_power() -> void:
+	for r in rooms:
+		r.wanted_power = r.power
 
 
 ## Damage and a hurt Ember take power away; once fixed, systems get back what

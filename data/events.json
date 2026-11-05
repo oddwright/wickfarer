@@ -135,7 +135,7 @@
     "choices": [
       {
         "text": "EV_TIDEWARDEN_PATROL_C1",
-        "requires": {},
+        "requires": {"light": 1},
         "outcomes": [
           {
             "weight": 1,

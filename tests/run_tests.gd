@@ -23,6 +23,7 @@ func _init() -> void:
 		"test_jumping_costs_light_and_the_hush_follows",
 		"test_events_apply_and_respect_requirements",
 		"test_store_and_fight_rewards",
+		"test_both_ships_dying_together_is_a_loss",
 		"test_run_saves_and_resumes_at_every_step",
 		"test_autopilot_runs_always_end",
 		"test_power_rules",
@@ -70,6 +71,26 @@ func test_content_is_valid() -> void:
 	for e in errors:
 		print("  content: ", e)
 	check(errors.is_empty(), "content has %d problems" % errors.size())
+	var bad: Array[String] = []
+	var reach: Dictionary = ContentDB.reaches.reach_1.duplicate(true)
+	reach.enemies = []
+	reach.kinds = {"fight": 0}
+	reach.columns = 2
+	ContentDB._validate_reach("bad", reach, bad)
+	check(bad.size() >= 3, "a reach with no enemies, no beacon weights or 2 columns is caught")
+	bad.clear()
+	var ev: Dictionary = ContentDB.events.lantern_buoy.duplicate(true)
+	ev.choices[1].outcomes[0]["effects"] = {"light": -2}
+	ContentDB._validate_event("bad", ev, bad)
+	check(not bad.is_empty(), "a choice that spends Light without requiring it is caught")
+	var r := RandomNumberGenerator.new()
+	var zero: Array[int] = [0, 0]
+	check(RngStreams.weighted_pick(zero, r) == -1, "all-zero weights pick nothing")
+	var only_last: Array[int] = [0, 0, 5]
+	var all_last := true
+	for i in 50:
+		all_last = all_last and RngStreams.weighted_pick(only_last, r) == 2
+	check(all_last, "a weight of 0 is never picked")
 
 
 func test_rng_streams_are_independent_and_saveable() -> void:
@@ -148,6 +169,12 @@ func test_old_save_is_migrated() -> void:
 	check(not SaveService.upgrade(empty).is_empty(), "a step that returns empty data still counts")
 	var from_future := {"version": SaveService.VERSION + 1, "data": {"x": 1}}
 	check(SaveService.upgrade(from_future).is_empty(), "a save from a newer game is refused")
+	var v1: Dictionary = JSON.parse_string(
+		FileAccess.get_file_as_string("res://tests/fixtures/save_v1.json")
+	)
+	var up1 := SaveService.upgrade(v1)
+	var room0: Dictionary = up1.data.combat.ships[0].rooms[0]
+	check(room0.wanted_power == room0.power, "v1 rooms get wanted_power from their power")
 	var original := J.canonical(v0)
 	SaveService.upgrade(v0)
 	check(J.canonical(v0) == original, "upgrading never edits the save it was given")
@@ -173,6 +200,15 @@ func test_power_rules() -> void:
 	s.system_room("weapons").damage = 0.0
 	s.enforce_power()
 	check(s.system_power("weapons") == 3, "a repaired system gets its power back")
+	# Once the captain moves power by hand, a broken system stops waiting for it.
+	s.system_room("weapons").damage = 2.0
+	s.enforce_power()
+	var spare_before := s.available_power() - s.used_power()
+	check(spare_before > 0, "damage frees power to spend")
+	check(s.power_up("helm") or s.power_up("engines"), "the captain spends it elsewhere")
+	s.system_room("weapons").damage = 0.0
+	s.enforce_power()
+	check(s.system_power("weapons") == 1, "a repair doesn't take back power moved elsewhere")
 
 
 func test_every_room_reachable_and_ladders_used() -> void:
@@ -403,6 +439,23 @@ func test_events_apply_and_respect_requirements() -> void:
 		if c.species == "sable":
 			c.hp = 0.0
 	check(not r2.can_choose(1), "a dead Sable can't answer the Choir")
+
+
+func test_both_ships_dying_together_is_a_loss() -> void:
+	var r := Run.create(21)
+	r._start_fight("ashmarket_skiff")
+	r.combat.player().hull = 0
+	r.combat.enemy().hull = 0
+	r.combat.tick()
+	check(r.combat.state == "lost", "a fight where both ships die is lost")
+	r.finish_fight()
+	check(r.state == "lost", "the run ends instead of carrying a dead ship on")
+	var r2 := Run.create(22)
+	r2._start_fight("ashmarket_skiff")
+	r2.combat.state = "won"  # as an older save could hold
+	r2.combat.player().hull = 0
+	r2.finish_fight()
+	check(r2.state == "lost", "finish_fight never pays out to a dead ship")
 
 
 func test_store_and_fight_rewards() -> void:
