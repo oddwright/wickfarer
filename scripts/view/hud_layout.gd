@@ -16,6 +16,10 @@ var native: Vector2i
 var hinge: Rect2i
 var player_origin: Vector2i
 var enemy_origin: Vector2i
+## Each hull's drawn pixels on the canvas. Frames carry empty edges, so ships
+## are placed and checked by these instead; on a narrow canvas the frames may overlap.
+var player_body: Rect2i
+var enemy_body: Rect2i
 var buttons: Array[Dictionary] = []  ## {kind, id, rect}
 var message_rect: Rect2i  ## where prompts and hints are written
 ## Opens the pause menu; kept out of buttons, which are the fight controls.
@@ -27,8 +31,13 @@ static func build(
 	player_frame: Vector2i,
 	enemy_frame: Vector2i,
 	systems: Array[String],
-	weapon_count: int
+	weapon_count: int,
+	player_used := Rect2i(),
+	enemy_used := Rect2i()
 ) -> HudLayout:
+	## player_used and enemy_used are the non-empty part of each frame; empty means all of it.
+	var pu := player_used if player_used.has_area() else Rect2i(Vector2i.ZERO, player_frame)
+	var eu := enemy_used if enemy_used.has_area() else Rect2i(Vector2i.ZERO, enemy_frame)
 	var l := HudLayout.new()
 	l.kind = screen.layout
 	l.native = screen.native
@@ -42,8 +51,8 @@ static func build(
 		# leaving a line underneath for prompts.
 		var band := row_y - 40 - 14
 		var py := 40 + maxi(0, (band - player_frame.y) / 2)
-		l.player_origin = Vector2i(2, py)
-		l.enemy_origin = Vector2i(w - enemy_frame.x - 2, py + (player_frame.y - enemy_frame.y) / 2)
+		l.player_origin = Vector2i(2 - pu.position.x, py)
+		l.enemy_origin = Vector2i(w - 2 - eu.end.x, py + (player_frame.y - enemy_frame.y) / 2)
 		var x := 4
 		for s in systems:
 			l._add("system", s, Rect2i(x, row_y, SYS_W, ROW_H))
@@ -65,8 +74,8 @@ static func build(
 		var row2_top := row_y - ROW_H - 4
 		var free := row2_top - 40 - 14 - enemy_frame.y - player_frame.y
 		var gap := maxi(8, free / 3)
-		l.enemy_origin = Vector2i(w - enemy_frame.x - 4, 40 + gap)
-		l.player_origin = Vector2i(4, l.enemy_origin.y + enemy_frame.y + gap)
+		l.enemy_origin = Vector2i(w - 4 - eu.end.x, 40 + gap)
+		l.player_origin = Vector2i(4 - pu.position.x, l.enemy_origin.y + enemy_frame.y + gap)
 		# Left cluster: systems. Right cluster: weapons. The fold line stays empty.
 		var x := 4
 		for s in systems:
@@ -82,6 +91,8 @@ static func build(
 		l._add("pause", 0, Rect2i(w - 34, row2 + 14, 30, 30))
 		var msg_top := l.player_origin.y + player_frame.y + 2
 		l.message_rect = Rect2i(4, msg_top, w - 8, row2 - msg_top - 4)
+	l.player_body = Rect2i(l.player_origin + pu.position, pu.size)
+	l.enemy_body = Rect2i(l.enemy_origin + eu.position, eu.size)
 	return l
 
 
@@ -108,11 +119,11 @@ func again_rect() -> Rect2i:
 
 
 ## Problems with this layout; empty means it is fine. Used by tests.
-func problems(player_frame: Vector2i, enemy_frame: Vector2i) -> Array[String]:
+func problems() -> Array[String]:
 	var out: Array[String] = []
 	var canvas := Rect2i(Vector2i.ZERO, native)
-	var player_rect := Rect2i(player_origin, player_frame)
-	var enemy_rect := Rect2i(enemy_origin, enemy_frame)
+	var player_rect := player_body
+	var enemy_rect := enemy_body
 	for r in [player_rect, enemy_rect]:
 		if not canvas.encloses(r):
 			out.append("ship outside the canvas %s" % r)

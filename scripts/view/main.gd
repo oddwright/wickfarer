@@ -183,8 +183,8 @@ func _start(c: Combat) -> void:
 
 
 func _on_resize() -> void:
-	var size := Vector2i(get_viewport().get_visible_rect().size)
-	var next := ScreenManager.compute(size)
+	var size := window_size()
+	var next := ScreenManager.compute(size, settings.ui_size if settings else 0)
 	var mid_fight := combat != null and combat.state == "fighting"
 	if not screen.is_empty() and next.layout != screen.layout and mid_fight:
 		_pause("UI_FOLD_PAUSE")  # folding or unfolding mid-fight pauses it
@@ -209,7 +209,9 @@ func _rebuild_layout() -> void:
 		world.ship_frames[0],
 		world.ship_frames[1],
 		systems,
-		combat.player().weapon_ids.size()
+		combat.player().weapon_ids.size(),
+		world.ship_used[0],
+		world.ship_used[1]
 	)
 
 
@@ -683,18 +685,59 @@ func _quit() -> void:
 
 
 func _press_option(b: Dictionary) -> void:
+	var size_before := settings.ui_size
 	match b.kind:
-		"less", "more", "toggle":
-			settings.adjust(str(b.id), -1 if b.kind == "less" else 1)
+		"less", "more":
+			var dir := -1 if b.kind == "less" else 1
+			if not option_can_step(str(b.id), dir):
+				return  # the tap cue has played; the greyed button says why
+			settings.adjust(str(b.id), dir)
+			_preview(str(b.id))
+		"toggle":
+			settings.adjust(str(b.id), 1)
 			_preview(str(b.id))
 		"defaults":
 			settings.reset()
 		"back":
 			open_menu(menu_base)
 			return
+	if settings.ui_size != size_before:
+		_on_resize()  # rescales the canvas and rebuilds every layout, this page too
 	audio.apply_settings(settings)
 	haptics.strength = settings.haptics
 	settings.save(save_dir)
+
+
+## Whether a - or + tap on the options screen would change anything. UI size
+## only steps away from auto when the scale really moves, so a tap that can't
+## fit is refused instead of saving a step that does nothing.
+func option_can_step(id: String, dir: int) -> bool:
+	if id != "ui_size":
+		var v := settings.value(id)
+		return v > 0.0 if dir < 0 else v < 1.0
+	var next := settings.ui_size + dir
+	if next < GameSettings.UI_SIZE_MIN or next > GameSettings.UI_SIZE_MAX:
+		return false
+	if absi(next) < absi(settings.ui_size):
+		return true  # back toward auto always works, even where the step did nothing
+	return ScreenManager.compute(window_size(), next).scale != screen.scale
+
+
+## A stepper row's value on the options screen, by row id.
+func stepper_text(id: String) -> String:
+	return ui_size_text() if id == "ui_size" else ""
+
+
+## The UI size control's value: the current scale, and "auto" when it is the default.
+func ui_size_text() -> String:
+	var t := tr("UI_SIZE_SCALE") % int(screen.get("scale", 1))
+	if settings.ui_size == 0:
+		t += " " + tr("UI_SIZE_AUTO")
+	return t.to_upper()
+
+
+func window_size() -> Vector2i:
+	return Vector2i(get_viewport().get_visible_rect().size)
 
 
 ## Lets the player feel or hear the level they just picked.

@@ -8,6 +8,7 @@ const CREW_CELL := Vector2i(17, 14)
 var main: Node  ## the Main node, for combat, layout and selection state
 var ship_tex: Array[Texture2D] = []
 var ship_frames: Array[Vector2i] = []
+var ship_used: Array[Rect2i] = []  ## the hull inside each frame, from Pixel.used_rect
 var crew_tex: Dictionary = {}
 var icons: Texture2D
 var icon_index: Dictionary = {}
@@ -21,10 +22,12 @@ func setup(main_node: Node) -> void:
 	var combat: Combat = main.combat
 	ship_tex.clear()
 	ship_frames.clear()
+	ship_used.clear()
 	for s in combat.ships:
 		var c: Dictionary = ContentDB.ships[s.content_id]
 		ship_tex.append(load(c.sprite))
 		ship_frames.append(Vector2i(int(c.frame_size[0]), int(c.frame_size[1])))
+		ship_used.append(Pixel.used_rect(ship_tex[-1], ship_frames[-1]))
 	for sp: String in ContentDB.species:
 		crew_tex[sp + ":0"] = load("res://art/crew_%s.png" % sp)
 		crew_tex[sp + ":1"] = load("res://art/crew_%s_raider.png" % sp)

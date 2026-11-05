@@ -87,12 +87,23 @@ func _draw_options(l: MenuLayout) -> void:
 		_text(Vector2(row.label_at), tr("UI_OPT_" + id.to_upper()), 5.0, Pixel.c("h"))
 		if (row.bar as Rect2i).size.x > 0:
 			_draw_level(row.bar, s.value(id))
+		if (row.value as Rect2i).size.x > 0:
+			var v: Rect2i = row.value
+			var y := v.position.y + v.size.y / 2 + 3
+			_text(
+				Vector2(v.position.x, y),
+				main.stepper_text(id),
+				5.0,
+				Pixel.c("w"),
+				HORIZONTAL_ALIGNMENT_CENTER,
+				v.size.x
+			)
 	for b in l.buttons:
 		match b.kind:
 			"less":
-				_button(b.rect, "-", s.value(b.id) > 0.0)
+				_button(b.rect, "-", main.option_can_step(str(b.id), -1))
 			"more":
-				_button(b.rect, "+", s.value(b.id) < 1.0)
+				_button(b.rect, "+", main.option_can_step(str(b.id), 1))
 			"toggle":
 				var on := s.value(b.id) > 0.0
 				_button(b.rect, tr("UI_ON") if on else tr("UI_OFF"), on)
