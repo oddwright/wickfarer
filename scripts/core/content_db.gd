@@ -14,7 +14,11 @@ const FILES := {
 	"feedback": "res://data/feedback.json",
 }
 
-const EVENT_EFFECTS := ["scrap", "light", "hull", "crew_hp", "hush", "fight", "fight_bonus_scrap"]
+const EVENT_EFFECTS := [
+	"scrap", "light", "hull", "crew_hp", "hush", "fight", "fight_bonus_scrap", "enemy_hull", "store"
+]
+const BEACON_KINDS := ["fight", "event", "store", "empty"]  ## the Gate has no story
+const MAX_CHOICES := 3  ## what the Square layout's right page has room for
 const EVENT_REQUIRES := ["scrap", "light", "species"]
 const SOUND_BUSES: Array[String] = ["Music", "SFX", "UI"]  ## every bus a sound can play on
 const MAX_HITSTOP := 0.15  ## seconds; longer freezes read as lag
@@ -122,7 +126,7 @@ static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -
 	var kind_total := 0
 	for k: String in kinds:
 		kind_total += int(kinds[k])
-		if not k in ["fight", "event", "store", "empty"]:
+		if not k in BEACON_KINDS:
 			errors.append("%s: unknown beacon kind %s" % [where, k])
 		if int(kinds[k]) < 0:
 			errors.append("%s: beacon kind %s has a negative weight" % [where, k])
@@ -214,9 +218,13 @@ static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]
 static func _validate_event(eid: String, e: Dictionary, errors: Array[String]) -> void:
 	var where := "event %s" % eid
 	_check_string(e.get("text", ""), where, errors)
+	if not str(e.get("beacon", "event")) in BEACON_KINDS:
+		errors.append("%s: unknown beacon kind %s" % [where, e.beacon])
 	var choices: Array = e.get("choices", [])
 	if choices.is_empty():
 		errors.append("%s: no choices" % where)
+	if choices.size() > MAX_CHOICES:
+		errors.append("%s: more than %d choices" % [where, MAX_CHOICES])
 	var has_free_choice := false
 	for c: Dictionary in choices:
 		_check_string(c.get("text", ""), where, errors)
@@ -238,9 +246,7 @@ static func _validate_event(eid: String, e: Dictionary, errors: Array[String]) -
 			for k: String in o.get("effects", {}):
 				if not k in EVENT_EFFECTS:
 					errors.append("%s: unknown effect %s" % [where, k])
-			var fight: String = o.get("effects", {}).get("fight", "")
-			if fight != "" and not ships.has(fight):
-				errors.append("%s: fights unknown ship %s" % [where, fight])
+			_validate_effects(where, o.get("effects", {}), errors)
 			# A choice that spends scrap or Light must require it, or a player
 			# with none gets the reward for free (spending clamps at 0).
 			for res in ["scrap", "light"]:
@@ -252,6 +258,18 @@ static func _validate_event(eid: String, e: Dictionary, errors: Array[String]) -
 	# A player must never be stuck in an event they can't leave.
 	if not has_free_choice:
 		errors.append("%s: needs at least one choice with no requirement" % where)
+
+
+static func _validate_effects(where: String, fx: Dictionary, errors: Array[String]) -> void:
+	var fight := str(fx.get("fight", ""))
+	if fight != "" and fight != Run.REACH_ENEMY and not ships.has(fight):
+		errors.append("%s: fights unknown ship %s" % [where, fight])
+	if fx.has("enemy_hull") and (fight == "" or not _int_in(fx.enemy_hull, -99, 0)):
+		errors.append("%s: enemy_hull is a whole number <= 0, with a fight" % where)
+	if fx.has("fight_bonus_scrap") and fight == "":
+		errors.append("%s: fight_bonus_scrap needs a fight" % where)
+	if fx.has("store") and (fx.store != true or fight != ""):
+		errors.append("%s: store is true, and can't come with a fight" % where)
 
 
 ## Sounds, haptic patterns, cues and music layers, so a typo in a cue fails

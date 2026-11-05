@@ -6,6 +6,7 @@ extends RefCounted
 ## the action methods, which return false when an action isn't allowed.
 
 const STORE_ITEMS: Array[String] = ["repair", "light"]  ## each needs a "<item>_scrap" price
+const REACH_ENEMY := "reach"  ## an event "fight" that picks from the Reach's enemy pool
 
 var reach_id: String
 var rng: RngStreams
@@ -86,18 +87,23 @@ func jump(target: String) -> bool:
 	return true
 
 
+## Every beacon but the Gate opens with a story: an event whose "beacon" is
+## this beacon's kind. Its choices lead into, or around, the fight or store.
 func _arrive() -> void:
-	match str(here().kind):
+	var kind := str(here().kind)
+	if kind == "gate":
+		state = "reach_done"
+		return
+	event_id = _pick_event(kind)
+	if event_id != "":
+		state = "event"
+		return
+	# No story for this kind of beacon: fall straight into what's there.
+	match kind:
 		"fight":
-			var pool: Array = reach().enemies
-			_start_fight(str(pool[rng.stream("encounters").randi_range(0, pool.size() - 1)]))
-		"event":
-			event_id = _pick_event()
-			state = "event" if event_id != "" else "chart"
+			_start_fight(REACH_ENEMY)
 		"store":
 			state = "store"
-		"gate":
-			state = "reach_done"
 		_:
 			state = "chart"
 
@@ -109,8 +115,13 @@ func is_swallowed(id: String) -> bool:
 # ---------------------------------------------------------------- fights
 
 
-func _start_fight(enemy: String) -> void:
+func _start_fight(enemy: String, enemy_hull := 0) -> void:
+	if enemy == REACH_ENEMY:
+		var pool: Array = reach().enemies
+		enemy = str(pool[rng.stream("encounters").randi_range(0, pool.size() - 1)])
 	combat = Combat.from_ship(rng.stream("combat").randi(), ship, enemy)
+	var foe := combat.enemy()
+	foe.hull = clampi(foe.hull + enemy_hull, 1, foe.max_hull)
 	state = "fight"
 
 
@@ -138,17 +149,24 @@ func finish_fight() -> bool:
 # ---------------------------------------------------------------- events
 
 
-func _pick_event() -> String:
-	var ids: Array[String] = []
-	var weights: Array[int] = []
+## A story for a beacon of this kind, one the run hasn't seen if it can.
+## Plain events are never repeated; the openers for fights, stores and
+## empty beacons repeat once they run out, since the beacon still needs one.
+func _pick_event(kind: String) -> String:
+	var fresh: Array[String] = []
+	var seen: Array[String] = []
 	for eid: String in ContentDB.events:
-		if not seen_events.has(eid):
-			ids.append(eid)
-			weights.append(int(ContentDB.events[eid].get("weight", 10)))
+		if str(ContentDB.events[eid].get("beacon", "event")) == kind:
+			(seen if seen_events.has(eid) else fresh).append(eid)
+	var ids := fresh if not fresh.is_empty() or kind == "event" else seen
+	var weights: Array[int] = []
+	for eid in ids:
+		weights.append(int(ContentDB.events[eid].get("weight", 10)))
 	var i := RngStreams.weighted_pick(weights, rng.stream("events"))
 	if i < 0:
 		return ""
-	seen_events.append(ids[i])
+	if not seen_events.has(ids[i]):
+		seen_events.append(ids[i])
 	return ids[i]
 
 
@@ -206,7 +224,9 @@ func _apply(fx: Dictionary) -> void:
 		return
 	if fx.has("fight"):
 		fight_bonus_scrap = int(fx.get("fight_bonus_scrap", 0))
-		_start_fight(str(fx.fight))
+		_start_fight(str(fx.fight), int(fx.get("enemy_hull", 0)))
+	elif fx.get("store", false):
+		state = "store"
 
 
 ## The player has read the event's result; the run moves on.
