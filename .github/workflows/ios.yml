@@ -74,18 +74,18 @@ jobs:
             echo "::error::Missing repo secrets:$missing. See docs/INSTALL.md, iOS."
             exit 1
           fi
-      - name: Use the newest Xcode
+      - name: Check the Xcode version
         if: steps.changed.outputs.skip != 'true'
         # Godot 4.7's iOS templates link against iOS 26 APIs, so Xcode 16 fails at the link step,
-        # and the App Store only takes builds made with the current SDK anyway.
+        # and the App Store only takes builds made with the current SDK. The macos-26 image's
+        # default Xcode is a released 26.x with the iOS platform installed, so use that as is.
         run: |
-          xcode=$(ls -d /Applications/Xcode_2[6-9]*.app 2> /dev/null | sort -V | tail -n 1)
-          if [ -z "$xcode" ]; then
-            echo "::error::No Xcode 26 or newer on this runner: $(ls -d /Applications/Xcode*.app)"
+          xcodebuild -version
+          major=$(xcodebuild -version | sed -n 's/^Xcode \([0-9]*\).*/\1/p')
+          if [ "${major:-0}" -lt 26 ]; then
+            echo "::error::Need Xcode 26 or newer for Godot 4.7's iOS templates; got $major."
             exit 1
           fi
-          sudo xcode-select -s "$xcode"
-          xcodebuild -version
       - name: Cache Godot and its export templates
         if: steps.changed.outputs.skip != 'true'
         id: godot_cache
