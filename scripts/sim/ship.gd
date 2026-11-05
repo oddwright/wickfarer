@@ -68,6 +68,7 @@ static func from_content(id: String, side_value: int) -> Ship:
 		var r := s.system_room(sys)
 		if r:
 			r.power = mini(int(c.start_power[sys]), r.level)
+			r.wanted_power = r.power
 	return s
 
 
@@ -172,6 +173,7 @@ func power_up(sys: String) -> bool:
 	if r.power >= r.effective_level() or used_power() >= available_power():
 		return false
 	r.power += 1
+	r.wanted_power = r.power
 	return true
 
 
@@ -180,9 +182,12 @@ func power_down(sys: String) -> bool:
 	if r == null or r.power <= 0:
 		return false
 	r.power -= 1
+	r.wanted_power = r.power
 	return true
 
 
+## Damage and a hurt Ember take power away; once fixed, systems get back what
+## the captain last asked for, most important first, as far as the reactor allows.
 func enforce_power() -> void:
 	for r in rooms:
 		r.power = mini(r.power, r.effective_level())
@@ -192,6 +197,14 @@ func enforce_power() -> void:
 		while over > 0 and r and r.power > 0:
 			r.power -= 1
 			over -= 1
+	for i in range(POWER_SHED_ORDER.size() - 1, -1, -1):
+		var r := system_room(POWER_SHED_ORDER[i])
+		while (
+			r
+			and r.power < mini(r.wanted_power, r.effective_level())
+			and used_power() < available_power()
+		):
+			r.power += 1
 
 
 func system_power(sys: String) -> int:
@@ -422,6 +435,28 @@ func _tick_weapons(dt: float) -> void:
 			weapon_charge[i] = minf(full, weapon_charge[i] + dt * boost)
 		else:
 			weapon_charge[i] = maxf(0.0, weapon_charge[i] - dt * 2.0)
+
+
+## Between fights: crew patch systems, put out fires and rest. Hull damage stays.
+func recover_after_fight() -> void:
+	var survivors: Array[Crew] = []
+	for c in crew:
+		if c.hp > 0.0:
+			c.path.clear()
+			c.progress = 0.0
+			c.hp = Q.q(minf(c.max_hp, c.hp + (c.max_hp - c.hp) * 0.5))
+			survivors.append(c)
+	crew = survivors
+	for r in rooms:
+		r.damage = 0.0
+		r.fire = 0.0
+		r.warmth = 60.0
+	for i in weapon_ids.size():
+		weapon_charge[i] = 0.0
+		weapon_target[i] = ""
+	ward_layers = 0
+	ward_regen = 0.0
+	enforce_power()
 
 
 func set_ward_deck(deck: int) -> void:

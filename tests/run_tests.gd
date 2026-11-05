@@ -19,6 +19,12 @@ func _init() -> void:
 		"test_save_file_safety",
 		"test_old_save_is_migrated",
 		"test_every_save_fixture_still_loads",
+		"test_chart_is_connected_and_seeded",
+		"test_jumping_costs_light_and_the_hush_follows",
+		"test_events_apply_and_respect_requirements",
+		"test_store_and_fight_rewards",
+		"test_run_saves_and_resumes_at_every_step",
+		"test_autopilot_runs_always_end",
 		"test_power_rules",
 		"test_every_room_reachable_and_ladders_used",
 		"test_wards_block_and_strip",
@@ -150,6 +156,13 @@ func test_power_rules() -> void:
 	check(s.available_power() == 6, "a damaged Ember loses 2 power per level")
 	check(s.used_power() <= 6, "systems shed power when the Ember is hurt")
 	check(s.system_power("wards") == 2, "wards are the last to lose power")
+	s.system_room("ember").damage = 0.0
+	s.system_room("weapons").damage = 3.0
+	s.enforce_power()
+	check(s.system_power("weapons") == 0, "a broken system loses its power")
+	s.system_room("weapons").damage = 0.0
+	s.enforce_power()
+	check(s.system_power("weapons") == 3, "a repaired system gets its power back")
 
 
 func test_every_room_reachable_and_ladders_used() -> void:
@@ -308,3 +321,116 @@ func test_every_save_fixture_still_loads() -> void:
 		run(c, 200)
 		check(c.tick_count >= 400, "%s resumes and plays on" % name)
 	check(found >= 1, "at least one save fixture")
+
+
+# ------------------------------------------------------------------ runs
+
+
+func test_chart_is_connected_and_seeded() -> void:
+	for seed_value in 30:
+		var r := Run.create(seed_value)
+		var seen := r.chart.reachable(r.chart.start_id())
+		check(seen.has(r.chart.gate_id()), "seed %d: the Gate is reachable" % seed_value)
+		for n in r.chart.nodes:
+			if n.kind != "gate":
+				check(
+					not (n.links as Array).is_empty(),
+					"seed %d: %s has a way on" % [seed_value, n.id]
+				)
+		var stores := r.chart.nodes.filter(func(n: Dictionary) -> bool: return n.kind == "store")
+		check(not stores.is_empty(), "seed %d: has a store" % seed_value)
+	var a := Run.create(77)
+	var b := Run.create(77)
+	check(J.canonical(a.chart.to_dict()) == J.canonical(b.chart.to_dict()), "same seed, same chart")
+
+
+func test_jumping_costs_light_and_the_hush_follows() -> void:
+	var r := Run.create(8)
+	var light := r.light
+	var hush := r.hush
+	check(not r.jump("nowhere"), "can't jump to an unlinked beacon")
+	var target: String = r.jump_targets()[0]
+	check(r.jump(target), "jump along a link")
+	check(r.light == light - 1 or r.state == "fight", "a jump costs 1 Light")
+	check(r.hush > hush, "the Hush moves up after every jump")
+	# Out of Light: jumping dark costs hull instead.
+	var r2 := Run.create(9)
+	r2.light = 0
+	var hull := r2.ship.hull
+	r2.jump(r2.jump_targets()[0])
+	check(r2.ship.hull <= hull - 2, "a dark jump costs hull")
+	# Caught by the Hush.
+	var r3 := Run.create(10)
+	r3.hush = 50.0
+	var hull3 := r3.ship.hull
+	r3.jump(r3.jump_targets()[0])
+	check(r3.ship.hull <= hull3 - 3, "a swallowed beacon damages the hull")
+
+
+func test_events_apply_and_respect_requirements() -> void:
+	var r := Run.create(12)
+	r.state = "event"
+	r.event_id = "ash_toll"
+	r.scrap = 0
+	check(not r.can_choose(0), "can't pay a toll with no scrap")
+	r.scrap = 30
+	check(r.can_choose(0), "can pay with scrap")
+	check(r.choose(0) and r.scrap == 20 and r.state == "chart", "paying takes 10 scrap")
+	r.state = "event"
+	r.event_id = "ash_toll"
+	check(r.choose(2) and r.state == "fight", "refusing starts a fight")
+	var r2 := Run.create(13)
+	r2.state = "event"
+	r2.event_id = "choir_signal"
+	check(r2.can_choose(1), "the Wren has a Sable aboard")
+	for c in r2.ship.crew:
+		if c.species == "sable":
+			c.hp = 0.0
+	check(not r2.can_choose(1), "a dead Sable can't answer the Choir")
+
+
+func test_store_and_fight_rewards() -> void:
+	var r := Run.create(14)
+	r.state = "store"
+	r.scrap = 10
+	r.ship.hull = 15
+	check(r.buy("repair") and r.ship.hull == 16 and r.scrap == 7, "repair costs 3 scrap")
+	check(r.buy("light") and r.scrap == 2, "Light costs 5 scrap")
+	check(not r.buy("light"), "can't buy without scrap")
+	check(r.leave_store() and r.state == "chart", "leave the store")
+	r._start_fight("ashmarket_cutter")
+	r.combat.enemy().hull = 0
+	r.combat.tick()
+	var scrap := r.scrap
+	check(r.finish_fight() and r.state == "chart", "a won fight returns to the chart")
+	check(r.scrap > scrap, "a won fight pays scrap")
+	check(r.ship.system_room("weapons").damage == 0.0, "crew patch systems after a fight")
+
+
+func test_run_saves_and_resumes_at_every_step() -> void:
+	var pilot := Autopilot.new()
+	var r := Run.create(21)
+	for step in 12:
+		if r.state in ["reach_done", "lost"]:
+			break
+		var copy := Run.from_dict(JSON.parse_string(J.s(r.to_dict())))
+		check(
+			J.canonical(copy.to_dict()) == J.canonical(r.to_dict()),
+			"step %d: save round-trips" % step
+		)
+		pilot.play(r, 1)
+		Autopilot.new().play(copy, 1)
+		check(
+			J.canonical(copy.to_dict()) == J.canonical(r.to_dict()),
+			"step %d: resumed run plays the same" % step
+		)
+
+
+func test_autopilot_runs_always_end() -> void:
+	var ends := {}
+	for i in 12:
+		var r := Run.create(300 + i)
+		var end := Autopilot.new().play(r)
+		ends[end] = int(ends.get(end, 0)) + 1
+		check(end in ["reach_done", "lost"], "run %d ended properly (got %s)" % [i, end])
+	print("  autopilot run endings: ", ends)

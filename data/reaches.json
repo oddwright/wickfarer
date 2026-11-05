@@ -1,0 +1,18 @@
+{
+  "reach_1": {
+    "name": "REACH_1_NAME",
+    "columns": 8,
+    "rows": [2, 4],
+    "enemies": ["ashmarket_skiff", "ashmarket_skiff", "ashmarket_cutter"],
+    "kinds": {"fight": 40, "event": 35, "store": 10, "empty": 15},
+    "jump_light": 1,
+    "dark_jump_hull": 2,
+    "hush_start": -1.0,
+    "hush_per_jump": 0.65,
+    "hush_per_light": 0.04,
+    "hush_hull": 3,
+    "start": {"scrap": 20, "light": 4},
+    "fight_reward": {"scrap": [12, 24], "light": [1, 2]},
+    "store": {"repair_scrap": 3, "light_scrap": 5}
+  }
+}

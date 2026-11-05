@@ -39,11 +39,13 @@ jobs:
         run: godot --headless --path . -s tests/run_tests.gd
       - name: Balance report (40 seeded fights per policy)
         run: godot --headless --path . -s tools/autobattle.gd -- 40 | tee balance.txt
+      - name: Run report (40 seeded Reach runs by the autopilot)
+        run: godot --headless --path . -s tools/autorun.gd -- 40 | tee -a balance.txt
       - name: Add balance to the run summary
         run: |
           echo '### Auto-battle balance' >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          grep -E 'wins' balance.txt >> "$GITHUB_STEP_SUMMARY"
+          grep -E 'wins|runs' balance.txt >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
   android:

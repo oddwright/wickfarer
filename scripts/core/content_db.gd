@@ -9,13 +9,20 @@ const FILES := {
 	"species": "res://data/species.json",
 	"systems": "res://data/systems.json",
 	"strings": "res://data/strings_en.json",
+	"events": "res://data/events.json",
+	"reaches": "res://data/reaches.json",
 }
+
+const EVENT_EFFECTS := ["scrap", "light", "hull", "crew_hp", "hush", "fight", "fight_bonus_scrap"]
+const EVENT_REQUIRES := ["scrap", "light", "species"]
 
 static var ships: Dictionary = {}
 static var weapons: Dictionary = {}
 static var species: Dictionary = {}
 static var systems: Dictionary = {}
 static var strings: Dictionary = {}
+static var events: Dictionary = {}
+static var reaches: Dictionary = {}
 static var loaded := false
 
 
@@ -27,6 +34,8 @@ static func load_all() -> void:
 	species = _read(FILES.species)
 	systems = _read(FILES.systems)
 	strings = _read(FILES.strings)
+	events = _read(FILES.events)
+	reaches = _read(FILES.reaches)
 	_install_translation()
 	loaded = true
 
@@ -84,6 +93,17 @@ static func validate() -> Array[String]:
 		_check_string(systems[sys_id].get("name", ""), "system %s" % sys_id, errors)
 	for ship_id: String in ships:
 		_validate_ship(ship_id, ships[ship_id], errors)
+	for eid: String in events:
+		_validate_event(eid, events[eid], errors)
+	for rid: String in reaches:
+		var r: Dictionary = reaches[rid]
+		_check_string(r.get("name", ""), "reach %s" % rid, errors)
+		for e: String in r.get("enemies", []):
+			if not ships.has(e):
+				errors.append("reach %s: unknown enemy ship %s" % [rid, e])
+		for k: String in r.get("kinds", {}):
+			if not k in ["fight", "event", "store", "empty"]:
+				errors.append("reach %s: unknown beacon kind %s" % [rid, k])
 	return errors
 
 
@@ -141,3 +161,38 @@ static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]
 		for rid: String in room_ids:
 			if rid != first and ship.find_path(first, rid).is_empty():
 				errors.append("%s: room %s can't be reached" % [where, rid])
+
+
+static func _validate_event(eid: String, e: Dictionary, errors: Array[String]) -> void:
+	var where := "event %s" % eid
+	_check_string(e.get("text", ""), where, errors)
+	var choices: Array = e.get("choices", [])
+	if choices.is_empty():
+		errors.append("%s: no choices" % where)
+	var has_free_choice := false
+	for c: Dictionary in choices:
+		_check_string(c.get("text", ""), where, errors)
+		var req: Dictionary = c.get("requires", {})
+		if req.is_empty():
+			has_free_choice = true
+		for k: String in req:
+			if not k in EVENT_REQUIRES:
+				errors.append("%s: unknown requirement %s" % [where, k])
+			if k == "species" and not species.has(req[k]):
+				errors.append("%s: unknown species %s" % [where, req[k]])
+		var outcomes: Array = c.get("outcomes", [])
+		if outcomes.is_empty():
+			errors.append("%s: a choice has no outcomes" % where)
+		for o: Dictionary in outcomes:
+			_check_string(o.get("text", ""), where, errors)
+			if int(o.get("weight", 0)) < 1:
+				errors.append("%s: outcome weight must be at least 1" % where)
+			for k: String in o.get("effects", {}):
+				if not k in EVENT_EFFECTS:
+					errors.append("%s: unknown effect %s" % [where, k])
+			var fight: String = o.get("effects", {}).get("fight", "")
+			if fight != "" and not ships.has(fight):
+				errors.append("%s: fights unknown ship %s" % [where, fight])
+	# A player must never be stuck in an event they can't leave.
+	if not has_free_choice:
+		errors.append("%s: needs at least one choice with no requirement" % where)

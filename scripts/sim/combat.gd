@@ -31,6 +31,18 @@ static func create(
 	return c
 
 
+## A fight inside a run: the player's ship carries over between fights.
+static func from_ship(seed_value: int, player_ship: Ship, enemy_ship: String) -> Combat:
+	ContentDB.load_all()
+	var c := Combat.new()
+	c.rng = RngStreams.new(seed_value)
+	player_ship.side = 0
+	c.ships.append(player_ship)
+	c.ships.append(Ship.from_content(enemy_ship, 1))
+	c.ai = CombatAI.new()
+	return c
+
+
 func player() -> Ship:
 	return ships[0]
 
