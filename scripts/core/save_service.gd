@@ -8,7 +8,7 @@ extends RefCounted
 ## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
-const VERSION := 3
+const VERSION := 4
 const DIR := "user://"
 
 
@@ -39,6 +39,12 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 			# and runs carry their stats and Reach chain. Their defaults (the hull's
 			# own numbers, zero stats) are right for a version 2 save, so nothing
 			# moves; the bump only stops an older build from loading a newer run.
+			return d
+		3:
+			# Version 4 runs have a Hush Depth and an id for the profile. A version 3
+			# run was played without depths (0), and an empty id makes the profile
+			# fall back to the seed. Nothing moves; the bump keeps an older build
+			# from playing a deep run with none of its rules.
 			return d
 	return null
 

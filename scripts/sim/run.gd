@@ -16,6 +16,9 @@ const REFIT_SYSTEMS: Array[String] = ["wards", "helm", "engines", "mend"]
 
 var reach_id: String
 var depth: int = 0  ## Hush Depth: every depth's rule up to this one applies
+## Names this run in the profile, so it is counted once. Given by whoever starts
+## the run (seeds come from the clock and repeat); "" for runs from older saves.
+var run_id: String = ""
 var reaches_crossed: int = 0  ## Gates passed this run
 var fights_won: int = 0
 var scrap_earned: int = 0  ## every scrap gained, before spending; for the end screen and records
@@ -35,6 +38,7 @@ var seen_events: Array[String] = []
 var fight_bonus_scrap: int = 0
 var messages: Array[String] = []  ## translation keys of what the last jump did, newest last
 var outcome: String = ""  ## an event result the player hasn't read yet (a translation key)
+var _mods := {}  ## the depth rules summed, worked out once per run
 
 
 static func create(
@@ -48,7 +52,7 @@ static func create(
 	r.ship = Ship.from_content(ship_id, 0)
 	r.at = r.chart.start_id()
 	r.visited.append(r.at)
-	r.depth = clampi(depth_value, 0, Profile.max_depth())
+	r.depth = clampi(depth_value, 0, depth_count())
 	r.scrap = maxi(0, int(r.reach().start.scrap) + int(r.mod("start_scrap")))
 	r.light = maxi(0, int(r.reach().start.light) + int(r.mod("start_light")))
 	r.hush = float(r.reach().hush_start)
@@ -59,13 +63,21 @@ func reach() -> Dictionary:
 	return ContentDB.reaches[reach_id]
 
 
+## How many Hush Depths there are past the plain game (depth 0).
+static func depth_count() -> int:
+	return (ContentDB.depths.get("depths", []) as Array).size()
+
+
 ## The sum of one Hush Depth rule over every depth up to this run's.
 func mod(effect: String) -> float:
-	var total := 0.0
-	var list: Array = ContentDB.depths.get("depths", [])
-	for i in mini(depth, list.size()):
-		total += float(list[i].get("effects", {}).get(effect, 0.0))
-	return total
+	if _mods.is_empty():
+		_mods["_"] = 0.0  # marks the sums as worked out, even with no rules
+		var list: Array = ContentDB.depths.get("depths", [])
+		for i in mini(depth, list.size()):
+			var fx: Dictionary = list[i].get("effects", {})
+			for k: String in fx:
+				_mods[k] = float(_mods.get(k, 0.0)) + float(fx[k])
+	return float(_mods.get(effect, 0.0))
 
 
 func here() -> Dictionary:
@@ -452,6 +464,7 @@ func to_dict() -> Dictionary:
 	return {
 		"reach": reach_id,
 		"depth": depth,
+		"id": run_id,
 		"reaches_crossed": reaches_crossed,
 		"fights_won": fights_won,
 		"scrap_earned": scrap_earned,
@@ -478,7 +491,8 @@ static func from_dict(d: Dictionary) -> Run:
 	ContentDB.load_all()
 	var r := Run.new()
 	r.reach_id = str(d.reach)
-	r.depth = int(d.get("depth", 0))
+	r.depth = clampi(int(d.get("depth", 0)), 0, depth_count())  # an update may drop depths
+	r.run_id = str(d.get("id", ""))
 	r.reaches_crossed = int(d.get("reaches_crossed", 0))
 	r.fights_won = int(d.get("fights_won", 0))
 	r.scrap_earned = int(d.get("scrap_earned", 0))

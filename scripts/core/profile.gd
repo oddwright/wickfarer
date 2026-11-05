@@ -5,7 +5,7 @@ extends RefCounted
 ## It never makes the ship stronger; unlocks add options, not power.
 ##
 ## Saved in its own slot the moment it changes (docs/SAVES.md). Runs are
-## counted once each: a run's seed is remembered when it is recorded, so a
+## counted once each: a run's id is remembered when it is recorded, so a
 ## kill between saving the profile and erasing the run can't count it twice.
 
 const SLOT := "profile"
@@ -30,7 +30,7 @@ var stats := {
 var depth_open := 0  ## the deepest Hush Depth the player may choose
 var depth := 0  ## the depth the next run starts at; remembered between runs
 var history: Array[Dictionary] = []  ## newest first: {seed, ship, depth, gates, end}
-var recorded: Array[int] = []  ## seeds of runs already counted
+var recorded: Array[String] = []  ## ids of runs already counted
 ## What the last note() or record() newly opened: unlock ids, and "depth" when
 ## a new Hush Depth opened. The end screens show these.
 var fresh: Array[String] = []
@@ -65,9 +65,9 @@ func note(run: Run) -> bool:
 ## Returns true if anything changed (false for a run already counted).
 func record(run: Run) -> bool:
 	fresh.clear()
-	if not counts(run) or not run.is_over() or recorded.has(run.rng.run_seed):
+	if not counts(run) or not run.is_over() or recorded.has(key(run)):
 		return false
-	recorded.push_front(run.rng.run_seed)
+	recorded.push_front(key(run))
 	recorded.resize(mini(recorded.size(), RECORDED))
 	var won := run.state == "won"
 	stats.runs += 1
@@ -78,8 +78,9 @@ func record(run: Run) -> bool:
 	if won:
 		stats.wins += 1
 		stats.deepest_win = maxi(int(stats.deepest_win), run.depth)
-		if run.depth >= depth_open and depth_open < Profile.max_depth():
-			depth_open = run.depth + 1
+		var next := mini(run.depth + 1, Profile.max_depth())
+		if next > depth_open:
+			depth_open = next
 			fresh.append("depth")
 	(
 		history
@@ -98,6 +99,11 @@ func record(run: Run) -> bool:
 	return true
 
 
+## What a run is remembered by: its id, or its seed for a run saved before ids.
+static func key(run: Run) -> String:
+	return run.run_id if run.run_id != "" else "seed:%d" % run.rng.run_seed
+
+
 func is_unlocked(id: String) -> bool:
 	return id == "" or unlocked.has(id)
 
@@ -112,7 +118,7 @@ func _check_unlocks() -> void:
 
 ## How many Hush Depths there are past the plain game (depth 0).
 static func max_depth() -> int:
-	return (ContentDB.depths.get("depths", []) as Array).size()
+	return Run.depth_count()
 
 
 ## Steps the depth the next run starts at, within what is open.
@@ -154,9 +160,9 @@ static func from_dict(d: Dictionary) -> Profile:
 	for h: Variant in _list(d.get("history")):
 		if h is Dictionary and p.history.size() < HISTORY:
 			p.history.append(_entry(h))
-	for seed_value: Variant in _list(d.get("recorded")):
-		if (seed_value is float or seed_value is int) and p.recorded.size() < RECORDED:
-			p.recorded.append(int(seed_value))
+	for id: Variant in _list(d.get("recorded")):
+		if id is String and p.recorded.size() < RECORDED:
+			p.recorded.append(id)
 	p._check_unlocks()  # content may have added an unlock the records already earn
 	p.fresh.clear()
 	return p

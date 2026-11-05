@@ -197,6 +197,8 @@ static func _validate_depths(errors: Array[String]) -> void:
 				errors.append("%s: unknown effect %s" % [where, k])
 			elif not (fx[k] is float or fx[k] is int) or float(fx[k]) * DEPTH_EFFECTS[k] <= 0.0:
 				errors.append("%s: %s must make the run harder" % [where, k])
+			elif k != "hush_per_jump" and float(fx[k]) != floorf(float(fx[k])):
+				errors.append("%s: %s must be a whole number" % [where, k])
 
 
 ## The Reaches form one chain from reach_1, each "next" naming a real Reach,

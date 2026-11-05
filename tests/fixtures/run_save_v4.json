@@ -1,0 +1,679 @@
+{
+  "data": {
+    "run": {
+      "at": "n0_0",
+      "chart": {
+        "columns": 8,
+        "nodes": [
+          {
+            "col": 0,
+            "id": "n0_0",
+            "kind": "start",
+            "links": [
+              "n1_0",
+              "n1_1",
+              "n1_2"
+            ],
+            "row": 0,
+            "x": 0.0,
+            "y": 0.470703125
+          },
+          {
+            "col": 1,
+            "id": "n1_0",
+            "kind": "fight",
+            "links": [
+              "n2_0"
+            ],
+            "row": 0,
+            "x": 0.142578125,
+            "y": 0.2216796875
+          },
+          {
+            "col": 1,
+            "id": "n1_1",
+            "kind": "event",
+            "links": [
+              "n2_1"
+            ],
+            "row": 1,
+            "x": 0.142578125,
+            "y": 0.4384765625
+          },
+          {
+            "col": 1,
+            "id": "n1_2",
+            "kind": "fight",
+            "links": [
+              "n2_1"
+            ],
+            "row": 2,
+            "x": 0.142578125,
+            "y": 0.77734375
+          },
+          {
+            "col": 2,
+            "id": "n2_0",
+            "kind": "store",
+            "links": [
+              "n3_0"
+            ],
+            "row": 0,
+            "x": 0.2861328125,
+            "y": 0.185546875
+          },
+          {
+            "col": 2,
+            "id": "n2_1",
+            "kind": "empty",
+            "links": [
+              "n3_2",
+              "n3_1"
+            ],
+            "row": 1,
+            "x": 0.2861328125,
+            "y": 0.7265625
+          },
+          {
+            "col": 3,
+            "id": "n3_0",
+            "kind": "event",
+            "links": [
+              "n4_0"
+            ],
+            "row": 0,
+            "x": 0.4287109375,
+            "y": 0.0888671875
+          },
+          {
+            "col": 3,
+            "id": "n3_1",
+            "kind": "empty",
+            "links": [
+              "n4_1",
+              "n4_0"
+            ],
+            "row": 1,
+            "x": 0.4287109375,
+            "y": 0.560546875
+          },
+          {
+            "col": 3,
+            "id": "n3_2",
+            "kind": "fight",
+            "links": [
+              "n4_1"
+            ],
+            "row": 2,
+            "x": 0.4287109375,
+            "y": 0.818359375
+          },
+          {
+            "col": 4,
+            "id": "n4_0",
+            "kind": "fight",
+            "links": [
+              "n5_0",
+              "n4_1"
+            ],
+            "row": 0,
+            "x": 0.5712890625,
+            "y": 0.2421875
+          },
+          {
+            "col": 4,
+            "id": "n4_1",
+            "kind": "event",
+            "links": [
+              "n5_1",
+              "n5_0",
+              "n4_0"
+            ],
+            "row": 1,
+            "x": 0.5712890625,
+            "y": 0.7470703125
+          },
+          {
+            "col": 5,
+            "id": "n5_0",
+            "kind": "fight",
+            "links": [
+              "n6_0",
+              "n6_1"
+            ],
+            "row": 0,
+            "x": 0.7138671875,
+            "y": 0.2080078125
+          },
+          {
+            "col": 5,
+            "id": "n5_1",
+            "kind": "store",
+            "links": [
+              "n6_3",
+              "n6_2"
+            ],
+            "row": 1,
+            "x": 0.7138671875,
+            "y": 0.779296875
+          },
+          {
+            "col": 6,
+            "id": "n6_0",
+            "kind": "store",
+            "links": [
+              "n7_0",
+              "n6_1"
+            ],
+            "row": 0,
+            "x": 0.857421875,
+            "y": 0.1064453125
+          },
+          {
+            "col": 6,
+            "id": "n6_1",
+            "kind": "fight",
+            "links": [
+              "n7_0",
+              "n6_0",
+              "n6_2"
+            ],
+            "row": 1,
+            "x": 0.857421875,
+            "y": 0.40234375
+          },
+          {
+            "col": 6,
+            "id": "n6_2",
+            "kind": "fight",
+            "links": [
+              "n7_0",
+              "n6_1"
+            ],
+            "row": 2,
+            "x": 0.857421875,
+            "y": 0.5634765625
+          },
+          {
+            "col": 6,
+            "id": "n6_3",
+            "kind": "empty",
+            "links": [
+              "n7_0"
+            ],
+            "row": 3,
+            "x": 0.857421875,
+            "y": 0.8388671875
+          },
+          {
+            "col": 7,
+            "id": "n7_0",
+            "kind": "gate",
+            "links": [],
+            "row": 0,
+            "x": 1.0,
+            "y": 0.4697265625
+          }
+        ]
+      },
+      "combat": {
+        "ai_timer": 0.484375,
+        "ai_ward_timer": 0.5,
+        "projectiles": [],
+        "rng": {
+          "seed": "1514247782",
+          "states": {
+            "ai": "-4039001945500076946",
+            "combat": "-4030978839420254856",
+            "encounters": "6118131761737734600",
+            "events": "110477479901197451",
+            "loot": "6266602581730517344",
+            "map": "5614459135880984096"
+          }
+        },
+        "ships": [
+          {
+            "content_id": "tallow_wren",
+            "crew": [
+              {
+                "hp": 100.0,
+                "name": "CREW_NESS",
+                "path": [],
+                "progress": 0.0,
+                "room": "helm",
+                "species": "drifter",
+                "uid": 1
+              },
+              {
+                "hp": 90.0,
+                "name": "CREW_TAMSIN",
+                "path": [],
+                "progress": 0.0,
+                "room": "weapons",
+                "species": "kith",
+                "uid": 2
+              },
+              {
+                "hp": 140.0,
+                "name": "CREW_BO",
+                "path": [],
+                "progress": 0.0,
+                "room": "engines",
+                "species": "oru",
+                "uid": 3
+              },
+              {
+                "hp": 100.0,
+                "name": "CREW_QUILL",
+                "path": [],
+                "progress": 0.0,
+                "room": "wards",
+                "species": "sable",
+                "uid": 4
+              }
+            ],
+            "hull": 20,
+            "max_hull": 20,
+            "next_uid": 5,
+            "reactor": 8,
+            "rooms": [
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "galley",
+                "level": 0,
+                "power": 0,
+                "wanted_power": 0,
+                "warmth": 61.220703125
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "ember",
+                "level": 2,
+                "power": 0,
+                "wanted_power": 0,
+                "warmth": 69.3017578125
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "wards",
+                "level": 4,
+                "power": 2,
+                "wanted_power": 2,
+                "warmth": 61.4375
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "helm",
+                "level": 3,
+                "power": 1,
+                "wanted_power": 1,
+                "warmth": 57.935546875
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "engines",
+                "level": 2,
+                "power": 1,
+                "wanted_power": 1,
+                "warmth": 56.24609375
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "cells",
+                "level": 0,
+                "power": 0,
+                "wanted_power": 0,
+                "warmth": 56.2255859375
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "mend",
+                "level": 1,
+                "power": 1,
+                "wanted_power": 1,
+                "warmth": 57.9208984375
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "weapons",
+                "level": 3,
+                "power": 3,
+                "wanted_power": 3,
+                "warmth": 57.7578125
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "hold",
+                "level": 0,
+                "power": 0,
+                "wanted_power": 0,
+                "warmth": 56.3447265625
+              }
+            ],
+            "side": 0,
+            "stokes": 0,
+            "ward_deck": 1,
+            "ward_layers": 1,
+            "ward_regen": 0.0,
+            "weapon_charge": [
+              4.375,
+              4.375
+            ],
+            "weapon_target": [
+              "",
+              ""
+            ]
+          },
+          {
+            "content_id": "ashmarket_cutter",
+            "crew": [
+              {
+                "hp": 100.0,
+                "name": "CREW_RAIDER_1",
+                "path": [],
+                "progress": 0.0,
+                "room": "weapons",
+                "species": "drifter",
+                "uid": 1
+              },
+              {
+                "hp": 100.0,
+                "name": "CREW_RAIDER_2",
+                "path": [],
+                "progress": 0.0,
+                "room": "helm",
+                "species": "drifter",
+                "uid": 2
+              },
+              {
+                "hp": 90.0,
+                "name": "CREW_RAIDER_3",
+                "path": [],
+                "progress": 0.0,
+                "room": "wards",
+                "species": "kith",
+                "uid": 3
+              }
+            ],
+            "hull": 16,
+            "max_hull": 16,
+            "next_uid": 4,
+            "reactor": 8,
+            "rooms": [
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "helm",
+                "level": 1,
+                "power": 1,
+                "wanted_power": 1,
+                "warmth": 58.3076171875
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "weapons",
+                "level": 3,
+                "power": 3,
+                "wanted_power": 3,
+                "warmth": 61.5703125
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "wards",
+                "level": 4,
+                "power": 4,
+                "wanted_power": 4,
+                "warmth": 59.4638671875
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "stores",
+                "level": 0,
+                "power": 0,
+                "wanted_power": 0,
+                "warmth": 56.76953125
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "engines",
+                "level": 1,
+                "power": 0,
+                "wanted_power": 0,
+                "warmth": 60.330078125
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "ember",
+                "level": 2,
+                "power": 0,
+                "wanted_power": 0,
+                "warmth": 66.88671875
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "mend",
+                "level": 1,
+                "power": 0,
+                "wanted_power": 0,
+                "warmth": 59.3203125
+              },
+              {
+                "damage": 0.0,
+                "fire": 0.0,
+                "id": "hold",
+                "level": 0,
+                "power": 0,
+                "wanted_power": 0,
+                "warmth": 56.55078125
+              }
+            ],
+            "side": 1,
+            "stokes": 0,
+            "ward_deck": 1,
+            "ward_layers": 2,
+            "ward_regen": 0.0,
+            "weapon_charge": [
+              4.375,
+              4.375
+            ],
+            "weapon_target": [
+              "ember",
+              "helm"
+            ]
+          }
+        ],
+        "state": "fighting",
+        "tick": 80
+      },
+      "depth": 3,
+      "event": "",
+      "fight_bonus_scrap": 0,
+      "fights_won": 0,
+      "hush": -1.0,
+      "id": "1793900000000-12345",
+      "jumps": 0,
+      "light": 3,
+      "messages": [],
+      "outcome": "",
+      "reach": "reach_1",
+      "reaches_crossed": 0,
+      "rng": {
+        "seed": "41",
+        "states": {
+          "ai": "-5102257397368582008",
+          "combat": "5908748689580416723",
+          "encounters": "6879158123676993492",
+          "events": "8250524618759912599",
+          "loot": "5232226141980997228",
+          "map": "-4240099211853255920"
+        }
+      },
+      "scrap": 60,
+      "scrap_earned": 0,
+      "seen_events": [],
+      "ship": {
+        "content_id": "tallow_wren",
+        "crew": [
+          {
+            "hp": 100.0,
+            "name": "CREW_NESS",
+            "path": [],
+            "progress": 0.0,
+            "room": "helm",
+            "species": "drifter",
+            "uid": 1
+          },
+          {
+            "hp": 90.0,
+            "name": "CREW_TAMSIN",
+            "path": [],
+            "progress": 0.0,
+            "room": "weapons",
+            "species": "kith",
+            "uid": 2
+          },
+          {
+            "hp": 140.0,
+            "name": "CREW_BO",
+            "path": [],
+            "progress": 0.0,
+            "room": "engines",
+            "species": "oru",
+            "uid": 3
+          },
+          {
+            "hp": 100.0,
+            "name": "CREW_QUILL",
+            "path": [],
+            "progress": 0.0,
+            "room": "wards",
+            "species": "sable",
+            "uid": 4
+          }
+        ],
+        "hull": 20,
+        "max_hull": 20,
+        "next_uid": 5,
+        "reactor": 8,
+        "rooms": [
+          {
+            "damage": 0.0,
+            "fire": 0.0,
+            "id": "galley",
+            "level": 0,
+            "power": 0,
+            "wanted_power": 0,
+            "warmth": 61.220703125
+          },
+          {
+            "damage": 0.0,
+            "fire": 0.0,
+            "id": "ember",
+            "level": 2,
+            "power": 0,
+            "wanted_power": 0,
+            "warmth": 69.3017578125
+          },
+          {
+            "damage": 0.0,
+            "fire": 0.0,
+            "id": "wards",
+            "level": 4,
+            "power": 2,
+            "wanted_power": 2,
+            "warmth": 61.4375
+          },
+          {
+            "damage": 0.0,
+            "fire": 0.0,
+            "id": "helm",
+            "level": 3,
+            "power": 1,
+            "wanted_power": 1,
+            "warmth": 57.935546875
+          },
+          {
+            "damage": 0.0,
+            "fire": 0.0,
+            "id": "engines",
+            "level": 2,
+            "power": 1,
+            "wanted_power": 1,
+            "warmth": 56.24609375
+          },
+          {
+            "damage": 0.0,
+            "fire": 0.0,
+            "id": "cells",
+            "level": 0,
+            "power": 0,
+            "wanted_power": 0,
+            "warmth": 56.2255859375
+          },
+          {
+            "damage": 0.0,
+            "fire": 0.0,
+            "id": "mend",
+            "level": 1,
+            "power": 1,
+            "wanted_power": 1,
+            "warmth": 57.9208984375
+          },
+          {
+            "damage": 0.0,
+            "fire": 0.0,
+            "id": "weapons",
+            "level": 3,
+            "power": 3,
+            "wanted_power": 3,
+            "warmth": 57.7578125
+          },
+          {
+            "damage": 0.0,
+            "fire": 0.0,
+            "id": "hold",
+            "level": 0,
+            "power": 0,
+            "wanted_power": 0,
+            "warmth": 56.3447265625
+          }
+        ],
+        "side": 0,
+        "stokes": 0,
+        "ward_deck": 1,
+        "ward_layers": 1,
+        "ward_regen": 0.0,
+        "weapon_charge": [
+          4.375,
+          4.375
+        ],
+        "weapon_target": [
+          "",
+          ""
+        ]
+      },
+      "state": "fight",
+      "visited": [
+        "n0_0"
+      ]
+    },
+    "ui": {}
+  },
+  "saved_at": 0,
+  "version": 4
+}

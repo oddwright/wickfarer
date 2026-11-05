@@ -38,7 +38,7 @@ static func tap(main: Node, id: String) -> bool:
 ## The title and rule text of the depth page: what the chosen depth adds.
 static func depth_text(profile: Profile) -> Array[String]:
 	var title := TranslationServer.translate("UI_DEPTH") % profile.depth
-	if profile.depth == 0:
+	if profile.depth <= 0 or profile.depth > Profile.max_depth():
 		return [title, TranslationServer.translate("UI_DEPTH_NONE")]
 	var d: Dictionary = ContentDB.depths.depths[profile.depth - 1]
 	var rule := (

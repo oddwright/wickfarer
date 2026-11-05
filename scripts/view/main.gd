@@ -698,6 +698,7 @@ func _tap_run(p: Vector2i) -> void:
 				return
 			if run.state == "reach_done" and run.outcome == "":
 				run.next_reach()
+				fresh_unlocks.clear()  # told once, at the Gate that earned them
 				ui_cue("jump")
 				_enter_screen()
 				return
@@ -874,7 +875,7 @@ func _new_run() -> void:
 		# Once a Hush Depth is open, pick one first; from an end screen, over the title.
 		if menu == "":
 			if run_over():
-				run = null
+				_clear_run()
 			open_menu("title")
 		open_menu("depth")
 		return
@@ -884,7 +885,22 @@ func _new_run() -> void:
 ## Starts a real run at the profile's chosen Hush Depth.
 func start_run() -> void:
 	close_menu()
-	_set_run(Run.create(_fresh_seed(), "tallow_wren", "reach_1", profile.depth if profile else 0))
+	var r := Run.create(_fresh_seed(), "tallow_wren", "reach_1", profile.depth if profile else 0)
+	r.run_id = _new_run_id()
+	_set_run(r)
+
+
+## A run's name in the profile: the clock and a random number, so two runs
+## never share one the way two seeds can. Not sim state; nothing plays on it.
+func _new_run_id() -> String:
+	return "%d-%d" % [int(Time.get_unix_time_from_system() * 1000.0), randi()]
+
+
+func _clear_run() -> void:
+	run = null
+	combat = null
+	layout = null
+	run_layout = null
 
 
 func _start_training() -> void:

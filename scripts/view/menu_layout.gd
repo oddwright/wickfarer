@@ -80,11 +80,15 @@ func _list(ids: Array[String], title_h := TITLE_H) -> void:
 		bx = right_x + (w - MARGIN - right_x - BTN_W) / 2
 		by = (h - col_h) / 2
 	var rows := ids.size()
-	if hinge.size.x == 0 and by + col_h > h - MARGIN:
-		# A short Wide canvas (the Fold cover at a large scale): two columns.
+	var two_wide := BTN_W * 2 + GAP
+	if hinge.size.x == 0 and by + col_h > h - MARGIN and two_wide <= w - MARGIN * 2:
+		# A short Wide canvas (the Fold cover at a large scale): two columns,
+		# with the title moved down to sit over them.
 		rows = ceili(ids.size() / 2.0)
-		bx = (w - BTN_W * 2 - GAP) / 2
-		by = maxi(MARGIN, (h - title_h - (rows * (BTN_H + GAP) - GAP)) / 2) + title_h
+		var top := maxi(MARGIN, (h - title_h - (rows * (BTN_H + GAP) - GAP)) / 2)
+		title_rect.position.y = top
+		bx = (w - two_wide) / 2
+		by = top + title_h
 	for i in ids.size():
 		var x := bx + (i / rows) * (BTN_W + GAP)
 		_add("item", ids[i], Rect2i(x, by + (i % rows) * (BTN_H + GAP), BTN_W, BTN_H))

@@ -6,6 +6,24 @@ extends RefCounted
 const J = preload("res://scripts/core/json_util.gd")
 const MAIN = preload("res://scripts/view/main.gd")
 const DIR := "user://test_profile"
+## The hull unlocks arrive with their hulls (the ship picker's change); these
+## stand-ins test the rules with the conditions planned for them.
+const SAMPLE_UNLOCKS := {
+	"hull_brine_cathedral":
+	{
+		"name": "UNLOCK_BRINE_CATHEDRAL",
+		"hint": "UNLOCK_HINT_BRINE_CATHEDRAL",
+		"stat": "best_gates",
+		"at_least": 1
+	},
+	"hull_porcelain_saint":
+	{
+		"name": "UNLOCK_PORCELAIN_SAINT",
+		"hint": "UNLOCK_HINT_PORCELAIN_SAINT",
+		"stat": "best_gates",
+		"at_least": 3
+	},
+}
 
 
 static func _check(t: SceneTree, cond: bool, what: String) -> void:
@@ -35,6 +53,9 @@ static func records(t: SceneTree) -> void:
 	)
 	_check(t, p.stats.best_gates == 1 and p.stats.wins == 0, "best Gate kept; a loss isn't a win")
 	_check(t, p.history[0].end == "lost" and p.history[0].gates == 1, "the Wake Log lists it")
+	var twin := _ended(1, false, 1)
+	twin.run_id = "a-later-run"
+	_check(t, p.record(twin), "a later run on the same seed is its own run")
 	var live := Run.create(2)
 	_check(t, not p.record(live), "a run still going isn't recorded")
 	var training := Run.create(3, "tallow_wren", "training")
@@ -48,6 +69,14 @@ static func records(t: SceneTree) -> void:
 
 
 static func unlocks(t: SceneTree) -> void:
+	var keep: Dictionary = ContentDB.unlocks.duplicate(true)
+	ContentDB.unlocks = SAMPLE_UNLOCKS.duplicate(true)
+	_check(t, ContentDB.validate().is_empty(), "the sample unlocks are valid content")
+	_unlock_rules(t)
+	ContentDB.unlocks = keep
+
+
+static func _unlock_rules(t: SceneTree) -> void:
 	var p := Profile.new()
 	var r := Run.create(5)
 	_check(t, not p.is_unlocked("hull_brine_cathedral"), "hulls start locked")
@@ -105,8 +134,30 @@ static func depth_ladder(t: SceneTree) -> void:
 	a.jump(target)
 	b.jump(target)
 	_check(t, b.hush > a.hush, "depth 2: the Hush moves faster")
+	var d7 := Run.create(7, "tallow_wren", "reach_1", 7)
+	_check(t, d7.scrap == maxi(0, plain.scrap - 10), "depth 7: less starting scrap")
+	var dark0 := Run.create(12)
+	var dark6 := Run.create(12, "tallow_wren", "reach_1", 6)
+	for r: Run in [dark0, dark6]:
+		r.light = 0
+		r.jump(r.jump_targets()[0])
+	_check(t, dark6.ship.hull == dark0.ship.hull - 1, "depth 6: dark jumps tear more hull")
+	var pay0 := Run.create(13)
+	var pay5 := Run.create(13, "tallow_wren", "reach_1", 5)
+	for r: Run in [pay0, pay5]:
+		r._start_fight("ashmarket_skiff")
+		r.combat.state = "won"
+		r.scrap = 0
+		r.finish_fight()
+	_check(t, pay5.scrap == maxi(0, pay0.scrap - 3), "depth 5: fights pay less scrap")
 	var copy := Run.from_dict(JSON.parse_string(J.s(b.to_dict())))
 	_check(t, copy.depth == 2, "a run's depth survives a save")
+	var too_deep := b.to_dict()
+	too_deep.depth = 99
+	_check(t, Run.from_dict(too_deep).depth == Profile.max_depth(), "a save past the last depth")
+	var capped := Profile.new()
+	capped.record(_ended(77, true, 4, 99))
+	_check(t, capped.depth_open == Profile.max_depth(), "never opens a depth that isn't there")
 	var old := b.to_dict()
 	old.erase("depth")
 	_check(t, Run.from_dict(old).depth == 0, "a run saved before depths is depth 0")
@@ -124,13 +175,16 @@ static func survives_damage(t: SceneTree) -> void:
 		"depth_open": 99,
 		"depth": -4,
 		"history": [{"seed": 5, "end": "won"}, "junk"],
-		"recorded": [5, "x"],
+		"recorded": ["run-5", 7],
 	}
+	var keep: Dictionary = ContentDB.unlocks.duplicate(true)
+	ContentDB.unlocks = SAMPLE_UNLOCKS.duplicate(true)
 	var q := Profile.from_dict(bad)
+	ContentDB.unlocks = keep
 	_check(t, q.unlocked == ["hull_brine_cathedral"], "unknown unlocks are dropped")
 	_check(t, q.stats.runs == 0 and q.stats.wins == 2, "a damaged stat falls back alone")
 	_check(t, q.depth_open == Profile.max_depth() and q.depth == 0, "depths are clamped")
-	_check(t, q.history.size() == 1 and q.recorded == [5], "damaged log entries are skipped")
+	_check(t, q.history.size() == 1 and q.recorded == ["run-5"], "damaged log entries are skipped")
 	_check(t, Profile.from_dict({}).to_dict() == Profile.new().to_dict(), "no file, fresh profile")
 
 
@@ -159,10 +213,26 @@ static func counted_once_after_a_kill(t: SceneTree) -> void:
 	SaveService.erase(Profile.SLOT, DIR)
 
 
+## A profile saved by this version must load in every later one.
+static func fixture_loads(t: SceneTree) -> void:
+	var raw: Variant = JSON.parse_string(
+		FileAccess.get_file_as_string("res://tests/fixtures/profile_v1.json")
+	)
+	_check(t, raw is Dictionary, "profile_v1.json is a JSON object")
+	if not raw is Dictionary:
+		return
+	var up := SaveService.upgrade(raw)
+	var p := Profile.from_dict(up.get("data", {}))
+	_check(t, p.stats.runs == 3 and p.stats.wins == 1, "the v1 profile's records load")
+	_check(t, p.depth_open == 1 and p.depth == 1, "and its Hush Depth")
+	_check(t, p.history.size() == 3 and p.recorded.size() == 3, "and its Wake Log")
+
+
 static func content_checked(t: SceneTree) -> void:
 	var keep_u: Dictionary = ContentDB.unlocks.duplicate(true)
 	var keep_d: Dictionary = ContentDB.depths.duplicate(true)
 	var keep_s: Dictionary = ContentDB.ships.duplicate(true)
+	ContentDB.unlocks = SAMPLE_UNLOCKS.duplicate(true)
 	ContentDB.unlocks.hull_brine_cathedral.stat = "luck"
 	_check(t, _has(ContentDB.validate(), "unknown stat luck"), "an unknown unlock stat is caught")
 	ContentDB.unlocks = keep_u.duplicate(true)

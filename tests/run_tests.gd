@@ -641,6 +641,7 @@ func test_progression() -> void:
 	PROFILE_TESTS.depth_ladder(self)
 	PROFILE_TESTS.survives_damage(self)
 	PROFILE_TESTS.counted_once_after_a_kill(self)
+	PROFILE_TESTS.fixture_loads(self)
 	PROFILE_TESTS.content_checked(self)
 
 
