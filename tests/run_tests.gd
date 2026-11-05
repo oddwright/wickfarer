@@ -716,7 +716,7 @@ func test_feedback_content_is_checked() -> void:
 	bad.music.states["chart"] = ["no_such_layer"]
 	bad.cues["won"].hitstop = 1.0
 	bad.sounds["ui_nope"].pitch_jitter = 1.5
-	bad.music.layers.pulse = {"synth": {"notes": [55], "beats": 0.5}}
+	bad.music.layers.pulse = {"file": "res://audio/music/missing.ogg"}
 	bad.cues["ui.tap"].priority = -1
 	var errors: Array[String] = []
 	ContentDB._validate_feedback(bad, errors)
@@ -782,8 +782,6 @@ func test_audio_service_and_music_states() -> void:
 	for id: String in ContentDB.feedback.sounds:
 		var w := SfxSynth.one_shot(ContentDB.feedback.sounds[id].synth)
 		check(w.data.size() > 100, "sound %s synthesises" % id)
-	var loop := SfxSynth.loop({"notes": [110, 165], "ms": 2000, "beats": 4, "decay": 6})
-	check(loop.loop_mode == AudioStreamWAV.LOOP_FORWARD, "music layers loop")
 	# Headless tests run outside the scene tree, so players can't really play:
 	# check the voice choice on its own.
 	var voices: Array[Dictionary] = []
@@ -831,18 +829,19 @@ func test_audio_service_and_music_states() -> void:
 
 
 ## The fight music was one held synth chord: every layer must be a real stem,
-## all the same length, looping, or they drift apart.
+## imported to loop, and exactly as long as the others, or they drift apart.
 func test_music_layers_are_synced_stems() -> void:
 	var layers: Dictionary = ContentDB.feedback.music.layers
-	var length := -1.0
+	var samples := -1
 	for name: String in layers:
 		var file := str(layers[name].get("file", ""))
-		check(file != "" and ResourceLoader.exists(file), "music layer %s is a real stem" % name)
-		var stream := AudioService._load_or_synth(layers[name], true)
-		if stream == null:
+		check(ResourceLoader.exists(file), "music layer %s is a real stem" % name)
+		if not ResourceLoader.exists(file):
 			continue
-		check(stream is AudioStreamOggVorbis and stream.loop, "%s loops" % name)
-		if length < 0.0:
-			length = stream.get_length()
-		check(absf(stream.get_length() - length) < 0.01, "%s is as long as the others" % name)
-	check(length > 20.0, "the loop is long enough not to drone, got %.1f s" % length)
+		var stream: AudioStream = load(file)
+		check(ContentDB._loops(stream), "%s is imported to loop" % name)
+		var n := roundi(stream.get_length() * 44100.0)
+		if samples < 0:
+			samples = n
+		check(n == samples, "%s is %d samples, the others %d" % [name, n, samples])
+	check(samples > 20 * 44100, "the loop is long enough not to drone")

@@ -1,15 +1,14 @@
 """Wickfarer music: "Hearth in the Cold" combat and chart loop, rendered as synced stems.
 
-Renders a ~60 s demo of the adaptive score idea in an "orchestral but pixely"
-style: a small fixed set of chip-style voices (like a pixel palette), each one
-standing in for an acoustic instrument.
+An "orchestral but pixely" palette: a small fixed set of chip-style voices
+(like a pixel palette), each one standing in for an acoustic instrument.
   bowed lead  - 25% pulse, slow bow attack, late vibrato, 22 kHz sample-hold crunch
   harmonium   - two detuned soft squares, slow swell
   kalimba     - triangle pluck with a quick decay
   bass        - triangle (warm, round)
   felt drum   - pitched sine thump + noise click; brush = filtered noise
   glass       - pure sines, long reverb (the cold of space)
-Writes one 16-bar loop as stems of exactly equal length; the game plays them
+Writes one 16-bar loop (41.7 s) as stems of exactly equal length; the game plays them
 together in an AudioStreamSynchronized and fades layers per music state
 (data/feedback.json "music"). The Hush filter is applied live by the game.
 Key D dorian, 92 bpm. Usage: python3 tools/music/hearth_stems.py audio/music
@@ -17,7 +16,12 @@ Needs numpy, scipy and ffmpeg (for Ogg Vorbis). Never hand-edit the .ogg files:
 change this score and re-render.
 """
 
+import os
+import shutil
+import subprocess
 import sys
+import wave
+
 import numpy as np
 from scipy.signal import fftconvolve, lfilter
 
@@ -26,6 +30,8 @@ BPM = 92
 BEAT = 60.0 / BPM
 BAR = 4
 OUT = sys.argv[1] if len(sys.argv) > 1 else "."
+if shutil.which("ffmpeg") is None:
+    sys.exit("ffmpeg is needed to write Ogg Vorbis stems")
 rng = np.random.default_rng(1977)
 
 NOTE = {"C": 0, "C#": 1, "D": 2, "D#": 3, "E": 4, "F": 5, "F#": 6, "G": 7, "G#": 8, "A": 9, "A#": 10, "B": 11}
@@ -238,8 +244,6 @@ def fold(x):
 
 
 def write_ogg(path, lr):
-    import subprocess, wave
-
     wav = path[:-4] + ".wav"
     pcm = (np.clip(lr, -1, 1) * 32767).astype("<i2")
     with wave.open(wav, "wb") as w:
@@ -249,8 +253,6 @@ def write_ogg(path, lr):
         w.writeframes(pcm.tobytes())
     subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", wav, "-c:a", "libvorbis",
                     "-q:a", "5", path], check=True)
-    import os
-
     os.remove(wav)
 
 
