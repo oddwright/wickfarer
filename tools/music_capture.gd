@@ -11,7 +11,7 @@ const CHART_TIME := 6.0  ## seconds of chart music before each fight
 const AFTER_TIME := 12.0  ## seconds to stay on the end of each fight
 
 var _audio: AudioService
-var _feedback := FeedbackDirector.new()
+var _feedback: FeedbackDirector
 var _director := MusicDirector.new()
 var _pilot := CombatAI.new()
 var _seeds: Array[int] = []
@@ -34,6 +34,7 @@ func _initialize() -> void:
 	if _seeds.is_empty():
 		_seeds = [1005]
 	ContentDB.load_all()
+	_feedback = FeedbackDirector.new(ContentDB.feedback.cues)
 	_audio = AudioService.new()
 	root.add_child(_audio)
 
@@ -48,6 +49,8 @@ func _process(delta: float) -> bool:
 		print("%6.1f s    clip %s" % [_clock, _last_clip])
 	match _phase:
 		"start", "after":
+			if _phase == "start":
+				_audio.apply_settings(GameSettings.new())  # the default mix a new player hears
 			if _phase == "after" and _phase_time < AFTER_TIME:
 				return false
 			if _seeds.is_empty():
