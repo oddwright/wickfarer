@@ -10,7 +10,8 @@ extends RefCounted
 
 const BASE_SHORT := 216  ## canvas height on a regular phone
 const MIN_LONG := 440  ## Wide: both ships fit side by side
-const MIN_LONG_SQUARE := 400  ## Square: ships stack, so less width is needed and an unfolded Fold stays at 5x
+## Square: ships stack, so less width is needed and an unfolded Fold stays at 5x.
+const MIN_LONG_SQUARE := 400
 const MIN_SHORT_SQUARE := 290  ## Square: room for two stacked ships and two button rows
 const WIDE_RATIO := 1.8
 const HINGE_HALF := 8  ## native pixels kept clear on each side of a fold

@@ -9,6 +9,20 @@ env:
   GODOT_VERSION: 4.7.2
 
 jobs:
+  lint:
+    name: Format and lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "gdtoolkit==4.*"
+      - name: Check formatting
+        run: gdformat --check -l 100 scripts tests tools
+      - name: Lint
+        run: gdlint scripts tests tools
+
   test:
     name: Headless tests
     runs-on: ubuntu-latest
@@ -91,4 +105,38 @@ jobs:
         with:
           name: emberwake-android-debug
           path: build/emberwake-debug.apk
+          retention-days: 14
+
+  screens:
+    name: Layout screenshots
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Godot and a virtual display
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1 > /dev/null
+          curl -sSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          sudo mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+      - name: Import project
+        run: godot --headless --path . --import || true
+      - name: Capture phone and foldable layouts
+        run: |
+          mkdir -p screens
+          while read -r w h name; do
+            xvfb-run -a -s "-screen 0 2600x2300x24" godot --path . --rendering-driver opengl3 \
+              -s tools/shot.gd -- "$w" "$h" "screens/$name.png" 300
+            test -s "screens/$name.png"
+          done <<LIST
+          2400 1080 phone-20x9
+          2520 1080 fold7-cover
+          2184 1968 fold7-open
+          1968 2184 fold7-open-portrait
+          2556 1179 iphone-16
+          LIST
+      - uses: actions/upload-artifact@v4
+        with:
+          name: layout-screenshots
+          path: screens/
           retention-days: 14

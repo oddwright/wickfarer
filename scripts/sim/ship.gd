@@ -23,10 +23,10 @@ var ward_deck: int = 1
 var ward_layers: int = 0
 var ward_regen: float = 0.0
 var next_uid: int = 1
+var ladders: Array = []
 
 var _room_by_id: Dictionary = {}
 var _neighbors: Dictionary = {}  ## room id -> Array of [room id, seconds]
-var ladders: Array = []
 
 
 static func from_content(id: String, side_value: int) -> Ship:
@@ -45,7 +45,9 @@ static func from_content(id: String, side_value: int) -> Ship:
 		r.system = rd.get("system", "")
 		r.level = int(rd.get("level", 0))
 		var rc: Array = rd.rect
-		r.rect = Rect2i(int(rc[0]), int(rc[1]), int(rc[2]) - int(rc[0]) + 1, int(rc[3]) - int(rc[1]) + 1)
+		r.rect = Rect2i(
+			int(rc[0]), int(rc[1]), int(rc[2]) - int(rc[0]) + 1, int(rc[3]) - int(rc[1]) + 1
+		)
 		s.rooms.append(r)
 	for wid: String in c.weapons:
 		s.weapon_ids.append(wid)
@@ -80,7 +82,9 @@ func _build_graph(c: Dictionary) -> void:
 		for r in rooms:
 			if r.deck == deck:
 				row.append(r)
-		row.sort_custom(func(a: Room, b: Room) -> bool: return a.rect.position.x < b.rect.position.x)
+		row.sort_custom(
+			func(a: Room, b: Room) -> bool: return a.rect.position.x < b.rect.position.x
+		)
 		for i in range(row.size() - 1):
 			_neighbors[row[i].id].append([row[i + 1].id, WALK_TIME])
 			_neighbors[row[i + 1].id].append([row[i].id, WALK_TIME])
@@ -145,6 +149,7 @@ func find_path(start: String, goal: String) -> Array[String]:
 
 # ---------------------------------------------------------------- power
 
+
 func available_power() -> int:
 	var ember := system_room("ember")
 	var lost := 0
@@ -203,6 +208,7 @@ func weapon_powered(i: int) -> bool:
 
 # ---------------------------------------------------------------- crew
 
+
 func alive_crew() -> Array[Crew]:
 	var out: Array[Crew] = []
 	for c in crew:
@@ -252,6 +258,7 @@ func order_move(uid: int, room_id: String) -> bool:
 
 # ---------------------------------------------------------------- combat stats
 
+
 func evasion() -> float:
 	var helm := system_room("helm")
 	if helm == null or helm.power <= 0 or not manned("helm"):
@@ -273,6 +280,7 @@ func is_dead() -> bool:
 
 
 # ---------------------------------------------------------------- tick
+
 
 func tick(dt: float, rng: RandomNumberGenerator, events: Array) -> void:
 	if is_dead():
@@ -426,6 +434,7 @@ func set_ward_deck(deck: int) -> void:
 
 # ---------------------------------------------------------------- save
 
+
 func to_dict() -> Dictionary:
 	var rd := []
 	for r in rooms:
@@ -433,10 +442,19 @@ func to_dict() -> Dictionary:
 	var cd := []
 	for c in crew:
 		cd.append(c.to_dict())
-	return {"content_id": content_id, "side": side, "hull": hull, "rooms": rd, "crew": cd,
-		"weapon_charge": Array(weapon_charge), "weapon_target": Array(weapon_target),
-		"ward_deck": ward_deck, "ward_layers": ward_layers, "ward_regen": ward_regen,
-		"next_uid": next_uid}
+	return {
+		"content_id": content_id,
+		"side": side,
+		"hull": hull,
+		"rooms": rd,
+		"crew": cd,
+		"weapon_charge": Array(weapon_charge),
+		"weapon_target": Array(weapon_target),
+		"ward_deck": ward_deck,
+		"ward_layers": ward_layers,
+		"ward_regen": ward_regen,
+		"next_uid": next_uid
+	}
 
 
 static func from_dict(d: Dictionary) -> Ship:

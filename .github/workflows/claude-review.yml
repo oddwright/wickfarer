@@ -1,0 +1,59 @@
+name: Claude review
+
+# Reviews every pull request against CLAUDE.md. Needs one repository secret:
+# CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`) or ANTHROPIC_API_KEY.
+# Without a secret the job reports that it skipped instead of failing.
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+  id-token: write
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for a Claude credential
+        id: cred
+        env:
+          OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$OAUTH$KEY" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "No Claude credential set; skipping the automatic review." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.cred.outputs.ok == 'true'
+        with:
+          fetch-depth: 1
+      - uses: anthropics/claude-code-action@v1
+        if: steps.cred.outputs.ok == 'true'
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request for Emberwake, a Godot 4 GDScript game.
+            Read CLAUDE.md first; its architecture rules are the review standard.
+            Look for, in order:
+            1. Bugs: wrong game rules, crashes, null access, JSON number types, save breakage.
+            2. Rule breaks: sim code touching nodes or frame time, view code changing sim state,
+               new float sim state not quantised or not saved, strings not translated,
+               content hard-coded instead of in data/, missing save migration or fixture.
+            3. Missing tests for new rules or fixed bugs.
+            4. Mobile issues: touch targets under 48 dp, buttons on the fold line, work per frame
+               that should be cached.
+            Leave inline comments only for real problems, each with a concrete fix.
+            Finish with one short summary comment on the PR. Skip praise and style nits that
+            gdformat and gdlint already enforce.
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Glob,Grep"

@@ -1,0 +1,32 @@
+name: Bug report
+description: Something broke or looks wrong in the game
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: input
+    id: seed
+    attributes:
+      label: Seed
+      description: Shown on the end-of-fight screen. It lets us replay the exact fight.
+  - type: input
+    id: device
+    attributes:
+      label: Device and screen
+      description: For example "Galaxy Z Fold7, unfolded, landscape".
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Build
+      description: The CI run or commit the APK came from.

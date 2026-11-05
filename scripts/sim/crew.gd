@@ -20,8 +20,15 @@ func is_moving() -> bool:
 
 
 func to_dict() -> Dictionary:
-	return {"uid": uid, "name": name, "species": species, "room": room, "hp": hp,
-		"path": Array(path), "progress": progress}
+	return {
+		"uid": uid,
+		"name": name,
+		"species": species,
+		"room": room,
+		"hp": hp,
+		"path": Array(path),
+		"progress": progress
+	}
 
 
 static func from_dict(d: Dictionary) -> Crew:

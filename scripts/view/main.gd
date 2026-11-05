@@ -40,7 +40,9 @@ func _ready() -> void:
 	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(container)
 	viewport = SubViewport.new()
-	viewport.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
+	viewport.canvas_item_default_texture_filter = (
+		Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
+	)
 	viewport.handle_input_locally = false
 	viewport.gui_disable_input = true
 	container.add_child(viewport)
@@ -97,7 +99,13 @@ func _rebuild_layout() -> void:
 	for s in HudLayout.SYSTEM_ORDER:
 		if combat.player().system_room(s):
 			systems.append(s)
-	layout = HudLayout.build(screen, world.ship_frames[0], world.ship_frames[1], systems, combat.player().weapon_ids.size())
+	layout = HudLayout.build(
+		screen,
+		world.ship_frames[0],
+		world.ship_frames[1],
+		systems,
+		combat.player().weapon_ids.size()
+	)
 
 
 func _pause(reason := "") -> void:
@@ -114,12 +122,16 @@ func _save() -> void:
 func _notification(what: int) -> void:
 	# Phones don't promise a quit event, so save whenever we lose the screen.
 	match what:
-		NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_CLOSE_REQUEST:
+		NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT:
+			if combat and combat.state == "fighting":
+				_pause("UI_TAP_TO_RESUME")
+		NOTIFICATION_WM_CLOSE_REQUEST:
 			if combat and combat.state == "fighting":
 				_pause("UI_TAP_TO_RESUME")
 
 
 # ------------------------------------------------------------------ loop
+
 
 func _process(delta: float) -> void:
 	if combat == null or layout == null:
@@ -179,10 +191,18 @@ func _float(side: int, room_id: String, s: String, col: Color) -> void:
 	for f in floaters:
 		if f.life > 0.6 and absf(f.pos.x - (rr.get_center().x - 30)) < 1.0:
 			stack += 1
-	floaters.append({"text": s, "pos": Vector2(rr.get_center().x - 30, rr.position.y - 7 * mini(stack, 2)), "life": 1.0, "color": col})
+	floaters.append(
+		{
+			"text": s,
+			"pos": Vector2(rr.get_center().x - 30, rr.position.y - 7 * mini(stack, 2)),
+			"life": 1.0,
+			"color": col
+		}
+	)
 
 
 # ------------------------------------------------------------------ input
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:

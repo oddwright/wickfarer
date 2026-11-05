@@ -8,9 +8,10 @@ const CELL := 5  ## glyph slot width in the font strip
 const GLYPH_H := 5
 const LINE := 7
 
+static var glyph_index: Dictionary = {}  ## char -> [slot, width]
+
 var main: Node
 var glyphs: Texture2D
-static var glyph_index: Dictionary = {}  ## char -> [slot, width]
 
 
 func setup(main_node: Node) -> void:
@@ -47,7 +48,14 @@ func _wrap(s: String, max_w: int, k: int) -> PackedStringArray:
 
 
 ## native_pos is the text baseline (bottom of the letters), as before.
-func _text(native_pos: Vector2, s: String, size_px: float, col: Color, align := HORIZONTAL_ALIGNMENT_LEFT, width := -1.0) -> void:
+func _text(
+	native_pos: Vector2,
+	s: String,
+	size_px: float,
+	col: Color,
+	align := HORIZONTAL_ALIGNMENT_LEFT,
+	width := -1.0
+) -> void:
 	var k := 2 if size_px >= 10.0 else 1
 	var up := s.to_upper()
 	var lines: PackedStringArray = [up] if width <= 0 else _wrap(up, int(width), k)
@@ -73,7 +81,12 @@ func _line(s: String, at: Vector2i, k: int, col: Color) -> void:
 		if glyph_index.has(ch):
 			var g: Array = glyph_index[ch]
 			var gw := int(g[1])
-			draw_texture_rect_region(glyphs, Rect2(x, at.y, gw * k, GLYPH_H * k), Rect2(int(g[0]) * CELL, 0, gw, GLYPH_H), col)
+			draw_texture_rect_region(
+				glyphs,
+				Rect2(x, at.y, gw * k, GLYPH_H * k),
+				Rect2(int(g[0]) * CELL, 0, gw, GLYPH_H),
+				col
+			)
 		x += _adv(ch) * k
 
 
@@ -86,12 +99,50 @@ func _draw() -> void:
 	var foe := combat.enemy()
 	var ink := Pixel.c("h")
 	var quiet := Pixel.c("g")
-	_text(Vector2(4, 11), "%s   %s %d/%d" % [tr(ContentDB.ships[me.content_id].name), tr("UI_HULL"), me.hull, me.max_hull], 6.5, ink)
-	_text(Vector2(4, 37), "%s %d/%d    %s %d%%" % [tr("UI_POWER"), me.used_power(), me.available_power(), tr("UI_EVASION"), me.evasion()], 5.0, quiet)
-	_text(Vector2(l.native.x - 4 - 200, 11), "%s   %s %d/%d" % [tr(ContentDB.ships[foe.content_id].name), tr("UI_HULL"), foe.hull, foe.max_hull],
-		6.5, ink, HORIZONTAL_ALIGNMENT_RIGHT, 200)
+	_text(
+		Vector2(4, 11),
+		(
+			"%s   %s %d/%d"
+			% [tr(ContentDB.ships[me.content_id].name), tr("UI_HULL"), me.hull, me.max_hull]
+		),
+		6.5,
+		ink
+	)
+	_text(
+		Vector2(4, 37),
+		(
+			"%s %d/%d    %s %d%%"
+			% [
+				tr("UI_POWER"),
+				me.used_power(),
+				me.available_power(),
+				tr("UI_EVASION"),
+				me.evasion()
+			]
+		),
+		5.0,
+		quiet
+	)
+	_text(
+		Vector2(l.native.x - 4 - 200, 11),
+		(
+			"%s   %s %d/%d"
+			% [tr(ContentDB.ships[foe.content_id].name), tr("UI_HULL"), foe.hull, foe.max_hull]
+		),
+		6.5,
+		ink,
+		HORIZONTAL_ALIGNMENT_RIGHT,
+		200
+	)
 	var ev := foe.evasion()
-	_text(Vector2(l.native.x - 4 - 200, 37), "%s %d%%" % [tr("UI_EVASION"), ev], 5.0, quiet, HORIZONTAL_ALIGNMENT_RIGHT, 200)
+	_text(
+		Vector2(l.native.x - 4 - 200, 37),
+		"%s %d%%" % [tr("UI_EVASION"), ev],
+		5.0,
+		quiet,
+		HORIZONTAL_ALIGNMENT_RIGHT,
+		200
+	)
 	for b in l.buttons:
 		var r: Rect2i = b.rect
 		match b.kind:
@@ -100,7 +151,12 @@ func _draw() -> void:
 			"weapon":
 				var i := int(b.id)
 				if i < me.weapon_ids.size():
-					_text(Vector2(r.position.x + 15, r.position.y + 10), tr(ContentDB.weapons[me.weapon_ids[i]].name), 5.5, ink)
+					_text(
+						Vector2(r.position.x + 15, r.position.y + 10),
+						tr(ContentDB.weapons[me.weapon_ids[i]].name),
+						5.5,
+						ink
+					)
 			"ward":
 				_text(Vector2(r.position.x + 17, r.position.y + 25), "up", 4.5, quiet)
 				_text(Vector2(r.position.x + 17, r.position.y + 35), "low", 4.5, quiet)
@@ -109,7 +165,14 @@ func _draw() -> void:
 		for room in combat.ships[side].rooms:
 			if room.warmth < Ship.COLD:
 				var rr: Rect2i = main.world.room_rect(side, room)
-				_text(Vector2(rr.position.x, rr.position.y + 7), tr("UI_COLD"), 4.0, Pixel.c("j"), HORIZONTAL_ALIGNMENT_RIGHT, rr.size.x - 2)
+				_text(
+					Vector2(rr.position.x, rr.position.y + 7),
+					tr("UI_COLD"),
+					4.0,
+					Pixel.c("j"),
+					HORIZONTAL_ALIGNMENT_RIGHT,
+					rr.size.x - 2
+				)
 	for f in main.floaters:
 		var a := clampf(f.life / 0.4, 0.0, 1.0)
 		var col: Color = f.color
@@ -127,12 +190,47 @@ func _draw() -> void:
 		msg = tr("UI_HINT")
 	if msg != "" and combat.state == "fighting":
 		var mr := l.message_rect
-		_text(Vector2(mr.position.x, mr.position.y + mr.size.y / 2 + 3), msg, 6.0, Pixel.c("w"), HORIZONTAL_ALIGNMENT_CENTER, mr.size.x)
+		_text(
+			Vector2(mr.position.x, mr.position.y + mr.size.y / 2 + 3),
+			msg,
+			6.0,
+			Pixel.c("w"),
+			HORIZONTAL_ALIGNMENT_CENTER,
+			mr.size.x
+		)
 	if main.paused and combat.state == "fighting":
-		_text(Vector2(0, l.native.y / 2 - 26), tr("UI_PAUSED"), 14.0, Pixel.c("w"), HORIZONTAL_ALIGNMENT_CENTER, l.native.x)
+		_text(
+			Vector2(0, l.native.y / 2 - 26),
+			tr("UI_PAUSED"),
+			14.0,
+			Pixel.c("w"),
+			HORIZONTAL_ALIGNMENT_CENTER,
+			l.native.x
+		)
 	if combat.state != "fighting":
 		var title := tr("UI_WON") if combat.state == "won" else tr("UI_LOST")
-		_text(Vector2(0, l.native.y / 2 - 12), title, 12.0, Pixel.c("w"), HORIZONTAL_ALIGNMENT_CENTER, l.native.x)
+		_text(
+			Vector2(0, l.native.y / 2 - 12),
+			title,
+			12.0,
+			Pixel.c("w"),
+			HORIZONTAL_ALIGNMENT_CENTER,
+			l.native.x
+		)
 		var ar := l.again_rect()
-		_text(Vector2(ar.position.x, ar.position.y + 18), tr("UI_AGAIN"), 7.0, Pixel.c("w"), HORIZONTAL_ALIGNMENT_CENTER, ar.size.x)
-		_text(Vector2(0, ar.end.y + 12), "%s %d" % [tr("UI_SEED"), combat.rng.run_seed], 5.0, quiet, HORIZONTAL_ALIGNMENT_CENTER, l.native.x)
+		_text(
+			Vector2(ar.position.x, ar.position.y + 18),
+			tr("UI_AGAIN"),
+			7.0,
+			Pixel.c("w"),
+			HORIZONTAL_ALIGNMENT_CENTER,
+			ar.size.x
+		)
+		_text(
+			Vector2(0, ar.end.y + 12),
+			"%s %d" % [tr("UI_SEED"), combat.rng.run_seed],
+			5.0,
+			quiet,
+			HORIZONTAL_ALIGNMENT_CENTER,
+			l.native.x
+		)

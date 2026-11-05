@@ -39,9 +39,23 @@ func _init() -> void:
 				timeouts += 1
 			times.append(c.time())
 		times.sort()
-		print("%-8s wins %3d%%  stalemates %d  median fight %3.0fs  (10%%: %3.0fs, 90%%: %3.0fs)  avg hull left on a win %.1f/20" % [
-			policy, 100 * wins / n, timeouts, times[n / 2], times[n / 10], times[n * 9 / 10],
-			float(hull_left) / maxf(1, wins)])
+		print(
+			(
+				(
+					"%-8s wins %3d%%  stalemates %d  median fight %3.0fs"
+					+ "  (10%%: %3.0fs, 90%%: %3.0fs)  avg hull left on a win %.1f/20"
+				)
+				% [
+					policy,
+					100 * wins / n,
+					timeouts,
+					times[n / 2],
+					times[n / 10],
+					times[n * 9 / 10],
+					float(hull_left) / maxf(1, wins)
+				]
+			)
+		)
 	quit()
 
 
