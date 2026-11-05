@@ -107,11 +107,16 @@ static func flow(t: SceneTree, main: Node) -> void:
 	_check(t, main.ships.picked() == ids[1], "next moves on")
 	var pr: Rect2i = main.menu_layout.preview_rect
 	var k := float(main.screen.scale)
-	var from := Vector2(pr.get_center()) * k
+	var from := Vector2(pr.position.x + pr.size.x / 4, pr.get_center().y) * k  # clear of the fold
 	ShipPicker.swipe(main, from, from + Vector2(-30.0 * k, 4.0 * k))
 	_check(t, main.ships.picked() == ids[2], "a swipe left shows the next hull")
 	ShipPicker.swipe(main, from, from + Vector2(6.0 * k, 0.0))
 	_check(t, main.ships.picked() == ids[2], "a nudge is not a swipe")
+	var hinge: Rect2i = main.menu_layout.hinge
+	if hinge.size.x > 0:
+		var on_fold := Vector2(hinge.get_center().x, pr.get_center().y) * k
+		ShipPicker.swipe(main, on_fold, on_fold + Vector2(-30.0 * k, 0.0))
+		_check(t, main.ships.picked() == ids[2], "a swipe that starts on the fold does nothing")
 	var locked := ""
 	for id in ids:
 		if not main.ships.is_open(id):
@@ -131,6 +136,7 @@ static func flow(t: SceneTree, main: Node) -> void:
 		main.menu == "" and main.run != null and main.run.ship.content_id == ids[-1],
 		"Launch starts the run in the picked hull"
 	)
+	_depth_after_ship(t, main, ids[-1])
 	main.run.state = "lost"
 	main._enter_screen()
 	main._tap(
@@ -141,3 +147,29 @@ static func flow(t: SceneTree, main: Node) -> void:
 	main.back()
 	_check(t, main.menu == "title", "and Back from there is the title")
 	main.profile.unlocked.clear()
+
+
+## With a Hush Depth open, Launch goes on to the depth page. Back from it
+## returns to ship select, and a save made there remembers the picked hull.
+static func _depth_after_ship(t: SceneTree, main: Node, hull: String) -> void:
+	var was: int = main.profile.depth_open
+	main.profile.depth_open = maxi(1, was)
+	main.open_menu("title")
+	_tap(main, "new_run")
+	_tap(main, "yes")
+	main.ships.show(hull)
+	_tap(main, "launch")
+	_check(t, main.menu == "depth", "with a depth open, Launch asks for a depth")
+	main.back()
+	_check(t, main.menu == "ship" and main.ships.picked() == hull, "Back from it is the pick")
+	_tap(main, "launch")
+	var saved: Dictionary = main._ui_state()
+	main.ships.pick = 0
+	main._restore_ui(saved)
+	_check(
+		t,
+		main.menu == "depth" and main.ships.picked() == hull,
+		"a depth page restored from a save still launches the picked hull"
+	)
+	main.profile.depth_open = was
+	main.close_menu()

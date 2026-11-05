@@ -14,7 +14,7 @@ const AUTOSAVE_EVERY := 2.0
 ## else falls back to the title.
 const RESUMABLE_PAGES := {
 	"": [""],
-	"title": ["title", "options", "confirm", "depth", "log"],
+	"title": ["title", "options", "confirm", "ship", "depth", "log"],
 	"pause": ["pause", "options", "confirm", "depth"],
 }
 const CONFIRMS: Array[String] = ["abandon", "new_run"]
@@ -109,6 +109,7 @@ func _setup_feedback() -> void:
 	settings = GameSettings.load_or_default(save_dir)
 	tutorial = Tutorial.load_or_default(save_dir)
 	profile = Profile.load_or_default(save_dir)
+	ships.profile = profile
 	feedback = FeedbackDirector.new(ContentDB.feedback.get("cues", {}), settings)
 	audio = AudioService.new()
 	add_child(audio)
@@ -296,6 +297,7 @@ func _ui_state() -> Dictionary:
 		"paused_before_menu": _paused_before_menu,
 		"weapon": selected_weapon,
 		"crew": selected_crew,
+		"ship": ships.picked(),
 		"music": music_director.to_dict(combat),
 	}
 
@@ -319,6 +321,7 @@ func _restore_ui(d: Dictionary) -> bool:
 		var uid := _int_or(d.get("crew"), -1)
 		selected_crew = uid if _player_has_crew(uid) else -1
 	if page != "":
+		ships.show(str(d.get("ship", "")))  # the depth page launches the hull picked before it
 		confirm_action = str(d.get("confirm", ""))
 		if page == "confirm" and not confirm_action in CONFIRMS:
 			page = base  # a confirm page that asks nothing: back to its menu
@@ -785,8 +788,10 @@ func back() -> void:
 		"":
 			if run != null:
 				open_menu("pause")
-		"options", "confirm", "ship", "depth", "log":
+		"options", "confirm", "ship", "log":
 			open_menu(menu_base)
+		"depth":
+			open_menu("ship")  # the depth page comes after ship select
 		"pause":
 			_resume()
 		"title":
@@ -805,12 +810,12 @@ func _tap_menu(p: Vector2i) -> void:
 	var b := menu_layout.button_at(p)
 	if b.is_empty():
 		return
+	if menu == "ship":
+		ShipPicker.press(self, str(b.kind))  # plays its own cue: a locked Launch refuses
+		return
 	ui_cue("tap")
 	if menu == "options":
 		_press_option(b)
-		return
-	if menu == "ship":
-		ShipPicker.press(self, str(b.kind))
 		return
 	if menu in ProfilePages.PAGES and ProfilePages.tap(self, str(b.id)):
 		return
@@ -880,9 +885,6 @@ func _new_run() -> void:
 		if run_over():
 			_clear_run()
 		open_menu("title")
-	ships.unlocked.clear()
-	if profile:
-		ships.unlocked.assign(profile.unlocked)
 	open_menu("ship")
 
 

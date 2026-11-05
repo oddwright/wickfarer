@@ -39,7 +39,7 @@ const MUSIC_ENTRIES: Array[String] = ["now", "beat", "bar"]  ## when a music cli
 const PHONE_LOW_HZ := 150  ## phone speakers barely play anything lower
 const MAX_HITSTOP := 0.15  ## seconds; longer freezes read as lag
 const SYNTH_WAVES := ["sine", "tri", "square", "saw", "noise"]
-const PLAYABLE_FRAME := Vector2i(240, 80)  ## MenuLayout.PREVIEW: the ship select preview
+const PLAYABLE_FRAME := Vector2i(240, 80)  ## the largest frame the ship select preview shows
 
 static var ships: Dictionary = {}
 static var weapons: Dictionary = {}

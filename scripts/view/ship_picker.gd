@@ -7,8 +7,7 @@ extends RefCounted
 const SWIPE := 20  ## native pixels across the hull that flip to the next one
 
 var pick := 0  ## an index into ShipRoster.playable()
-## Unlock ids the player has earned; meta progression fills this in.
-var unlocked: Array[String] = []
+var profile: Profile  ## says which unlocks the player has earned; none without one
 
 
 ## The hull on show.
@@ -18,7 +17,7 @@ func picked() -> String:
 
 
 func is_open(id: String) -> bool:
-	return ShipRoster.is_unlocked(id, unlocked)
+	return ShipRoster.is_unlocked(id, _unlocked())
 
 
 ## Shows the next (1) or previous (-1) hull, wrapping round.
@@ -28,7 +27,11 @@ func step(dir: int) -> void:
 
 ## The hull a run starts in: the one on show, or the first open one if that is locked.
 func start_hull() -> String:
-	return picked() if is_open(picked()) else ShipRoster.default_ship(unlocked)
+	return picked() if is_open(picked()) else ShipRoster.default_ship(_unlocked())
+
+
+func _unlocked() -> Array[String]:
+	return profile.unlocked if profile else ([] as Array[String])
 
 
 func show(id: String) -> void:
@@ -37,10 +40,12 @@ func show(id: String) -> void:
 
 ## A sideways drag that starts on the hull steps through hulls: returns the
 ## step (1 or -1), or 0 when the drag was a tap, a nudge or mostly vertical.
+## A drag that starts on the fold does nothing: nothing there may respond.
 ## Positions are in native pixels.
-static func swipe_step(preview: Rect2i, from: Vector2, to: Vector2) -> int:
+static func swipe_step(preview: Rect2i, hinge: Rect2i, from: Vector2, to: Vector2) -> int:
 	var d := to - from
-	if not preview.has_point(Vector2i(from.floor())):
+	var at := Vector2i(from.floor())
+	if not preview.has_point(at) or hinge.has_point(at):
 		return 0
 	if absf(d.x) < SWIPE or absf(d.x) <= 2.0 * absf(d.y):
 		return 0
@@ -52,16 +57,19 @@ static func press(main: Node, kind: String) -> void:
 	var me: ShipPicker = main.ships
 	match kind:
 		"prev", "next":
+			main.ui_cue("tap")
 			me.step(-1 if kind == "prev" else 1)
 		"launch":
 			if not me.is_open(me.picked()):
 				main.ui_cue("refused")  # the locked hull says how to open it
 				return
+			main.ui_cue("tap")
 			if main.profile and main.profile.depth_open > 0:
 				main.open_menu("depth")  # once a Hush Depth is open, pick one too
 				return
 			main.start_run()
 		"back":
+			main.ui_cue("tap")
 			main.open_menu(main.menu_base)
 
 
@@ -71,7 +79,8 @@ static func swipe(main: Node, from: Vector2, to: Vector2) -> bool:
 	if main.menu != "ship" or main.menu_layout == null:
 		return false
 	var k := float(main.screen.scale)
-	var dir := swipe_step(main.menu_layout.preview_rect, from / k, to / k)
+	var l: MenuLayout = main.menu_layout
+	var dir := swipe_step(l.preview_rect, l.hinge, from / k, to / k)
 	if dir != 0:
 		main.ui_cue("tap")
 		main.ships.step(dir)

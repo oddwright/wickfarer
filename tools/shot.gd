@@ -80,7 +80,7 @@ func _set_up() -> void:
 		var id := which.get_slice(":", 1) if ":" in which else ShipRoster.playable()[0]
 		main.ships.show(id)
 		if ":" in which:
-			main.ships.unlocked.append(str(ContentDB.ships[id].unlock))
+			main.profile.unlocked.append(str(ContentDB.ships[id].unlock))
 		main.open_menu("ship")
 		return
 	main._set_run(run)

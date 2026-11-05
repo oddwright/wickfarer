@@ -6,8 +6,8 @@ extends TextLayer
 
 const SEGMENTS := 10  ## one per options step
 
-var _ship_tex: Dictionary = {}  ## ship id -> Texture2D
 var _shadow_tex: Dictionary = {}  ## ship id -> a locked hull's silhouette
+var _info_cache: Dictionary = {}  ## "id:open:width" -> the info column's wrapped lines
 
 
 func _draw() -> void:
@@ -175,9 +175,7 @@ func _draw_hull_preview(box: Rect2i, id: String, open: bool) -> void:
 
 
 func _ship_texture(id: String) -> Texture2D:
-	if not _ship_tex.has(id):
-		_ship_tex[id] = load(ContentDB.ships[id].sprite)
-	return _ship_tex[id]
+	return load(ContentDB.ships[id].sprite)
 
 
 func _shadow(id: String, fs: Vector2i) -> Texture2D:
@@ -198,8 +196,11 @@ func _shadow(id: String, fs: Vector2i) -> Texture2D:
 
 ## The blurb, then one line per stat. A locked hull shows how to open it instead.
 func _draw_ship_info(box: Rect2i, id: String, open: bool) -> void:
+	var key := "%s:%s:%d" % [id, open, box.size.x]
+	if not _info_cache.has(key):  # wrapping every frame is wasted work
+		_info_cache[key] = ship_info_lines(id, open, box.size.x)
 	var y := box.position.y + GLYPH_H
-	for l in ship_info_lines(id, open, box.size.x):
+	for l: Array in _info_cache[key]:
 		_text(Vector2(box.position.x, y), l[0], 5.0, Pixel.c(l[1]))
 		y += LINE
 
@@ -231,7 +232,7 @@ static func ship_stats(id: String, open := true) -> Array[String]:
 		str(int(c.hull)), str(int(c.reactor)), str((c.crew as Array).size()), ", ".join(guns)
 	]
 	var out: Array[String] = []
-	var keys := ["UI_SHIP_HULL", "UI_SHIP_REACTOR", "UI_SHIP_CREW", "UI_SHIP_GUNS"]
+	var keys: Array[String] = ["UI_SHIP_HULL", "UI_SHIP_REACTOR", "UI_SHIP_CREW", "UI_SHIP_GUNS"]
 	for i in keys.size():
 		out.append(_t(keys[i]) % (vals[i] if open else "?"))
 	return out
