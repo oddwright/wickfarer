@@ -14,8 +14,8 @@ const AUTOSAVE_EVERY := 2.0
 ## else falls back to the title.
 const RESUMABLE_PAGES := {
 	"": [""],
-	"title": ["title", "options", "confirm"],
-	"pause": ["pause", "options", "confirm"],
+	"title": ["title", "options", "confirm", "depth", "log"],
+	"pause": ["pause", "options", "confirm", "depth"],
 }
 const CONFIRMS: Array[String] = ["abandon", "new_run"]
 const MAX_STEPS_PER_FRAME := 5
@@ -38,9 +38,10 @@ var audio: AudioService
 var haptics: Haptics
 var menu_view: MenuView
 var tutorial: Tutorial  ## the training flight's coach and the one-time tips
+var profile: Profile  ## records, unlocks and the Hush Depth ladder; outlives runs
+var fresh_unlocks: Array[String] = []  ## what this run opened, for its end screens
 var coach: CoachView
 var menu_layout: MenuLayout
-var crew_view: CrewView
 var roster := Roster.new(self)  ## the crew roster, Muster and posting crew
 ## The open menu page: "" (playing), "title", "pause", "options" or "confirm".
 var menu := ""
@@ -90,9 +91,7 @@ func _ready() -> void:
 	run_view = RunView.new()
 	viewport.add_child(run_view)
 	run_view.setup(self)
-	crew_view = CrewView.new()
-	viewport.add_child(crew_view)
-	crew_view.setup(self)
+	roster.attach(viewport)
 	coach = CoachView.new()
 	viewport.add_child(coach)  # over the fight and run screens, under the menus
 	coach.setup(self)
@@ -110,6 +109,7 @@ func _ready() -> void:
 func _setup_feedback() -> void:
 	settings = GameSettings.load_or_default(save_dir)
 	tutorial = Tutorial.load_or_default(save_dir)
+	profile = Profile.load_or_default(save_dir)
 	feedback = FeedbackDirector.new(ContentDB.feedback.get("cues", {}), settings)
 	audio = AudioService.new()
 	add_child(audio)
@@ -134,6 +134,7 @@ func _load_saved() -> Run:
 		var r := Run.from_dict(data.run)
 		if not r.is_over():
 			return r
+		_update_profile(r)  # killed before its end was counted; counting is once per run
 	return null
 
 
@@ -143,6 +144,7 @@ func run_screen() -> String:
 
 
 func _set_run(r: Run) -> void:
+	fresh_unlocks.clear()
 	run = r
 	close_menu()
 	_enter_screen()
@@ -162,14 +164,12 @@ func _enter_screen(save := true) -> void:
 		_save()
 
 
-## The fight and run screens are hidden under the title menu, and dimmed
-## under the others.
+## The fight and run screens hide under the title menu and dim under the others.
 func _show_game(on: bool) -> void:
 	var fighting := run != null and run_screen() == "fight"
 	world.visible = on and fighting
 	text.visible = on and fighting
 	run_view.visible = on and run != null and not fighting
-	crew_view.visible = on and fighting and roster.open
 	menu_view.visible = menu != ""
 
 
@@ -229,7 +229,6 @@ func _on_resize() -> void:
 		_rebuild_layout()
 	_build_run_layout()
 	_build_menu_layout()
-	roster.rebuild()
 
 
 func _rebuild_layout() -> void:
@@ -251,8 +250,7 @@ func _rebuild_layout() -> void:
 func _pause(reason := "") -> void:
 	if menu != "":
 		_paused_before_menu = true  # a fold or a trip away while in the menu still counts
-	if roster.open:
-		roster.paused_before = true  # and in the roster
+	roster.paused_before = roster.paused_before or roster.open  # and in the roster
 	paused = true
 	pause_reason = reason
 	_save()
@@ -261,6 +259,7 @@ func _pause(reason := "") -> void:
 func _save() -> void:
 	if run == null:
 		return
+	_update_profile(run)
 	if run.is_over():
 		_erase_save()
 		return
@@ -270,6 +269,19 @@ func _save() -> void:
 		return  # nothing moved, e.g. a paused fight: spare the flash
 	if SaveService.write(SAVE_SLOT, payload, save_dir):
 		_last_save = text_now
+
+
+## Counts a crossed Gate or a finished run in the profile, saving it first so
+## the run's end can't be lost; the profile skips a run it has already counted.
+func _update_profile(r: Run) -> void:
+	if profile == null:
+		return
+	var changed := profile.note(r) if r.state == "reach_done" else false
+	if r.is_over():
+		changed = profile.record(r)
+	if changed:
+		fresh_unlocks.append_array(profile.fresh)
+		profile.save(save_dir)
 
 
 func _erase_save() -> void:
@@ -382,7 +394,6 @@ func _process(delta: float) -> void:
 	_play_feedback()
 	world.queue_redraw()
 	text.queue_redraw()
-	crew_view.queue_redraw()
 	run_view.queue_redraw()
 	coach.queue_redraw()
 	menu_view.queue_redraw()
@@ -500,6 +511,7 @@ func _on_events(events: Array) -> void:
 		feedback.on_sim_events(events, combat)
 	if tutorial:
 		tutorial.on_events(events)
+	roster.on_events(events)
 	for e: Dictionary in events:
 		match e.type:
 			"hit":
@@ -512,13 +524,6 @@ func _on_events(events: Array) -> void:
 			"crew_died":
 				if e.side == 0 and selected_crew == e.uid:
 					selected_crew = -1
-			"skill_up":
-				if e.side == 0:
-					var label := (
-						tr("UI_SKILL_UP")
-						% [tr(Skills.spec(e.skill).name), tr(Skills.rank_name(int(e.rank)))]
-					)
-					_float(0, e.room, label, Pixel.c("v"))
 			"won", "lost":
 				_save()
 
@@ -587,8 +592,7 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 		return
 	if run == null:
 		return
-	if roster.open and combat:
-		roster.tap(p)
+	if roster.tap(p):
 		return
 	if MenuLayout.menu_button(screen.native).grow(2).has_point(p):
 		ui_cue("tap")
@@ -624,7 +628,7 @@ func _tap_fight(p: Vector2i, long: bool) -> void:
 		return
 	var c := world.crew_at(0, p)
 	if c:
-		_tap_crew(c, long)
+		roster.tap_crew(c, long)
 		return
 	var my_room := world.room_at(0, p)
 	if selected_crew >= 0 and my_room:
@@ -662,24 +666,8 @@ func _press_button(b: Dictionary, long: bool) -> void:
 			_order("ward")
 		"pause":
 			ui_cue("tap" if _toggle_pause() else "refused")
-		"crew":
-			ui_cue("tap")
-			roster.show()
-		"muster":
-			roster.muster()
-
-
-# ------------------------------------------------------------------ crew
-
-
-## Tap selects a crew member (tap again to let go); long press posts them.
-func _tap_crew(c: Crew, long: bool) -> void:
-	if long:
-		roster.post_here(c)
-		return
-	selected_crew = -1 if selected_crew == c.uid else c.uid
-	selected_weapon = -1
-	ui_cue("select")
+		"crew", "muster":
+			roster.press(b.kind)
 
 
 func _tap_run(p: Vector2i) -> void:
@@ -712,10 +700,11 @@ func _tap_run(p: Vector2i) -> void:
 		"next":
 			if run.is_over() and run.outcome == "":
 				ui_cue("tap")
-				_set_run(Run.create(_fresh_seed()))
+				_new_run()
 				return
 			if run.state == "reach_done" and run.outcome == "":
 				run.next_reach()
+				fresh_unlocks.clear()  # told once, at the Gate that earned them
 				ui_cue("jump")
 				_enter_screen()
 				return
@@ -738,6 +727,8 @@ func menu_items(page: String) -> Array[String]:
 			out.append("new_run")
 			if tutorial and tutorial.done:
 				out.append("training")  # until then, New Run is the training flight
+			if profile and int(profile.stats.runs) > 0:
+				out.append("log")  # once there is a run to log
 			out.append("options")
 			if can_quit():
 				out.append("quit")
@@ -750,6 +741,8 @@ func menu_items(page: String) -> Array[String]:
 			out.append("to_title")
 		"confirm":
 			out.assign(["yes", "no"])
+		_:
+			out = ProfilePages.items(page)
 	return out
 
 
@@ -793,11 +786,9 @@ func _build_menu_layout() -> void:
 func back() -> void:
 	match menu:
 		"":
-			if roster.open:
-				roster.close()
-			elif run != null:
+			if not roster.close() and run != null:
 				open_menu("pause")
-		"options", "confirm":
+		"options", "confirm", "depth", "log":
 			open_menu(menu_base)
 		"pause":
 			_resume()
@@ -821,6 +812,8 @@ func _tap_menu(p: Vector2i) -> void:
 	if menu == "options":
 		_press_option(b)
 		return
+	if menu in ProfilePages.PAGES and ProfilePages.tap(self, str(b.id)):
+		return
 	match str(b.id):
 		"continue":
 			_continue()
@@ -829,8 +822,8 @@ func _tap_menu(p: Vector2i) -> void:
 				_new_run()
 			else:
 				_confirm("new_run")
-		"options":
-			open_menu("options")
+		"options", "log":
+			open_menu(str(b.id))
 		"training":
 			if run == null:
 				_start_training()
@@ -884,8 +877,36 @@ func _new_run() -> void:
 	if tutorial and not tutorial.done:
 		_start_training()
 		return
+	if profile and profile.depth_open > 0 and menu != "depth":
+		# Once a Hush Depth is open, pick one first; from an end screen, over the title.
+		if menu == "":
+			if run_over():
+				_clear_run()
+			open_menu("title")
+		open_menu("depth")
+		return
+	start_run()
+
+
+## Starts a real run at the profile's chosen Hush Depth.
+func start_run() -> void:
 	close_menu()
-	_set_run(Run.create(_fresh_seed()))
+	var r := Run.create(_fresh_seed(), "tallow_wren", "reach_1", profile.depth if profile else 0)
+	r.run_id = _new_run_id()
+	_set_run(r)
+
+
+## A run's name in the profile: the clock and a random number, so two runs
+## never share one the way two seeds can. Not sim state; nothing plays on it.
+func _new_run_id() -> String:
+	return "%d-%d" % [int(Time.get_unix_time_from_system() * 1000.0), randi()]
+
+
+func _clear_run() -> void:
+	run = null
+	combat = null
+	layout = null
+	run_layout = null
 
 
 func _start_training() -> void:

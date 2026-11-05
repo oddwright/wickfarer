@@ -312,7 +312,7 @@ static func roster_flow(t: SceneTree) -> void:
 	_check(t, not main.paused, "the fight runs")
 	_tap(main, main.layout.button("crew").rect)
 	_check(t, main.roster.open and main.paused, "Crew opens the roster and pauses")
-	_check(t, main.crew_view.visible, "the roster is drawn")
+	_check(t, main.roster.view.visible, "the roster is drawn")
 	var t0: float = main.combat.time()
 	main._process(1.0)
 	_check(t, main.combat.time() == t0, "no ticks behind the roster")

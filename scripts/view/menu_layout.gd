@@ -10,6 +10,8 @@ const BTN_W := 120
 const BTN_H := 20
 const GAP := 6
 const TITLE_H := 30  ## room for a 2x title line and its gap
+## Pages with text above their buttons, and the height it gets (0 = all there is).
+const TEXT_PAGES := {"depth": 56, "log": 0}
 const TOP := 26  ## first options row, under the title
 const ROW := 24  ## options row pitch
 const CTRL_H := 16  ## options control height
@@ -51,31 +53,45 @@ static func build(screen: Dictionary, mode: String, ids: Array[String] = []) -> 
 	if mode == "options":
 		l._options()
 	else:
-		l._list(ids)
+		l._list(ids, TEXT_PAGES.get(mode, TITLE_H))
 	return l
 
 
 ## A title over a centred column (Wide), or title left and column right (Square).
-func _list(ids: Array[String]) -> void:
+func _list(ids: Array[String], title_h := TITLE_H) -> void:
 	var n := maxi(ids.size(), 1)
 	var col_h := n * (BTN_H + GAP) - GAP
 	var w := native.x
 	var h := native.y
+	if title_h <= 0:
+		title_h = h - col_h - MARGIN * 2 if hinge.size.x == 0 else h - MARGIN * 2
+	title_h = mini(title_h, h - MARGIN * 2)
 	var bx: int
 	var by: int
 	if hinge.size.x == 0:
-		var top := maxi(MARGIN, (h - TITLE_H - col_h) / 2)
-		title_rect = Rect2i(MARGIN, top, w - MARGIN * 2, TITLE_H - 8)
+		var top := maxi(MARGIN, (h - title_h - col_h) / 2)
+		title_rect = Rect2i(MARGIN, top, w - MARGIN * 2, title_h - 8)
 		bx = (w - BTN_W) / 2
-		by = top + TITLE_H
+		by = top + title_h
 	else:
 		var left_w := hinge.position.x - MARGIN * 2
-		title_rect = Rect2i(MARGIN, (h - TITLE_H) / 2, left_w, TITLE_H)
+		title_rect = Rect2i(MARGIN, (h - title_h) / 2, left_w, title_h)
 		var right_x := hinge.end.x + MARGIN
 		bx = right_x + (w - MARGIN - right_x - BTN_W) / 2
 		by = (h - col_h) / 2
+	var rows := ids.size()
+	var two_wide := BTN_W * 2 + GAP
+	if hinge.size.x == 0 and by + col_h > h - MARGIN and two_wide <= w - MARGIN * 2:
+		# A short Wide canvas (the Fold cover at a large scale): two columns,
+		# with the title moved down to sit over them.
+		rows = ceili(ids.size() / 2.0)
+		var top := maxi(MARGIN, (h - title_h - (rows * (BTN_H + GAP) - GAP)) / 2)
+		title_rect.position.y = top
+		bx = (w - two_wide) / 2
+		by = top + title_h
 	for i in ids.size():
-		_add("item", ids[i], Rect2i(bx, by + i * (BTN_H + GAP), BTN_W, BTN_H))
+		var x := bx + (i / rows) * (BTN_W + GAP)
+		_add("item", ids[i], Rect2i(x, by + (i % rows) * (BTN_H + GAP), BTN_W, BTN_H))
 
 
 ## Two columns of rows: sound on the left, feel on the right (each on its own

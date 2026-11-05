@@ -12,6 +12,7 @@ const STORY_TESTS = preload("res://tests/story_tests.gd")
 const SCREEN_TESTS = preload("res://tests/screen_tests.gd")
 const CREW_TESTS = preload("res://tests/crew_tests.gd")
 const PROGRESS_TESTS = preload("res://tests/progress_tests.gd")
+const PROFILE_TESTS = preload("res://tests/profile_tests.gd")
 const RESUME_TESTS = preload("res://tests/resume_tests.gd")
 const TUTORIAL_TESTS = preload("res://tests/tutorial_tests.gd")
 const SCREENS := {
@@ -637,7 +638,8 @@ func test_run_screens_on_every_screen() -> void:
 		check(probs.is_empty(), "%s run screens: %s" % [name, probs.slice(0, 4)])
 
 
-## Reaches, refits and stoking: tests/progress_tests.gd.
+## Reaches, refits and stoking (tests/progress_tests.gd), and the profile
+## that outlives runs (tests/profile_tests.gd).
 func test_progression() -> void:
 	PROGRESS_TESTS.reaches_chain(self)
 	PROGRESS_TESTS.refit_and_stoke(self)
@@ -645,6 +647,13 @@ func test_progression() -> void:
 	PROGRESS_TESTS.enemies_grow(self)
 	PROGRESS_TESTS.saves_keep_refits(self)
 	PROGRESS_TESTS.content_checked(self)
+	PROFILE_TESTS.records(self)
+	PROFILE_TESTS.unlocks(self)
+	PROFILE_TESTS.depth_ladder(self)
+	PROFILE_TESTS.survives_damage(self)
+	PROFILE_TESTS.counted_once_after_a_kill(self)
+	PROFILE_TESTS.fixture_loads(self)
+	PROFILE_TESTS.content_checked(self)
 
 
 func test_view_screens_follow_the_run() -> void:

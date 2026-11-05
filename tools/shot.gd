@@ -3,7 +3,7 @@ extends SceneTree
 ## godot --path . -s tools/shot.gd -- <width> <height> <out.png> [ticks] [screen] [ui size]
 ## screen is fight (default), chart, event, event:<event id>, store, refit, reach_done, won or lost,
 ## roster or roster_pick (the crew roster over a fight, picker shut or open),
-## or a menu over a fight: title, pause, options or confirm. ui size is the
+## or a menu over a fight: title, pause, options, confirm, depth or log. ui size is the
 ## options setting, a step from auto (-2 to 1); it is not saved.
 
 var frames := 0
@@ -70,7 +70,7 @@ func _set_up() -> void:
 			run.state = which
 		"fight":
 			run._start_fight("ashmarket_cutter")
-	if which in ["title", "pause", "options", "confirm", "roster", "roster_pick"]:
+	if which in ["title", "pause", "options", "confirm", "depth", "log", "roster", "roster_pick"]:
 		run._start_fight("ashmarket_cutter")
 	main._set_run(run)
 	if main.combat:
@@ -86,6 +86,24 @@ func _set_up() -> void:
 		"confirm":
 			main.open_menu("pause")
 			main._confirm("abandon")
+		"depth", "log":
+			_sample_profile()
+			main.open_menu("title")
+			main.open_menu(which)
+
+
+## A profile with a few runs behind it, for the depth and Wake Log screens.
+## It lives only in memory; the shot never saves it.
+func _sample_profile() -> void:
+	var p := Profile.new()
+	for i in 5:
+		var r := Run.create(900 + i, "tallow_wren", "reach_1", mini(i, p.depth_open))
+		r.reaches_crossed = i
+		r.fights_won = 2 + i
+		r.state = "won" if i == 4 else "lost"
+		p.record(r)
+	p.depth = p.depth_open
+	main.profile = p
 
 
 func _play_fight(c: Combat) -> void:

@@ -271,6 +271,9 @@ func _draw_next(run: Run, l: RunLayout) -> void:
 			title = tr("UI_RUN_LOST_TITLE")
 			body = tr("UI_RUN_LOST")
 			label = "UI_NEW_RUN"
+	if title != "" and main.profile and not main.fresh_unlocks.is_empty():
+		var fresh := ProfilePages.fresh_lines(main.fresh_unlocks, main.profile)
+		body += " " + " ".join(fresh)
 	var r := l.text_rect
 	if title != "":
 		_text(Vector2(r.position.x, r.position.y + 10), title, 10.0, Pixel.c("w"))

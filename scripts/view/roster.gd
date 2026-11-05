@@ -10,10 +10,37 @@ var open := false  ## the roster is over the fight (and pauses it)
 var pick := -1  ## the row whose post is being picked, or -1
 var layout: CrewLayout
 var paused_before := false  ## the fight's pause state when the roster opened
+var view: CrewView  ## draws the roster; it only draws while the roster is open
 
 
 func _init(main_node: Node) -> void:
 	main = main_node
+
+
+## Adds the roster's view to the pixel world, above the fight and run screens.
+func attach(viewport: Node) -> void:
+	view = CrewView.new()
+	viewport.add_child(view)
+	view.setup(main)
+
+
+## A rank earned this fight floats over the crew member who earned it.
+func on_events(events: Array) -> void:
+	for e: Dictionary in events:
+		if e.type == "skill_up" and int(e.side) == 0:
+			var skill := tr(Skills.spec(e.skill).name)
+			var label := tr("UI_SKILL_UP") % [skill, tr(Skills.rank_name(int(e.rank)))]
+			main._float(0, e.room, label, Pixel.c("v"))
+
+
+## Tap selects a crew member (tap again to let go); long press posts them.
+func tap_crew(c: Crew, long: bool) -> void:
+	if long:
+		post_here(c)
+		return
+	main.selected_crew = -1 if main.selected_crew == c.uid else c.uid
+	main.selected_weapon = -1
+	main.ui_cue("select")
 
 
 ## The crew listed in the roster, top to bottom.
@@ -42,6 +69,7 @@ func show() -> void:
 	var c: Combat = main.combat
 	if c == null or c.state != "fighting" or open:
 		return
+	main.ui_cue("tap")
 	paused_before = main.paused
 	main.paused = true
 	open = true
@@ -52,15 +80,17 @@ func show() -> void:
 	main._show_game(main.menu_base != "title")
 
 
-func close() -> void:
+## Returns false if the roster wasn't open.
+func close() -> bool:
 	if not open:
-		return
+		return false
 	open = false
 	pick = -1
 	main.paused = paused_before
 	if not main.paused:
 		main.pause_reason = ""
 	main._show_game(main.menu_base != "title")
+	return true
 
 
 ## Forgets the roster without touching the pause (a new fight starts).
@@ -78,10 +108,21 @@ func rebuild() -> void:
 	layout = CrewLayout.build(main.screen, crew().size(), offered)
 
 
-func tap(p: Vector2i) -> void:
+## A HUD button: Crew opens the roster, Muster sends everyone to their posts.
+func press(kind: String) -> void:
+	if kind == "crew":
+		show()
+	else:
+		muster()
+
+
+## A tap while the roster is open. Returns false (and does nothing) when it isn't.
+func tap(p: Vector2i) -> bool:
+	if not open or main.combat == null:
+		return false
 	var b := layout.button_at(p) if layout else {}
 	if b.is_empty():
-		return
+		return true
 	var list := crew()
 	match b.kind:
 		"post":
@@ -100,12 +141,13 @@ func tap(p: Vector2i) -> void:
 		"muster":
 			muster()
 			close()
-			return
+			return true
 		"close":
 			main.ui_cue("tap")
 			close()
-			return
+			return true
 	rebuild()
+	return true
 
 
 ## Sends everyone to their posts (from the HUD or the roster). Counts as the

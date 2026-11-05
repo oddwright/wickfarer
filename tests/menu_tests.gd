@@ -15,6 +15,9 @@ static func screens(t: SceneTree, screen_sizes: Dictionary) -> void:
 	var pages := {
 		"title": ["continue", "new_run", "options", "quit"],
 		"title, no save": ["new_run", "options", "quit"],
+		"title, everything": ["continue", "new_run", "training", "log", "options", "quit"],
+		"depth": ProfilePages.items("depth"),
+		"log": ProfilePages.items("log"),
 		"pause": ["resume", "options", "abandon", "to_title"],
 		"confirm": ["yes", "no"],
 		"options": [],
@@ -86,7 +89,7 @@ static func _tap_menu(main: Node, id: String) -> bool:
 static func flow(t: SceneTree) -> void:
 	var dir := "user://test_saves"
 	DirAccess.make_dir_recursive_absolute(dir)
-	for slot in ["run", GameSettings.SLOT, Tutorial.SLOT]:
+	for slot in ["run", GameSettings.SLOT, Tutorial.SLOT, Profile.SLOT]:
 		SaveService.erase(slot, dir)
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	main.save_dir = dir

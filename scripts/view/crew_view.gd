@@ -7,9 +7,16 @@ extends TextLayer
 const SKILL_PIP := 3
 
 
+func _process(_delta: float) -> void:
+	if main and main.roster.open:
+		queue_redraw()
+
+
 func _draw() -> void:
-	if main == null or not main.roster.open or main.roster.layout == null or main.combat == null:
+	if main == null or not main.roster.open or main.combat == null:
 		return
+	if main.roster.layout == null or main.roster.layout.native != main.screen.native:
+		main.roster.rebuild()  # the screen changed (a fold) while the roster was open
 	var l: CrewLayout = main.roster.layout
 	var me: Ship = main.combat.player()
 	draw_rect(Rect2(Vector2.ZERO, l.native), Pixel.c("a", 0.93))

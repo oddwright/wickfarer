@@ -8,7 +8,7 @@ extends RefCounted
 ## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
-const VERSION := 4
+const VERSION := 5
 const DIR := "user://"
 
 
@@ -41,7 +41,13 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 			# moves; the bump only stops an older build from loading a newer run.
 			return d
 		3:
-			# Version 4 crew have skill practice. Crew from an older save start
+			# Version 4 runs have a Hush Depth and an id for the profile. A version 3
+			# run was played without depths (0), and an empty id makes the profile
+			# fall back to the seed. Nothing moves; the bump keeps an older build
+			# from playing a deep run with none of its rules.
+			return d
+		4:
+			# Version 5 crew have skill practice. Crew from an older save start
 			# Green; their post (missing here) is filled in by Ship.from_dict,
 			# which knows which rooms are stations.
 			for ship: Dictionary in _saved_ships(d):

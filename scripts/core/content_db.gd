@@ -14,6 +14,19 @@ const FILES := {
 	"feedback": "res://data/feedback.json",
 	"skills": "res://data/skills.json",
 	"tutorial": "res://data/tutorial.json",
+	"unlocks": "res://data/unlocks.json",
+	"depths": "res://data/depths.json",
+}
+## What a Hush Depth's rules may change, and the sign each must have (+1: only
+## harder when positive, -1: only harder when negative).
+const DEPTH_EFFECTS := {
+	"start_scrap": -1,
+	"start_light": -1,
+	"hush_per_jump": 1,
+	"enemy_hull": 1,
+	"store_markup": 1,
+	"fight_scrap": -1,
+	"dark_jump_hull": 1,
 }
 
 const EVENT_EFFECTS := [
@@ -38,6 +51,8 @@ static var reaches: Dictionary = {}
 static var feedback: Dictionary = {}  ## sounds, haptics, cues and music layers
 static var skills: Dictionary = {}  ## crew skills, ranks and how practice grows
 static var tutorial: Dictionary = {}  ## the training flight's lessons and the one-time tips
+static var unlocks: Dictionary = {}  ## unlock id -> {name, hint, stat, at_least}
+static var depths: Dictionary = {}  ## {"depths": [{name, text, effects}]}, depth 1 first
 static var loaded := false
 
 
@@ -54,6 +69,8 @@ static func load_all() -> void:
 	feedback = _read(FILES.feedback)
 	skills = _read(FILES.skills)
 	tutorial = _read(FILES.tutorial)
+	unlocks = _read(FILES.unlocks)
+	depths = _read(FILES.depths)
 	_install_translation()
 	loaded = true
 
@@ -121,6 +138,8 @@ static func validate() -> Array[String]:
 	for rid: String in reaches:
 		_validate_reach(rid, reaches[rid], errors)
 	_validate_reach_chain(errors)
+	_validate_unlocks(errors)
+	_validate_depths(errors)
 	_validate_feedback(feedback, errors)
 	Skills.validate(errors)
 	_validate_tutorial(tutorial, errors)
@@ -141,6 +160,49 @@ static func _validate_system(sys_id: String, sys: Dictionary, errors: Array[Stri
 				errors.append("%s: %s prices must be whole numbers above 0" % [where, f])
 	if sys.has("stoke_light") and sys_id != "ember":
 		errors.append("%s: only the Ember can be stoked" % where)
+
+
+static func _validate_unlocks(errors: Array[String]) -> void:
+	for id: String in unlocks:
+		var u: Dictionary = unlocks[id]
+		var where := "unlock %s" % id
+		_check_string(str(u.get("name", "")), where, errors)
+		_check_string(str(u.get("hint", "")), where, errors)
+		if not str(u.get("stat", "")) in Profile.STATS:
+			errors.append("%s: unknown stat %s" % [where, u.get("stat", "")])
+		if not _int_in(u.get("at_least"), 1, 1000000):
+			errors.append("%s: at_least must be a whole number of 1 or more" % where)
+	for ship_id: String in ships:
+		var need := str(ships[ship_id].get("unlock", ""))
+		if need != "" and not unlocks.has(need):
+			errors.append("ship %s: unknown unlock %s" % [ship_id, need])
+
+
+## Each depth adds one rule that only ever makes the run harder.
+static func _validate_depths(errors: Array[String]) -> void:
+	var list: Variant = depths.get("depths")
+	if not list is Array:
+		errors.append('depths.json needs a "depths" list')
+		return
+	for i in (list as Array).size():
+		var dep: Variant = list[i]
+		var where := "hush depth %d" % (i + 1)
+		if not dep is Dictionary:
+			errors.append("%s: must be an object" % where)
+			continue
+		_check_string(str(dep.get("name", "")), where, errors)
+		_check_string(str(dep.get("text", "")), where, errors)
+		var fx: Variant = dep.get("effects", {})
+		if not fx is Dictionary or (fx as Dictionary).is_empty():
+			errors.append("%s: needs at least one effect" % where)
+			continue
+		for k: String in fx:
+			if not DEPTH_EFFECTS.has(k):
+				errors.append("%s: unknown effect %s" % [where, k])
+			elif not (fx[k] is float or fx[k] is int) or float(fx[k]) * DEPTH_EFFECTS[k] <= 0.0:
+				errors.append("%s: %s must make the run harder" % [where, k])
+			elif k != "hush_per_jump" and float(fx[k]) != floorf(float(fx[k])):
+				errors.append("%s: %s must be a whole number" % [where, k])
 
 
 ## The Reaches form one chain from reach_1, each "next" naming a real Reach,

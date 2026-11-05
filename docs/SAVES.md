@@ -33,7 +33,7 @@ Writes are atomic: temp file, then swap, keeping the last good save as `.bak`
 | `run.json` | `main.gd` | `{"run": Run.to_dict(), "ui": {...}}` | `SaveService.VERSION` + `migrate()` |
 | `settings.json` | `GameSettings` | comfort settings | `GameSettings.SETTINGS_VERSION` in `from_dict()` |
 | `tutorial.json` | tutorial (in progress) | tutorial progress | its own version, like settings |
-| `profile.json` | progression (planned) | unlocks, stats, anything that outlives a run | its own version, like settings |
+| `profile.json` | `Profile` | records, Wake Log, unlocks, Hush Depth | `Profile.PROFILE_VERSION` in `from_dict()` |
 
 Anything that outlives a run gets its own slot. The run slot is erased when a run
 ends, so state stored there dies with the run.

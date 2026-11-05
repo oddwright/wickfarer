@@ -1,0 +1,12 @@
+{
+  "depths": [
+    {"name": "DEPTH_1_NAME", "text": "DEPTH_1_TEXT", "effects": {"start_light": -1}},
+    {"name": "DEPTH_2_NAME", "text": "DEPTH_2_TEXT", "effects": {"hush_per_jump": 0.1}},
+    {"name": "DEPTH_3_NAME", "text": "DEPTH_3_TEXT", "effects": {"enemy_hull": 2}},
+    {"name": "DEPTH_4_NAME", "text": "DEPTH_4_TEXT", "effects": {"store_markup": 1}},
+    {"name": "DEPTH_5_NAME", "text": "DEPTH_5_TEXT", "effects": {"fight_scrap": -3}},
+    {"name": "DEPTH_6_NAME", "text": "DEPTH_6_TEXT", "effects": {"dark_jump_hull": 1}},
+    {"name": "DEPTH_7_NAME", "text": "DEPTH_7_TEXT", "effects": {"start_scrap": -10}},
+    {"name": "DEPTH_8_NAME", "text": "DEPTH_8_TEXT", "effects": {"hush_per_jump": 0.1, "enemy_hull": 2}}
+  ]
+}
