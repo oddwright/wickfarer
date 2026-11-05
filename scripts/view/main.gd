@@ -14,8 +14,8 @@ const AUTOSAVE_EVERY := 2.0
 ## else falls back to the title.
 const RESUMABLE_PAGES := {
 	"": [""],
-	"title": ["title", "options", "confirm"],
-	"pause": ["pause", "options", "confirm"],
+	"title": ["title", "options", "confirm", "depth", "log"],
+	"pause": ["pause", "options", "confirm", "depth"],
 }
 const CONFIRMS: Array[String] = ["abandon", "new_run"]
 const MAX_STEPS_PER_FRAME := 5
@@ -38,6 +38,8 @@ var audio: AudioService
 var haptics: Haptics
 var menu_view: MenuView
 var tutorial: Tutorial  ## the training flight's coach and the one-time tips
+var profile: Profile  ## records, unlocks and the Hush Depth ladder; outlives runs
+var fresh_unlocks: Array[String] = []  ## what this run opened, for its end screens
 var coach: CoachView
 var menu_layout: MenuLayout
 ## The open menu page: "" (playing), "title", "pause", "options" or "confirm".
@@ -105,6 +107,7 @@ func _ready() -> void:
 func _setup_feedback() -> void:
 	settings = GameSettings.load_or_default(save_dir)
 	tutorial = Tutorial.load_or_default(save_dir)
+	profile = Profile.load_or_default(save_dir)
 	feedback = FeedbackDirector.new(ContentDB.feedback.get("cues", {}), settings)
 	audio = AudioService.new()
 	add_child(audio)
@@ -129,6 +132,7 @@ func _load_saved() -> Run:
 		var r := Run.from_dict(data.run)
 		if not r.is_over():
 			return r
+		_update_profile(r)  # killed before its end was counted; counting is once per run
 	return null
 
 
@@ -138,6 +142,7 @@ func run_screen() -> String:
 
 
 func _set_run(r: Run) -> void:
+	fresh_unlocks.clear()
 	run = r
 	close_menu()
 	_enter_screen()
@@ -251,6 +256,7 @@ func _pause(reason := "") -> void:
 func _save() -> void:
 	if run == null:
 		return
+	_update_profile(run)
 	if run.is_over():
 		_erase_save()
 		return
@@ -260,6 +266,19 @@ func _save() -> void:
 		return  # nothing moved, e.g. a paused fight: spare the flash
 	if SaveService.write(SAVE_SLOT, payload, save_dir):
 		_last_save = text_now
+
+
+## Counts a crossed Gate or a finished run in the profile, saving it first so
+## the run's end can't be lost; the profile skips a run it has already counted.
+func _update_profile(r: Run) -> void:
+	if profile == null:
+		return
+	var changed := profile.note(r) if r.state == "reach_done" else false
+	if r.is_over():
+		changed = profile.record(r)
+	if changed:
+		fresh_unlocks.append_array(profile.fresh)
+		profile.save(save_dir)
 
 
 func _erase_save() -> void:
@@ -675,7 +694,7 @@ func _tap_run(p: Vector2i) -> void:
 		"next":
 			if run.is_over() and run.outcome == "":
 				ui_cue("tap")
-				_set_run(Run.create(_fresh_seed()))
+				_new_run()
 				return
 			if run.state == "reach_done" and run.outcome == "":
 				run.next_reach()
@@ -701,6 +720,8 @@ func menu_items(page: String) -> Array[String]:
 			out.append("new_run")
 			if tutorial and tutorial.done:
 				out.append("training")  # until then, New Run is the training flight
+			if profile and int(profile.stats.runs) > 0:
+				out.append("log")  # once there is a run to log
 			out.append("options")
 			if can_quit():
 				out.append("quit")
@@ -713,6 +734,8 @@ func menu_items(page: String) -> Array[String]:
 			out.append("to_title")
 		"confirm":
 			out.assign(["yes", "no"])
+		_:
+			out = ProfilePages.items(page)
 	return out
 
 
@@ -758,7 +781,7 @@ func back() -> void:
 		"":
 			if run != null:
 				open_menu("pause")
-		"options", "confirm":
+		"options", "confirm", "depth", "log":
 			open_menu(menu_base)
 		"pause":
 			_resume()
@@ -782,6 +805,8 @@ func _tap_menu(p: Vector2i) -> void:
 	if menu == "options":
 		_press_option(b)
 		return
+	if menu in ProfilePages.PAGES and ProfilePages.tap(self, str(b.id)):
+		return
 	match str(b.id):
 		"continue":
 			_continue()
@@ -790,8 +815,8 @@ func _tap_menu(p: Vector2i) -> void:
 				_new_run()
 			else:
 				_confirm("new_run")
-		"options":
-			open_menu("options")
+		"options", "log":
+			open_menu(str(b.id))
 		"training":
 			if run == null:
 				_start_training()
@@ -845,8 +870,21 @@ func _new_run() -> void:
 	if tutorial and not tutorial.done:
 		_start_training()
 		return
+	if profile and profile.depth_open > 0 and menu != "depth":
+		# Once a Hush Depth is open, pick one first; from an end screen, over the title.
+		if menu == "":
+			if run_over():
+				run = null
+			open_menu("title")
+		open_menu("depth")
+		return
+	start_run()
+
+
+## Starts a real run at the profile's chosen Hush Depth.
+func start_run() -> void:
 	close_menu()
-	_set_run(Run.create(_fresh_seed()))
+	_set_run(Run.create(_fresh_seed(), "tallow_wren", "reach_1", profile.depth if profile else 0))
 
 
 func _start_training() -> void:
