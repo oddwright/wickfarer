@@ -7,7 +7,11 @@ extends RefCounted
 const SWIPE := 20  ## native pixels across the hull that flip to the next one
 
 var pick := 0  ## an index into ShipRoster.playable()
-var profile: Profile  ## says which unlocks the player has earned; none without one
+var _main: Node  ## its profile says which unlocks the player has earned
+
+
+func _init(main: Node) -> void:
+	_main = main
 
 
 ## The hull on show.
@@ -16,8 +20,12 @@ func picked() -> String:
 	return ids[posmod(pick, ids.size())]
 
 
+## A playable hull whose unlock the profile has (Profile owns the unlock rule).
 func is_open(id: String) -> bool:
-	return ShipRoster.is_unlocked(id, _unlocked())
+	var profile: Profile = _main.profile
+	if profile == null or not ShipRoster.playable().has(id):
+		return ShipRoster.is_unlocked(id, [])
+	return profile.is_unlocked(str(ContentDB.ships[id].unlock))
 
 
 ## Shows the next (1) or previous (-1) hull, wrapping round.
@@ -27,11 +35,12 @@ func step(dir: int) -> void:
 
 ## The hull a run starts in: the one on show, or the first open one if that is locked.
 func start_hull() -> String:
-	return picked() if is_open(picked()) else ShipRoster.default_ship(_unlocked())
-
-
-func _unlocked() -> Array[String]:
-	return profile.unlocked if profile else ([] as Array[String])
+	if is_open(picked()):
+		return picked()
+	for id in ShipRoster.playable():
+		if is_open(id):
+			return id
+	return ShipRoster.default_ship()
 
 
 func show(id: String) -> void:

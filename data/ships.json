@@ -176,7 +176,7 @@
       80
     ],
     "hull": 24,
-    "reactor": 8,
+    "reactor": 9,
     "rooms": [
       {
         "id": "cistern_aft",
@@ -341,7 +341,8 @@
     "start_power": {
       "wards": 4,
       "weapons": 3,
-      "helm": 1
+      "helm": 1,
+      "mend": 1
     },
     "ward_deck": 0
   },

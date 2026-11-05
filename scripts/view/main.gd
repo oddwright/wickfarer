@@ -48,7 +48,7 @@ var menu := ""
 ## The page Back returns to: "title" hides the game, "pause" dims it.
 var menu_base := ""
 var confirm_action := ""  ## what the confirm page asks about: "abandon" or "new_run"
-var ships := ShipPicker.new()  ## the ship select page's hull and the open hulls
+var ships := ShipPicker.new(self)  ## the ship select page's hull and the open hulls
 
 var paused := false
 var pause_reason := ""
@@ -111,7 +111,6 @@ func _setup_feedback() -> void:
 	settings = GameSettings.load_or_default(save_dir)
 	tutorial = Tutorial.load_or_default(save_dir)
 	profile = Profile.load_or_default(save_dir)
-	ships.profile = profile
 	feedback = FeedbackDirector.new(ContentDB.feedback.get("cues", {}), settings)
 	audio = AudioService.new()
 	add_child(audio)
@@ -798,7 +797,7 @@ func back() -> void:
 		"options", "confirm", "ship", "log":
 			open_menu(menu_base)
 		"depth":
-			open_menu("ship")  # the depth page comes after ship select
+			open_menu("ship" if menu_base == "title" else menu_base)  # after ship select
 		"pause":
 			_resume()
 		"title":

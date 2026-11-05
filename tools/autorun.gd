@@ -11,6 +11,10 @@ func _init() -> void:
 		n = int(args[0])
 	var hulls := ShipRoster.playable()
 	if args.size() > 1:
+		if not args[1] in hulls:
+			push_error("%s is not a hull a player can pick: %s" % [args[1], hulls])
+			quit(1)
+			return
 		hulls.assign([args[1]])
 	for hull in hulls:
 		_report(n, hull)

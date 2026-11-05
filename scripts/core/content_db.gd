@@ -134,7 +134,7 @@ static func validate() -> Array[String]:
 			errors.append("refit offers unknown system %s" % sys_id)
 	for ship_id: String in ships:
 		_validate_ship(ship_id, ships[ship_id], errors)
-	if not ShipRoster.is_unlocked(ShipRoster.default_ship(), []):
+	if ShipRoster.default_ship() == "":
 		errors.append("ships: at least one playable hull must be open from the start")
 	for eid: String in events:
 		_validate_event(eid, events[eid], errors)

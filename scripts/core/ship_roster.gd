@@ -5,14 +5,16 @@ extends RefCounted
 ## key and an "unlock" id: "" is open from the first run; anything else is
 ## opened by meta progression, which hands over the ids the player has earned.
 
+static var _playable: Array[String] = []  ## content is loaded once, so this is too
+
 
 static func playable() -> Array[String]:
-	ContentDB.load_all()
-	var out: Array[String] = []
-	for id: String in ContentDB.ships:
-		if ContentDB.ships[id].get("playable", false):
-			out.append(id)
-	return out
+	if _playable.is_empty():
+		ContentDB.load_all()
+		for id: String in ContentDB.ships:
+			if ContentDB.ships[id].get("playable", false):
+				_playable.append(id)
+	return _playable.duplicate()  # callers may change their copy
 
 
 static func is_unlocked(ship_id: String, unlocked: Array[String]) -> bool:
@@ -29,9 +31,9 @@ static func unlock_hint(ship_id: String) -> String:
 	return str(ContentDB.unlocks.get(key, {}).get("hint", ""))
 
 
-## The first open hull, for a new run when no other choice was made.
+## The first open hull, or "" if none is (ContentDB.validate() rules that out).
 static func default_ship(unlocked: Array[String] = []) -> String:
 	for id in playable():
 		if is_unlocked(id, unlocked):
 			return id
-	return "tallow_wren"
+	return ""

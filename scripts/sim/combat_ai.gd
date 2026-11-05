@@ -22,20 +22,40 @@ func think(combat: Combat, side: int) -> void:
 
 
 func _aim(combat: Combat, me: Ship, foe: Ship, side: int, r: RandomNumberGenerator) -> void:
+	# With nothing that strips a ward, only the deck the ward leaves open can be hurt.
+	var shut := foe.ward_deck if foe.ward_layers > 0 and not _strips_wards(me) else -1
 	for i in me.weapon_ids.size():
-		if me.weapon_target[i] != "" and me.weapon_charge[i] > 0.0:
+		var aimed := me.weapon_target[i]
+		var wasted := aimed != "" and foe.room(aimed).deck == shut
+		if aimed != "" and me.weapon_charge[i] > 0.0 and not wasted:
 			continue
-		var pool: Array[String] = []
-		for room in foe.rooms:
-			for k in TARGET_WEIGHTS.get(room.system, 0):
-				pool.append(room.id)
+		var pool := _targets(foe, shut)
+		if pool.is_empty():
+			pool = _targets(foe, -1)
 		if pool.is_empty():
 			continue
 		# Kinetics go wherever; a torch follows the first gun so it lands on a stripped ward.
 		var pick := pool[r.randi_range(0, pool.size() - 1)]
-		if ContentDB.weapons[me.weapon_ids[i]].family == "torch" and me.weapon_target[0] != "":
+		var torch: bool = ContentDB.weapons[me.weapon_ids[i]].family == "torch"
+		if torch and i > 0 and me.weapon_target[0] != "":
 			pick = me.weapon_target[0]
 		combat.apply({"type": "aim", "weapon": i, "room": pick}, side)
+
+
+func _targets(foe: Ship, skip_deck: int) -> Array[String]:
+	var pool: Array[String] = []
+	for room in foe.rooms:
+		if room.deck != skip_deck:
+			for k in TARGET_WEIGHTS.get(room.system, 0):
+				pool.append(room.id)
+	return pool
+
+
+func _strips_wards(me: Ship) -> bool:
+	for wid in me.weapon_ids:
+		if ContentDB.weapons[wid].strips_ward:
+			return true
+	return false
 
 
 ## Watches where the player is aiming and moves its ward to the busier deck.

@@ -46,6 +46,7 @@ static func roster(t: SceneTree) -> void:
 	s.erase("unlock")
 	ContentDB._validate_playable("bad", s, bad)
 	_check(t, bad.any(func(e: String) -> bool: return "unlock" in e), "a missing unlock is caught")
+	_torch_captain(t)
 	for id in ids:
 		var run := Run.create(7, id)
 		_check(t, run.ship.content_id == id and not run.ship.is_dead(), "a run starts in %s" % id)
@@ -173,3 +174,27 @@ static func _depth_after_ship(t: SceneTree, main: Node, hull: String) -> void:
 	)
 	main.profile.depth_open = was
 	main.close_menu()
+
+
+## A captain with only torches can't hurt a warded deck, so it aims at the open one,
+## and moves a shot that the ward has since covered.
+static func _torch_captain(t: SceneTree) -> void:
+	var c := Combat.create(3, "porcelain_saint", "ashmarket_cutter")
+	var foe := c.enemy()
+	foe.ward_deck = 1
+	foe.ward_layers = 2
+	var ai := CombatAI.new()
+	ai.think(c, 0)
+	var me := c.player()
+	var decks: Array[int] = []
+	for target in me.weapon_target:
+		decks.append(foe.room(target).deck if target != "" else -1)
+	_check(t, decks == [0, 0], "an all-torch captain aims at the open deck: %s" % [decks])
+	foe.ward_deck = 0
+	for i in me.weapon_ids.size():
+		me.weapon_charge[i] = 1.0
+	ai.think(c, 0)
+	decks.clear()
+	for target in me.weapon_target:
+		decks.append(foe.room(target).deck)
+	_check(t, decks == [1, 1], "and re-aims when the ward moves over its shot: %s" % [decks])
