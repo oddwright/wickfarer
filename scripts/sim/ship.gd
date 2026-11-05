@@ -470,6 +470,45 @@ func recover_after_fight() -> void:
 	enforce_power()
 
 
+# ---------------------------------------------------------------- refits
+
+
+## The highest level a system can be refitted to: systems.json lists the
+## price of each level from 2 up, so the list's length sets the cap.
+static func max_level(sys: String) -> int:
+	return (ContentDB.systems.get(sys, {}).get("upgrade_scrap", []) as Array).size() + 1
+
+
+func can_upgrade(sys: String) -> bool:
+	var r := system_room(sys)
+	return r != null and r.level < max_level(sys)
+
+
+## One more level for a system. Who pays, and with what, is the run's business:
+## the player's refits and an enemy's Reach boost both come through here.
+func upgrade(sys: String) -> bool:
+	if not can_upgrade(sys):
+		return false
+	system_room(sys).level += 1
+	return true
+
+
+## Times the Ember has been stoked: reactor power above the hull's own.
+func stokes() -> int:
+	return maxi(0, reactor - int(ContentDB.ships[content_id].reactor))
+
+
+## A deeper Reach's enemy: more hull and reactor, and system levels bought
+## through upgrade() like the player's refits, each powered if it can be.
+func boost(b: Dictionary) -> void:
+	max_hull += int(b.get("hull", 0))
+	hull += int(b.get("hull", 0))
+	reactor += int(b.get("reactor", 0))
+	for sys: String in b.get("systems", []):
+		if upgrade(sys):
+			power_up(sys)
+
+
 func set_ward_deck(deck: int) -> void:
 	if deck == ward_deck or deck < 0 or deck > 1:
 		return
@@ -492,6 +531,8 @@ func to_dict() -> Dictionary:
 		"content_id": content_id,
 		"side": side,
 		"hull": hull,
+		"max_hull": max_hull,
+		"reactor": reactor,
 		"rooms": rd,
 		"crew": cd,
 		"weapon_charge": Array(weapon_charge),
@@ -505,6 +546,9 @@ func to_dict() -> Dictionary:
 
 static func from_dict(d: Dictionary) -> Ship:
 	var s := Ship.from_content(d.content_id, int(d.side))
+	# Refits change these; saves from before refits keep the hull's own numbers.
+	s.max_hull = int(d.get("max_hull", s.max_hull))
+	s.reactor = int(d.get("reactor", s.reactor))
 	s.hull = int(d.hull)
 	for rd: Dictionary in d.rooms:
 		var r := s.room(rd.id)

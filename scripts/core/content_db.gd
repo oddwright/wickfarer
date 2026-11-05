@@ -102,15 +102,57 @@ static func validate() -> Array[String]:
 				errors.append("species %s: missing %s" % [sid, field])
 		_check_string(s.get("name", ""), "species %s" % sid, errors)
 	for sys_id: String in systems:
-		_check_string(systems[sys_id].get("name", ""), "system %s" % sys_id, errors)
+		_validate_system(sys_id, systems[sys_id], errors)
+	for sys_id in Run.REFIT_SYSTEMS:
+		if not systems.has(sys_id):
+			errors.append("refit offers unknown system %s" % sys_id)
 	for ship_id: String in ships:
 		_validate_ship(ship_id, ships[ship_id], errors)
 	for eid: String in events:
 		_validate_event(eid, events[eid], errors)
 	for rid: String in reaches:
 		_validate_reach(rid, reaches[rid], errors)
+	_validate_reach_chain(errors)
 	_validate_feedback(feedback, errors)
 	return errors
+
+
+static func _validate_system(sys_id: String, sys: Dictionary, errors: Array[String]) -> void:
+	var where := "system %s" % sys_id
+	_check_string(sys.get("name", ""), where, errors)
+	for f in ["upgrade_scrap", "stoke_light"]:
+		if not sys.has(f):
+			continue
+		if not sys[f] is Array:
+			errors.append("%s: %s must be a list of prices" % [where, f])
+			continue
+		for p: Variant in sys[f]:
+			if not (p is float or p is int) or int(p) <= 0 or float(p) != float(int(p)):
+				errors.append("%s: %s prices must be whole numbers above 0" % [where, f])
+	if sys.has("stoke_light") and sys_id != "ember":
+		errors.append("%s: only the Ember can be stoked" % where)
+
+
+## The Reaches form one chain from reach_1, each "next" naming a real Reach,
+## with no loops, so every run ends at a last Gate.
+static func _validate_reach_chain(errors: Array[String]) -> void:
+	if not reaches.has("reach_1"):
+		errors.append("there must be a reach_1, where runs start")
+		return
+	var seen := {}
+	var rid := "reach_1"
+	while rid != "":
+		if seen.has(rid):
+			errors.append("reach %s: the chain of next Reaches loops" % rid)
+			return
+		seen[rid] = true
+		rid = str(reaches[rid].get("next", ""))
+		if rid != "" and not reaches.has(rid):
+			errors.append("reach chain: unknown next Reach %s" % rid)
+			return
+	for other: String in reaches:
+		if not seen.has(other):
+			errors.append("reach %s: no Reach leads to it" % other)
 
 
 ## Every field a Run or StarChart reads, so a bad reach fails here and not
@@ -139,6 +181,8 @@ static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -
 	var rows: Array = r.get("rows", [])
 	if rows.size() != 2 or int(rows[0]) < 1 or int(rows[1]) < int(rows[0]):
 		errors.append("%s: rows must be [min, max] with 1 <= min <= max" % where)
+	if int(r.get("gate_repair", 0)) < 0:
+		errors.append("%s: gate_repair can't be negative" % where)
 	for f in ["jump_light", "dark_jump_hull", "hush_hull"]:
 		if not r.has(f) or int(r[f]) < 0:
 			errors.append("%s: %s must be a number of 0 or more" % [where, f])
@@ -153,6 +197,13 @@ static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -
 		var span: Array = reward.get(f, [])
 		if span.size() != 2 or int(span[0]) > int(span[1]):
 			errors.append("%s: fight_reward.%s must be [min, max]" % [where, f])
+	var boost: Dictionary = r.get("enemy_boost", {})
+	for f in ["hull", "reactor"]:
+		if int(boost.get(f, 0)) < 0:
+			errors.append("%s: enemy_boost.%s can't be negative" % [where, f])
+	for sys: Variant in boost.get("systems", []):
+		if not systems.has(str(sys)):
+			errors.append("%s: enemy_boost raises unknown system %s" % [where, sys])
 	var store: Dictionary = r.get("store", {})
 	for item in Run.STORE_ITEMS:
 		_check_string("UI_STORE_" + item.to_upper(), "store item %s" % item, errors)

@@ -106,7 +106,7 @@ func _load_saved() -> Run:
 	var data := SaveService.read(SAVE_SLOT, save_dir)
 	if data.has("run"):
 		var r := Run.from_dict(data.run)
-		if not r.state in ["lost", "reach_done"]:
+		if not r.is_over():
 			return r
 	return null
 
@@ -158,7 +158,10 @@ func _build_run_layout() -> void:
 			count = (run.event().get("choices", []) as Array).size()
 		"store":
 			mode = "store"
-			count = run.store_items().size() + 1  # and Leave
+			count = run.store_items().size() + 2  # and Refit, and Leave
+		"refit":
+			mode = "refit"
+			count = Run.REFIT_SYSTEMS.size() + 2  # and Stoke, and Back
 	run_layout = RunLayout.build(screen, run.chart, mode, count)
 
 
@@ -226,7 +229,7 @@ func _pause(reason := "") -> void:
 func _save() -> void:
 	if run == null:
 		return
-	if run.state in ["lost", "reach_done"]:
+	if run.is_over():
 		SaveService.erase(SAVE_SLOT, save_dir)
 	else:
 		SaveService.write(SAVE_SLOT, {"run": run.to_dict()}, save_dir)
@@ -325,7 +328,7 @@ func music_state() -> String:
 			return "engage" if combat == null else music_director.state_for(combat)
 		"event", "outcome":
 			return "event"
-		"store":
+		"store", "refit":
 			return "store"
 		"lost":
 			return "defeat"
@@ -511,15 +514,40 @@ func _tap_run(p: Vector2i) -> void:
 		"store":
 			var items := run.store_items()
 			var i := int(b.id)
-			var done := run.buy(items[i]) if i < items.size() else run.leave_store()
+			var done := false
+			if i < items.size():
+				done = run.buy(items[i])
+			elif i == items.size():
+				done = run.open_refit()
+			else:
+				done = run.leave_store()
 			if not done:
 				ui_cue("refused")
 				return
 			ui_cue("buy" if i < items.size() else "tap")
+		"refit":
+			var i := int(b.id)
+			var systems := Run.REFIT_SYSTEMS
+			var done := false
+			if i < systems.size():
+				done = run.refit(systems[i])
+			elif i == systems.size():
+				done = run.stoke()
+			else:
+				done = run.close_refit()
+			if not done:
+				ui_cue("refused")
+				return
+			ui_cue("buy" if i <= systems.size() else "tap")
 		"next":
-			if run.state in ["lost", "reach_done"] and run.outcome == "":
+			if run.is_over() and run.outcome == "":
 				ui_cue("tap")
 				_set_run(Run.create(_fresh_seed()))
+				return
+			if run.state == "reach_done" and run.outcome == "":
+				run.next_reach()
+				ui_cue("jump")
+				_enter_screen()
 				return
 			if not run.read_outcome():
 				return
@@ -552,7 +580,7 @@ func menu_items(page: String) -> Array[String]:
 
 ## A lost or finished run waiting on its ending screen; nothing to continue.
 func run_over() -> bool:
-	return run != null and run.state in ["lost", "reach_done"]
+	return run != null and run.is_over()
 
 
 ## iOS apps must not quit themselves (Apple rejects it); Android and desktop may.

@@ -20,6 +20,8 @@ func _draw() -> void:
 			_draw_event(run, l)
 		"store":
 			_draw_store(run, l)
+		"refit":
+			_draw_refit(run, l)
 		_:
 			_draw_next(run, l)
 	_draw_status(run, l)
@@ -196,13 +198,50 @@ func _draw_store(run: Run, l: RunLayout) -> void:
 	var items := run.store_items()
 	for b in l.buttons:
 		var i := int(b.id)
-		if i >= items.size():
+		if i == items.size():
+			_button(b.rect, tr("UI_STORE_REFIT"))
+			continue
+		if i > items.size():
 			_button(b.rect, tr("UI_LEAVE"))
 			continue
 		var item := items[i]
 		var note := "%d %s" % [run.price(item), tr("UI_SCRAP")]
 		var short := run.scrap < run.price(item)
 		_button(b.rect, tr("UI_STORE_" + item.to_upper()), run.can_buy(item), note, short)
+
+
+## One button per system the dock can raise, then Stoke the Ember, then Back.
+## Each shows the level it buys and its price; a capped one says so.
+func _draw_refit(run: Run, l: RunLayout) -> void:
+	_story(l, tr("UI_REFIT_TEXT") + " " + tr("UI_REFIT_REACTOR") % run.ship.reactor)
+	var systems := Run.REFIT_SYSTEMS
+	for b in l.buttons:
+		var i := int(b.id)
+		if i < systems.size():
+			var sys := systems[i]
+			var sys_name := tr(str(ContentDB.systems[sys].name))
+			var p := run.refit_price(sys)
+			if p < 0:
+				_button(b.rect, tr("UI_REFIT_MAXED") % sys_name, false)
+				continue
+			var lvl := run.ship.system_room(sys).level + 1
+			var note := "%d %s" % [p, tr("UI_SCRAP")]
+			_button(
+				b.rect,
+				tr("UI_REFIT_LEVEL") % [sys_name, lvl],
+				run.can_refit(sys),
+				note,
+				run.scrap < p
+			)
+		elif i == systems.size():
+			var lp := run.stoke_price()
+			if lp < 0:
+				_button(b.rect, tr("UI_STOKE_MAXED"), false)
+				continue
+			var lnote := "%d %s" % [lp, tr("UI_LIGHT")]
+			_button(b.rect, tr("UI_STOKE"), run.can_stoke(), lnote, run.light < lp)
+		else:
+			_button(b.rect, tr("UI_MENU_BACK"))
 
 
 func _draw_next(run: Run, l: RunLayout) -> void:
@@ -214,7 +253,12 @@ func _draw_next(run: Run, l: RunLayout) -> void:
 			body = tr(run.outcome)
 		"reach_done":
 			title = tr("UI_REACH_DONE_TITLE")
-			body = tr("UI_REACH_DONE")
+			var ahead := tr(str(ContentDB.reaches[str(run.reach().next)].name))
+			body = tr("UI_REACH_DONE") + " " + tr("UI_REACH_NEXT") % ahead
+			label = "UI_JUMP_THROUGH"
+		"won":
+			title = tr("UI_RUN_WON_TITLE")
+			body = tr("UI_RUN_WON")
 			label = "UI_NEW_RUN"
 		"lost":
 			title = tr("UI_RUN_LOST_TITLE")
@@ -226,10 +270,19 @@ func _draw_next(run: Run, l: RunLayout) -> void:
 		r = Rect2i(r.position.x, r.position.y + 20, r.size.x, r.size.y - 20)
 	draw_rect(Rect2(r.grow(4)), Pixel.c("a", 0.85))
 	_text_block(r, body, Pixel.c("h"))
-	if run.state in ["lost", "reach_done"]:
-		_text_block(
-			Rect2i(r.position.x, r.end.y - 10, r.size.x, 10),
-			"%s %d   %s %d" % [tr("UI_JUMPS"), run.jumps, tr("UI_SEED"), run.rng.run_seed],
-			Pixel.c("g")
+	if run.is_over() or run.state == "reach_done":
+		var stats := (
+			"%s %d   %s %d   %s %d   %s %d"
+			% [
+				tr("UI_GATES"),
+				run.reaches_crossed,
+				tr("UI_FIGHTS_WON"),
+				run.fights_won,
+				tr("UI_JUMPS"),
+				run.jumps,
+				tr("UI_SEED"),
+				run.rng.run_seed
+			]
 		)
+		_text_block(Rect2i(r.position.x, r.end.y - 10, r.size.x, 10), stats, Pixel.c("g"))
 	_button(l.buttons[0].rect, tr(label))

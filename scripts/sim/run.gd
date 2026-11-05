@@ -1,14 +1,23 @@
 class_name Run
 extends RefCounted
-## One run through a Reach: the star chart, Scrap and Light, the Hush closing
-## in from behind, and the fights, events and stores at each beacon.
+## One run across the Reaches: each Reach's star chart, Scrap and Light, the
+## Hush closing in from behind, and the fights, events and stores at each
+## beacon. Stores also refit the ship: Scrap buys system levels, and Light
+## burned in the Ember buys reactor power. The last Reach's Gate wins the run.
 ## Like Combat, it never touches the screen; the view reads `state` and calls
 ## the action methods, which return false when an action isn't allowed.
 
 const STORE_ITEMS: Array[String] = ["repair", "light"]  ## each needs a "<item>_scrap" price
 const REACH_ENEMY := "reach"  ## an event "fight" that picks from the Reach's enemy pool
+const ENDINGS: Array[String] = ["lost", "won"]  ## states a run never leaves
+## Systems the refit page offers, in order; "stoke" (reactor for Light) comes after them.
+## Weapons join once stores sell guns, since a bigger weapons system has nothing to power yet.
+const REFIT_SYSTEMS: Array[String] = ["wards", "helm", "engines", "mend"]
 
 var reach_id: String
+var reaches_crossed: int = 0  ## Gates passed this run
+var fights_won: int = 0
+var scrap_earned: int = 0  ## every scrap gained, before spending; for the end screen and records
 var rng: RngStreams
 var chart: StarChart
 var ship: Ship
@@ -92,7 +101,8 @@ func jump(target: String) -> bool:
 func _arrive() -> void:
 	var kind := str(here().kind)
 	if kind == "gate":
-		state = "reach_done"
+		reaches_crossed += 1
+		state = "reach_done" if str(reach().get("next", "")) != "" else "won"
 		return
 	event_id = _pick_event(kind)
 	if event_id != "":
@@ -112,6 +122,30 @@ func _skip_story(kind: String) -> void:
 			state = "chart"
 
 
+## The run has ended, lost or won; nothing more can happen in it.
+func is_over() -> bool:
+	return state in ENDINGS
+
+
+## From a Gate's screen into the next Reach: a new chart and a fresh Hush.
+## The ship, crew, Scrap and Light carry on (the Gate patches a little hull),
+## and stories already told stay told.
+func next_reach() -> bool:
+	var next := str(reach().get("next", ""))
+	if state != "reach_done" or next == "":
+		return false
+	# The Gate's dock patches some hull on the way through.
+	ship.hull = mini(ship.max_hull, ship.hull + int(reach().get("gate_repair", 0)))
+	reach_id = next
+	chart = StarChart.generate(reach(), rng.stream("map"))
+	at = chart.start_id()
+	visited.assign([at])
+	hush = float(reach().hush_start)
+	messages.clear()
+	state = "chart"
+	return true
+
+
 func is_swallowed(id: String) -> bool:
 	return float(chart.node(id).col) <= hush
 
@@ -125,6 +159,7 @@ func _start_fight(enemy: String, enemy_hull := 0) -> void:
 		enemy = str(pool[rng.stream("encounters").randi_range(0, pool.size() - 1)])
 	combat = Combat.from_ship(rng.stream("combat").randi(), ship, enemy)
 	var foe := combat.enemy()
+	foe.boost(reach().get("enemy_boost", {}))
 	foe.hull = clampi(foe.hull + enemy_hull, 1, foe.max_hull)
 	state = "fight"
 
@@ -140,8 +175,10 @@ func finish_fight() -> bool:
 		return true
 	var loot := rng.stream("loot")
 	var reward: Dictionary = reach().fight_reward
-	scrap += loot.randi_range(int(reward.scrap[0]), int(reward.scrap[1])) + fight_bonus_scrap
+	var won_scrap := loot.randi_range(int(reward.scrap[0]), int(reward.scrap[1]))
+	_gain_scrap(won_scrap + fight_bonus_scrap)
 	light += loot.randi_range(int(reward.light[0]), int(reward.light[1]))
+	fights_won += 1
 	fight_bonus_scrap = 0
 	messages.clear()
 	ship.recover_after_fight()
@@ -222,7 +259,7 @@ func choose(i: int) -> bool:
 
 
 func _apply(fx: Dictionary) -> void:
-	scrap = maxi(0, scrap + int(fx.get("scrap", 0)))
+	_gain_scrap(int(fx.get("scrap", 0)))
 	light = maxi(0, light + int(fx.get("light", 0)))
 	ship.hull = clampi(ship.hull + int(fx.get("hull", 0)), 0, ship.max_hull)
 	hush = Q.q(hush + float(fx.get("hush", 0.0)))
@@ -295,12 +332,83 @@ func leave_store() -> bool:
 	return true
 
 
+func _gain_scrap(n: int) -> void:
+	scrap = maxi(0, scrap + n)
+	scrap_earned += maxi(0, n)
+
+
+# ---------------------------------------------------------------- refit
+
+
+## The store's refit page, and back. It is a run state so a save made on it
+## reopens on it.
+func open_refit() -> bool:
+	if state != "store":
+		return false
+	state = "refit"
+	return true
+
+
+func close_refit() -> bool:
+	if state != "refit":
+		return false
+	state = "store"
+	return true
+
+
+## Scrap for the system's next level, or -1 if it is at its cap or the ship has none.
+func refit_price(sys: String) -> int:
+	if not ship.can_upgrade(sys):
+		return -1
+	var prices: Array = ContentDB.systems[sys].get("upgrade_scrap", [])
+	return int(prices[ship.system_room(sys).level - 1])
+
+
+func can_refit(sys: String) -> bool:
+	var p := refit_price(sys)
+	return state == "refit" and p >= 0 and scrap >= p
+
+
+func refit(sys: String) -> bool:
+	if not can_refit(sys):
+		return false
+	scrap -= refit_price(sys)
+	ship.upgrade(sys)
+	ship.power_up(sys)  # the new level comes powered if the reactor has room
+	return true
+
+
+## Light to stoke the Ember once more (one more reactor power), or -1 at the cap.
+func stoke_price() -> int:
+	var prices: Array = ContentDB.systems.ember.get("stoke_light", [])
+	var done := ship.stokes()
+	return int(prices[done]) if done < prices.size() else -1
+
+
+func can_stoke() -> bool:
+	var p := stoke_price()
+	return state == "refit" and p >= 0 and light >= p
+
+
+## Burns Light into the Ember for one more reactor power. Holding less Light
+## also slows the Hush, which is why a player might stoke before a long jump.
+func stoke() -> bool:
+	if not can_stoke():
+		return false
+	light -= stoke_price()
+	ship.reactor += 1
+	return true
+
+
 # ---------------------------------------------------------------- save
 
 
 func to_dict() -> Dictionary:
 	return {
 		"reach": reach_id,
+		"reaches_crossed": reaches_crossed,
+		"fights_won": fights_won,
+		"scrap_earned": scrap_earned,
 		"rng": rng.to_dict(),
 		"chart": chart.to_dict(),
 		"ship": ship.to_dict(),
@@ -324,6 +432,9 @@ static func from_dict(d: Dictionary) -> Run:
 	ContentDB.load_all()
 	var r := Run.new()
 	r.reach_id = str(d.reach)
+	r.reaches_crossed = int(d.get("reaches_crossed", 0))
+	r.fights_won = int(d.get("fights_won", 0))
+	r.scrap_earned = int(d.get("scrap_earned", 0))
 	r.rng = RngStreams.from_dict(d.rng)
 	r.chart = StarChart.from_dict(d.chart)
 	r.state = str(d.state)
