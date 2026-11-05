@@ -419,21 +419,21 @@
       {
         "text": "EV_CHAFF_AMBUSH_C2",
         "requires": {
-          "scrap": 8
+          "scrap": 10
         },
         "outcomes": [
           {
             "weight": 3,
             "text": "EV_CHAFF_AMBUSH_C2_O1",
             "effects": {
-              "scrap": -8
+              "scrap": -10
             }
           },
           {
             "weight": 1,
             "text": "EV_CHAFF_AMBUSH_C2_O2",
             "effects": {
-              "scrap": -8,
+              "scrap": -10,
               "fight": "reach"
             }
           }
@@ -503,14 +503,14 @@
       {
         "text": "EV_BUOY_TOLL_C2",
         "requires": {
-          "scrap": 6
+          "scrap": 10
         },
         "outcomes": [
           {
             "weight": 1,
             "text": "EV_BUOY_TOLL_C2_O1",
             "effects": {
-              "scrap": -6
+              "scrap": -10
             }
           }
         ]
@@ -602,7 +602,7 @@
             "weight": 1,
             "text": "EV_FLEEING_RAIDER_C2_O1",
             "effects": {
-              "hush": 0.6
+              "hush": 0.8
             }
           }
         ]
@@ -633,9 +633,11 @@
         "requires": {},
         "outcomes": [
           {
-            "weight": 2,
+            "weight": 1,
             "text": "EV_BAIT_WRECK_C2_O1",
-            "effects": {}
+            "effects": {
+              "hush": 0.3
+            }
           },
           {
             "weight": 1,
@@ -786,7 +788,9 @@
           {
             "weight": 1,
             "text": "EV_LANTERN_RAID_C2_O1",
-            "effects": {}
+            "effects": {
+              "hush": 0.5
+            }
           }
         ]
       }
@@ -805,7 +809,7 @@
             "weight": 1,
             "text": "EV_DECOY_SCREEN_C1_O1",
             "effects": {
-              "fight": "ashmarket_skiff"
+              "fight": "reach"
             }
           }
         ]
@@ -869,7 +873,7 @@
             "weight": 1,
             "text": "EV_CLAIM_JUMPERS_C3_O1",
             "effects": {
-              "hull": -2
+              "hull": -3
             }
           }
         ]

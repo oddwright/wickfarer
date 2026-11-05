@@ -98,7 +98,11 @@ func _arrive() -> void:
 	if event_id != "":
 		state = "event"
 		return
-	# No story for this kind of beacon: fall straight into what's there.
+	_skip_story(kind)
+
+
+## No story for this beacon: fall straight into what's there.
+func _skip_story(kind: String) -> void:
 	match kind:
 		"fight":
 			_start_fight(REACH_ENEMY)
@@ -150,23 +154,31 @@ func finish_fight() -> bool:
 
 
 ## A story for a beacon of this kind, one the run hasn't seen if it can.
-## Plain events are never repeated; the openers for fights, stores and
-## empty beacons repeat once they run out, since the beacon still needs one.
+## Plain events are never repeated. The openers for fights, stores and empty
+## beacons start a new cycle once all are seen, since the beacon still needs
+## one, but never show the same one twice in a row.
 func _pick_event(kind: String) -> String:
-	var fresh: Array[String] = []
+	var ids: Array[String] = []
 	var seen: Array[String] = []
 	for eid: String in ContentDB.events:
 		if str(ContentDB.events[eid].get("beacon", "event")) == kind:
-			(seen if seen_events.has(eid) else fresh).append(eid)
-	var ids := fresh if not fresh.is_empty() or kind == "event" else seen
+			(seen if seen_events.has(eid) else ids).append(eid)
+	if ids.is_empty() and kind != "event" and not seen.is_empty():
+		var last := ""
+		for eid in seen_events:
+			if seen.has(eid):
+				last = eid
+		for eid in seen:
+			if eid != last or seen.size() == 1:
+				seen_events.erase(eid)
+				ids.append(eid)
 	var weights: Array[int] = []
 	for eid in ids:
 		weights.append(int(ContentDB.events[eid].get("weight", 10)))
 	var i := RngStreams.weighted_pick(weights, rng.stream("events"))
 	if i < 0:
 		return ""
-	if not seen_events.has(ids[i]):
-		seen_events.append(ids[i])
+	seen_events.append(ids[i])
 	return ids[i]
 
 
@@ -330,9 +342,10 @@ static func from_dict(d: Dictionary) -> Run:
 	r.event_id = str(d.event)
 	r.outcome = str(d.get("outcome", ""))
 	if r.state == "event" and not ContentDB.events.has(r.event_id):
-		# The event was removed or renamed in an update; don't strand the save on it.
-		r.state = "chart"
+		# The event was removed or renamed in an update; don't strand the save
+		# on it, but keep the fight or store its beacon holds.
 		r.event_id = ""
+		r._skip_story(str(r.here().kind))
 	for e in d.seen_events:
 		r.seen_events.append(str(e))
 	r.fight_bonus_scrap = int(d.fight_bonus_scrap)

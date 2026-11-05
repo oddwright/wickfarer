@@ -568,14 +568,25 @@ func test_every_beacon_opens_with_a_story() -> void:
 			)
 	# Openers run out in a long run; then they repeat instead of skipping the story.
 	var long := Run.create(3)
-	long.at = long.chart.nodes.filter(func(n: Dictionary) -> bool: return n.kind == "store")[0].id
+	long.chart.node(long.at).kind = "store"
 	var seen := {}
-	for i in int(per_kind.store) + 2:
+	var last := ""
+	for i in int(per_kind.store) * 3:
 		long.state = "chart"
 		long._arrive()
 		check(long.state == "event", "store opener %d still shows" % i)
+		check(long.event_id != last, "store opener %d isn't the one just shown" % i)
+		last = long.event_id
 		seen[long.event_id] = true
-	check(seen.size() == int(per_kind.store), "every store opener shows before one repeats")
+		if i == int(per_kind.store) - 1:
+			check(seen.size() == i + 1, "every store opener shows before one repeats")
+	# A save on an opener that an update removed still gets its beacon's fight.
+	var gone := Run.create(5)
+	gone.chart.node(gone.at).kind = "fight"
+	gone.state = "event"
+	gone.event_id = "an_opener_removed_in_an_update"
+	var loaded := Run.from_dict(JSON.parse_string(J.s(gone.to_dict())))
+	check(loaded.state == "fight" and loaded.combat != null, "a removed opener keeps its fight")
 
 
 func test_openers_lead_into_fights_and_stores() -> void:
@@ -628,7 +639,7 @@ func test_opener_effects_are_checked() -> void:
 ## Every story and choice label fits its panel and buttons on every screen,
 ## so new content can't run off the bottom of a phone.
 func test_story_text_fits_every_screen() -> void:
-	var tl := TextLayer.new()
+	var tl := RunView.new()
 	TextLayer.glyph_index = JSON.parse_string(
 		FileAccess.get_file_as_string("res://art/font_3x5.json")
 	)
@@ -636,6 +647,7 @@ func test_story_text_fits_every_screen() -> void:
 	var chart := Run.create(1).chart
 	for name: String in SCREENS:
 		var scr := ScreenManager.compute(SCREENS[name])
+		var out := RunLayout.build(scr, chart, "next")
 		for eid: String in ContentDB.events:
 			var ev: Dictionary = ContentDB.events[eid]
 			var l := RunLayout.build(scr, chart, "event", (ev.choices as Array).size())
@@ -645,16 +657,32 @@ func test_story_text_fits_every_screen() -> void:
 			for i in (ev.choices as Array).size():
 				var r: Rect2i = l.button("choice", i).rect
 				var label := tr(str(ev.choices[i].text)).to_upper()
-				if tl._wrap(label, r.size.x - 12, 1).size() > (1 if r.size.y < 30 else 2):
+				var note := tl._needs(ev.choices[i].get("requires", {})).to_upper()
+				if not _label_fits(tl, r, label, note):
 					probs.append("%s: %s choice %d is too long" % [name, eid, i])
 			for c: Dictionary in ev.choices:
 				for o: Dictionary in c.outcomes:
-					var out := RunLayout.build(scr, chart, "next")
 					var ol := tl._wrap(tr(str(o.text)).to_upper(), out.text_rect.size.x, 1)
 					if 6 + ol.size() * TextLayer.LINE > out.text_rect.size.y + 4:
 						probs.append("%s: %s result is too long" % [name, o.text])
 	tl.free()
 	check(probs.is_empty(), "story text fits: %s" % [probs.slice(0, 4)])
+
+
+## Mirrors RunView._button: one centred line with no note; label and note on
+## one line if they fit; else two label lines with the note on the second,
+## which only a tall (Square) button has room for.
+func _label_fits(tl: RunView, r: Rect2i, label: String, note: String) -> bool:
+	if note == "":
+		return TextLayer.text_width(label) <= r.size.x - 4
+	var inner := r.size.x - 12
+	if TextLayer.text_width(label) + TextLayer.text_width(note) + 8 <= inner:
+		return true
+	var lines := tl._wrap(label, inner, 1)
+	if r.size.y < 30 or lines.size() > 2:
+		return false
+	var second := lines[1] if lines.size() > 1 else ""
+	return TextLayer.text_width(second) + TextLayer.text_width(note) + 8 <= inner
 
 
 func test_run_saves_and_resumes_at_every_step() -> void:

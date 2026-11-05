@@ -48,6 +48,8 @@ func _set_up() -> void:
 	if which.begins_with("event:"):
 		run.state = "event"
 		run.event_id = which.trim_prefix("event:")
+		if run.event().is_empty():
+			push_error("no event called %s" % run.event_id)
 	match which:
 		"event":
 			run.state = "event"
