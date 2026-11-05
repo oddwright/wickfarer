@@ -162,13 +162,13 @@ jobs:
       - name: Export APK
         run: |
           mkdir -p build
-          godot --headless --path . --export-debug "Android" build/emberwake-debug.apk
+          godot --headless --path . --export-debug "Android" build/wickfarer-debug.apk
           ls -la build
-          test -s build/emberwake-debug.apk
+          test -s build/wickfarer-debug.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: emberwake-android-debug
-          path: build/emberwake-debug.apk
+          name: wickfarer-android-debug
+          path: build/wickfarer-debug.apk
           retention-days: 14
 
   screens:
@@ -207,7 +207,7 @@ jobs:
   release:
     name: Publish the phone build
     # Every green build of main becomes a GitHub Release, so the newest APK is always at
-    # releases/latest/download/emberwake.apk and updaters like Obtainium can follow it.
+    # releases/latest/download/wickfarer.apk and updaters like Obtainium can follow it.
     # It is a debug export on purpose: it is for our own test phones, not a store.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [lint, test, android, screens]
@@ -227,21 +227,21 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: emberwake-android-debug
+          name: wickfarer-android-debug
           path: build
       - name: Give the APK its stable name
         run: |
           test -n "$VERSION"
-          mv build/emberwake-debug.apk build/emberwake.apk
+          mv build/wickfarer-debug.apk build/wickfarer.apk
       - name: Create or update the release
         run: |
           tag="v$VERSION"
           if gh release view "$tag" > /dev/null 2>&1; then
             # A re-run of the same build: replace the APK, keep the notes.
-            gh release upload "$tag" build/emberwake.apk --clobber
+            gh release upload "$tag" build/wickfarer.apk --clobber
           else
-            gh release create "$tag" build/emberwake.apk --target "$GITHUB_SHA" --latest=false \
-              --title "Emberwake $VERSION $CI_MARK" --generate-notes
+            gh release create "$tag" build/wickfarer.apk --target "$GITHUB_SHA" --latest=false \
+              --title "Wickfarer $VERSION $CI_MARK" --generate-notes
           fi
       - name: Mark the newest build as latest
         # Release jobs can finish out of order, and re-runs publish old builds, so "latest" goes
@@ -253,7 +253,7 @@ jobs:
           gh release edit "$newest" --latest
           {
             echo "### Phone build $VERSION"
-            echo "Latest is $newest: https://github.com/$GH_REPO/releases/latest/download/emberwake.apk"
+            echo "Latest is $newest: https://github.com/$GH_REPO/releases/latest/download/wickfarer.apk"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Delete old builds
         run: |

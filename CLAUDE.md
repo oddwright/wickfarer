@@ -1,4 +1,4 @@
-# Emberwake
+# Wickfarer
 
 An original pixel-art spaceship roguelike for Android and iOS phones and foldables.
 Godot 4.7.2, GDScript, Compatibility renderer. Design doc and art rules live outside the

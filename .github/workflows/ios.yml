@@ -112,8 +112,8 @@ jobs:
         run: |
           godot --headless --path . --import
           mkdir -p build/ios
-          godot --headless --path . --export-release "iOS" build/ios/emberwake.xcodeproj
-          test -d build/ios/emberwake.xcodeproj
+          godot --headless --path . --export-release "iOS" build/ios/wickfarer.xcodeproj
+          test -d build/ios/wickfarer.xcodeproj
           # The game uses no encryption beyond HTTPS, so TestFlight need not ask on every build.
           plist=$(find build/ios -maxdepth 2 -name '*-Info.plist' | head -n 1)
           test -n "$plist"
@@ -121,7 +121,7 @@ jobs:
       - name: Build unsigned (PR check)
         if: steps.changed.outputs.skip != 'true' && env.UPLOAD != 'true'
         run: |
-          xcodebuild -project build/ios/emberwake.xcodeproj -scheme emberwake -configuration Release \
+          xcodebuild -project build/ios/wickfarer.xcodeproj -scheme wickfarer -configuration Release \
             -destination 'generic/platform=iOS' -derivedDataPath build/dd build CODE_SIGNING_ALLOWED=NO \
             | tail -n 30
       - name: Archive, sign and upload to TestFlight
@@ -138,8 +138,8 @@ jobs:
           printf '%s\n' "$ASC_KEY_P8" > "$key"
           auth=(-allowProvisioningUpdates -authenticationKeyPath "$key"
             -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
-          xcodebuild -project build/ios/emberwake.xcodeproj -scheme emberwake -configuration Release \
-            -destination 'generic/platform=iOS' -archivePath build/emberwake.xcarchive archive \
+          xcodebuild -project build/ios/wickfarer.xcodeproj -scheme wickfarer -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath build/wickfarer.xcarchive archive \
             CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM="$APPLE_TEAM_ID" "${auth[@]}" | tail -n 40
           cat > build/ExportOptions.plist <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
@@ -154,7 +154,7 @@ jobs:
           </dict>
           </plist>
           PLIST
-          xcodebuild -exportArchive -archivePath build/emberwake.xcarchive \
+          xcodebuild -exportArchive -archivePath build/wickfarer.xcarchive \
             -exportOptionsPlist build/ExportOptions.plist -exportPath build/export "${auth[@]}"
           rm -f "$key"
           echo "### Uploaded build ${{ github.run_number }} to TestFlight" >> "$GITHUB_STEP_SUMMARY"

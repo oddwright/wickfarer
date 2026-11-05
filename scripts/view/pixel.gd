@@ -1,6 +1,6 @@
 class_name Pixel
 extends RefCounted
-## The Emberwake master palette (same keys as the concept-art generators)
+## The Wickfarer master palette (same keys as the concept-art generators)
 ## and a helper that turns small text grids into textures.
 
 const PAL := {

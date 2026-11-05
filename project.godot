@@ -3,7 +3,7 @@ config_version=5
 
 [application]
 
-config/name="Emberwake"
+config/name="Wickfarer"
 config/description="Phase 0 combat prototype"
 config/icon="res://art/icon_1024.png"
 run/main_scene="res://scenes/main.tscn"
