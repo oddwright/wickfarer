@@ -1,7 +1,8 @@
 extends SceneTree
 ## Screenshot one screen at a given window size (needs a display; use xvfb-run).
 ## godot --path . -s tools/shot.gd -- <width> <height> <out.png> [ticks] [screen]
-## screen is fight (default), chart, event, event:<event id>, store or lost.
+## screen is fight (default), chart, event, event:<event id>, store or lost,
+## or a menu over a fight: title, pause, options or confirm.
 
 var frames := 0
 var main: Node
@@ -60,9 +61,20 @@ func _set_up() -> void:
 			run.state = "lost"
 		"fight":
 			run._start_fight("ashmarket_cutter")
+	if which in ["title", "pause", "options", "confirm"]:
+		run._start_fight("ashmarket_cutter")
 	main._set_run(run)
-	if which == "fight":
+	if main.combat:
 		_play_fight(main.combat)
+	match which:
+		"title", "pause":
+			main.open_menu(which)
+		"options":
+			main.open_menu("pause")
+			main.open_menu("options")
+		"confirm":
+			main.open_menu("pause")
+			main._confirm("abandon")
 
 
 func _play_fight(c: Combat) -> void:

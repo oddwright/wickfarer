@@ -4,6 +4,8 @@ extends SceneTree
 
 const J = preload("res://scripts/core/json_util.gd")
 const MAIN = preload("res://scripts/view/main.gd")
+const MENU_TESTS = preload("res://tests/menu_tests.gd")
+const STORY_TESTS = preload("res://tests/story_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -59,9 +61,24 @@ func _init() -> void:
 		"test_haptic_patterns",
 		"test_settings_save_and_fall_back",
 		"test_audio_service_and_music_states",
+		"test_menu_screens_on_every_screen",
+		"test_options_adjust_settings",
 	]:
 		current = t
 		call(t)
+
+
+## Tests that need the real scene in the tree run on the first frame, once the
+## root has entered it (it hasn't during _init).
+func _process(_delta: float) -> bool:
+	for t in ["test_menu_flow"]:
+		current = t
+		call(t)
+	_finish()
+	return false
+
+
+func _finish() -> void:
 	print("")
 	if failures.is_empty():
 		print("ALL %d CHECKS PASSED" % passed)
@@ -544,145 +561,23 @@ func test_store_and_fight_rewards() -> void:
 	check(r.ship.system_room("weapons").damage == 0.0, "crew patch systems after a fight")
 
 
+# The opener bodies live in tests/story_tests.gd to keep this file under the lint limit.
+
+
 func test_every_beacon_opens_with_a_story() -> void:
-	var per_kind := {}
-	for eid: String in ContentDB.events:
-		var k := str(ContentDB.events[eid].get("beacon", "event"))
-		per_kind[k] = int(per_kind.get(k, 0)) + 1
-	# Enough openers that a run of five or six jumps rarely sees one twice.
-	check(int(per_kind.get("fight", 0)) >= 10, "at least 10 fight openers")
-	check(int(per_kind.get("store", 0)) >= 5, "at least 5 store openers")
-	check(int(per_kind.get("empty", 0)) >= 5, "at least 5 openers for empty beacons")
-	for seed_value in 20:
-		var r := Run.create(seed_value)
-		for n in r.chart.nodes:
-			if n.kind == "gate" or n.id == r.at:
-				continue
-			r.state = "chart"
-			r.at = n.id
-			r._arrive()
-			var kind := str(r.event().get("beacon", "event"))
-			check(
-				r.state == "event" and kind == n.kind,
-				"seed %d: a %s beacon opens with a %s story" % [seed_value, n.kind, kind]
-			)
-	# Openers run out in a long run; then they repeat instead of skipping the story.
-	var long := Run.create(3)
-	long.chart.node(long.at).kind = "store"
-	var seen := {}
-	var last := ""
-	for i in int(per_kind.store) * 3:
-		long.state = "chart"
-		long._arrive()
-		check(long.state == "event", "store opener %d still shows" % i)
-		check(long.event_id != last, "store opener %d isn't the one just shown" % i)
-		last = long.event_id
-		seen[long.event_id] = true
-		if i == int(per_kind.store) - 1:
-			check(seen.size() == i + 1, "every store opener shows before one repeats")
-	# A save on an opener that an update removed still gets its beacon's fight.
-	var gone := Run.create(5)
-	gone.chart.node(gone.at).kind = "fight"
-	gone.state = "event"
-	gone.event_id = "an_opener_removed_in_an_update"
-	var loaded := Run.from_dict(JSON.parse_string(J.s(gone.to_dict())))
-	check(loaded.state == "fight" and loaded.combat != null, "a removed opener keeps its fight")
+	STORY_TESTS.every_beacon(self)
 
 
 func test_openers_lead_into_fights_and_stores() -> void:
-	var r := Run.create(40)
-	r.state = "event"
-	r.event_id = "false_distress"
-	check(r.choose(0) and r.state == "fight", "firing first starts the fight")
-	var foe := r.combat.enemy()
-	check(foe.hull == foe.max_hull - 2, "striking first starts the enemy damaged")
-	check(r.reach().enemies.has(foe.content_id), "the enemy comes from the Reach's pool")
-	check(r.outcome != "", "the opener's result is read before the fight")
-	var s := Run.create(41)
-	s.state = "event"
-	s.event_id = "lit_post"
-	check(s.choose(0) and s.state == "store", "docking opens the store")
-	s.read_outcome()
-	check(s.leave_store() and s.state == "chart", "and leaving it goes back to the chart")
-	var p := Run.create(42)
-	p.state = "event"
-	p.event_id = "lit_post"
-	check(p.choose(1) and p.state == "chart", "passing a store by skips it")
-	var h := Run.create(43)
-	h.state = "event"
-	h.event_id = "heat_hunters"
-	h.scrap = 12
-	check(
-		h.choose(1) and h.state == "chart" and h.scrap == 0, "paying off hunters avoids the fight"
-	)
-	var back := Run.from_dict(JSON.parse_string(J.s(r.to_dict())))
-	check(back.combat.enemy().hull == foe.hull, "a damaged enemy stays damaged through a save")
+	STORY_TESTS.lead_in(self)
 
 
 func test_opener_effects_are_checked() -> void:
-	var bad: Array[String] = []
-	var ev: Dictionary = ContentDB.events.lit_post.duplicate(true)
-	ev.beacon = "moon"
-	ev.choices[0].outcomes[0].effects = {"store": true, "fight": "reach"}
-	ev.choices[1].outcomes[0].effects = {"enemy_hull": -2}
-	ContentDB._validate_event("bad", ev, bad)
-	var all := " | ".join(bad)
-	check(all.contains("unknown beacon kind moon"), "an unknown beacon kind is caught")
-	check(all.contains("store is true"), "a store and a fight at once is caught")
-	check(all.contains("enemy_hull"), "enemy_hull without a fight is caught")
-	ev.choices.append_array([ev.choices[0], ev.choices[1]])
-	bad.clear()
-	ContentDB._validate_event("bad", ev, bad)
-	check(" ".join(bad).contains("more than"), "too many choices for the screen is caught")
+	STORY_TESTS.effects_checked(self)
 
 
-## Every story and choice label fits its panel and buttons on every screen,
-## so new content can't run off the bottom of a phone.
 func test_story_text_fits_every_screen() -> void:
-	var tl := RunView.new()
-	TextLayer.glyph_index = JSON.parse_string(
-		FileAccess.get_file_as_string("res://art/font_3x5.json")
-	)
-	var probs: Array[String] = []
-	var chart := Run.create(1).chart
-	for name: String in SCREENS:
-		var scr := ScreenManager.compute(SCREENS[name])
-		var out := RunLayout.build(scr, chart, "next")
-		for eid: String in ContentDB.events:
-			var ev: Dictionary = ContentDB.events[eid]
-			var l := RunLayout.build(scr, chart, "event", (ev.choices as Array).size())
-			var lines := tl._wrap(tr(str(ev.text)).to_upper(), l.text_rect.size.x, 1)
-			if 6 + lines.size() * TextLayer.LINE > l.text_rect.size.y + 4:
-				probs.append("%s: %s story is too long" % [name, eid])
-			for i in (ev.choices as Array).size():
-				var r: Rect2i = l.button("choice", i).rect
-				var label := tr(str(ev.choices[i].text)).to_upper()
-				var note := tl._needs(ev.choices[i].get("requires", {})).to_upper()
-				if not _label_fits(tl, r, label, note):
-					probs.append("%s: %s choice %d is too long" % [name, eid, i])
-			for c: Dictionary in ev.choices:
-				for o: Dictionary in c.outcomes:
-					var ol := tl._wrap(tr(str(o.text)).to_upper(), out.text_rect.size.x, 1)
-					if 6 + ol.size() * TextLayer.LINE > out.text_rect.size.y + 4:
-						probs.append("%s: %s result is too long" % [name, o.text])
-	tl.free()
-	check(probs.is_empty(), "story text fits: %s" % [probs.slice(0, 4)])
-
-
-## Mirrors RunView._button: one centred line with no note; label and note on
-## one line if they fit; else two label lines with the note on the second,
-## which only a tall (Square) button has room for.
-func _label_fits(tl: RunView, r: Rect2i, label: String, note: String) -> bool:
-	if note == "":
-		return TextLayer.text_width(label) <= r.size.x - 4
-	var inner := r.size.x - 12
-	if TextLayer.text_width(label) + TextLayer.text_width(note) + 8 <= inner:
-		return true
-	var lines := tl._wrap(label, inner, 1)
-	if r.size.y < 30 or lines.size() > 2:
-		return false
-	var second := lines[1] if lines.size() > 1 else ""
-	return TextLayer.text_width(second) + TextLayer.text_width(note) + 8 <= inner
+	STORY_TESTS.text_fits(self, SCREENS)
 
 
 func test_run_saves_and_resumes_at_every_step() -> void:
@@ -729,8 +624,9 @@ func test_run_screens_on_every_screen() -> void:
 		for mode in ["event", "store", "next"]:
 			var l := RunLayout.build(scr, chart0, mode, 3)
 			probs.append_array(l.problems())
-			if l.buttons.is_empty():
-				probs.append("%s has no buttons" % mode)
+			var own := {"event": "choice", "store": "store", "next": "next"}
+			if l.button(own[mode]).is_empty():
+				probs.append("%s has no %s button" % [mode, own[mode]])
 			for b in l.buttons:
 				if (b.rect as Rect2i).end.y > scr.native.y - 4:
 					probs.append("%s button falls off the bottom" % mode)
@@ -972,3 +868,19 @@ func test_audio_service_and_music_states() -> void:
 	main.combat.player().hull = 1
 	check(main.music_state() == "danger", "low hull plays the danger layers")
 	main.free()
+
+
+# ------------------------------------------------------------------ menus
+# The bodies live in tests/menu_tests.gd to keep this file under the lint limit.
+
+
+func test_menu_screens_on_every_screen() -> void:
+	MENU_TESTS.screens(self, SCREENS)
+
+
+func test_options_adjust_settings() -> void:
+	MENU_TESTS.options_adjust(self)
+
+
+func test_menu_flow() -> void:
+	MENU_TESTS.flow(self)
