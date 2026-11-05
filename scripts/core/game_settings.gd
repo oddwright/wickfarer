@@ -8,12 +8,59 @@ extends RefCounted
 
 const SLOT := "settings"
 const SETTINGS_VERSION := 1
+const STEP := 0.1  ## one tap of - or + on the options screen
 
 var volume := {"Master": 0.8, "Music": 0.7, "SFX": 0.9, "UI": 0.7}  ## 0..1 per bus
 var haptics := 1.0  ## 0 turns vibration off
 var shake := 1.0  ## screen shake strength, 0..1
 var hitstop := true
 var reduce_flashing := false
+
+
+## A setting's value by options-screen id: a bus name, "haptics" or "shake"
+## (0..1), or "hitstop" / "reduce_flashing" (1 on, 0 off).
+func value(id: String) -> float:
+	if volume.has(id):
+		return float(volume[id])
+	match id:
+		"haptics":
+			return haptics
+		"shake":
+			return shake
+		"hitstop":
+			return 1.0 if hitstop else 0.0
+		"reduce_flashing":
+			return 1.0 if reduce_flashing else 0.0
+	return 0.0
+
+
+## One tap on the options screen: dir is +1 or -1 for a level, any value
+## flips a toggle. Levels snap to tenths so repeated taps never drift.
+func adjust(id: String, dir: int) -> void:
+	match id:
+		"hitstop":
+			hitstop = not hitstop
+			return
+		"reduce_flashing":
+			reduce_flashing = not reduce_flashing
+			return
+	var v := clampf(snappedf(value(id) + STEP * signi(dir), STEP), 0.0, 1.0)
+	if volume.has(id):
+		volume[id] = v
+	elif id == "haptics":
+		haptics = v
+	elif id == "shake":
+		shake = v
+
+
+## Back to the defaults, in place, so everything holding this object sees it.
+func reset() -> void:
+	var d := GameSettings.new()
+	volume = d.volume
+	haptics = d.haptics
+	shake = d.shake
+	hitstop = d.hitstop
+	reduce_flashing = d.reduce_flashing
 
 
 static func load_or_default(dir := SaveService.DIR) -> GameSettings:

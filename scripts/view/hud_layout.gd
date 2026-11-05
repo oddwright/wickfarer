@@ -34,6 +34,7 @@ static func build(
 	var w := l.native.x
 	var h := l.native.y
 	var row_y := h - ROW_H - 4
+	l._add("menu", 0, MenuLayout.menu_button(l.native))
 	if l.kind == "wide":
 		# Centre the ships in the band between the top bar and the buttons,
 		# leaving a line underneath for prompts.

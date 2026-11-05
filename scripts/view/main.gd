@@ -1,7 +1,8 @@
 extends Node
 ## Entry point: a whole run, touch only.
 ## Owns the fixed-step loop, input, saving and the screen setup, and switches
-## between the fight screen (WorldView + TextLayer) and the run screens (RunView).
+## between the fight screen (WorldView + TextLayer), the run screens (RunView)
+## and the menus (MenuView). The app opens on the title menu.
 
 const SAVE_SLOT := "run"
 const OLD_FIGHT_SLOT := "combat"  ## Phase 0 saved a lone fight here
@@ -9,6 +10,7 @@ const LONG_PRESS := 0.4
 const AUTOSAVE_EVERY := 10.0
 const MAX_STEPS_PER_FRAME := 5
 
+var save_dir := SaveService.DIR  ## tests point this at a scratch folder
 var run: Run
 var combat: Combat  ## the run's current fight, kept after it ends until Continue
 var run_layout: RunLayout
@@ -23,6 +25,13 @@ var settings: GameSettings
 var feedback: FeedbackDirector
 var audio: AudioService
 var haptics: Haptics
+var menu_view: MenuView
+var menu_layout: MenuLayout
+## The open menu page: "" (playing), "title", "pause", "options" or "confirm".
+var menu := ""
+## The page Back returns to: "title" hides the game, "pause" dims it.
+var menu_base := ""
+var confirm_action := ""  ## what the confirm page asks about: "abandon" or "new_run"
 
 var paused := false
 var pause_reason := ""
@@ -36,6 +45,7 @@ var _autosave := 0.0
 var _press_pos := Vector2.ZERO
 var _press_time := 0
 var _pressing := false
+var _paused_before_menu := false
 
 
 func _ready() -> void:
@@ -63,15 +73,18 @@ func _ready() -> void:
 	run_view = RunView.new()
 	viewport.add_child(run_view)
 	run_view.setup(self)
+	menu_view = MenuView.new()
+	viewport.add_child(menu_view)  # last, so the menus draw over the game
+	menu_view.setup(self)
+	get_window().go_back_requested.connect(back)  # Android back button
 	get_viewport().size_changed.connect(_on_resize)
 	_on_resize()
-	_set_run(_load_or_new())
-	if run.state == "fight" and run.outcome == "" and run.combat.state == "fighting":
-		_pause("UI_TAP_TO_RESUME")  # never drop a player straight back into a live fight
+	run = _load_saved()
+	open_menu("title")
 
 
 func _setup_feedback() -> void:
-	settings = GameSettings.load_or_default()
+	settings = GameSettings.load_or_default(save_dir)
 	feedback = FeedbackDirector.new(ContentDB.feedback.get("cues", {}), settings)
 	audio = AudioService.new()
 	add_child(audio)
@@ -86,14 +99,15 @@ func ui_cue(what: String) -> void:
 		feedback.cue("ui." + what)
 
 
-func _load_or_new() -> Run:
-	SaveService.erase(OLD_FIGHT_SLOT)
-	var data := SaveService.read(SAVE_SLOT)
+## The saved run to continue, or null if there is none worth continuing.
+func _load_saved() -> Run:
+	SaveService.erase(OLD_FIGHT_SLOT, save_dir)
+	var data := SaveService.read(SAVE_SLOT, save_dir)
 	if data.has("run"):
 		var r := Run.from_dict(data.run)
 		if not r.state in ["lost", "reach_done"]:
 			return r
-	return Run.create(_fresh_seed())
+	return null
 
 
 ## Which run screen is showing: a Run state, or "outcome" for an event's result.
@@ -103,15 +117,14 @@ func run_screen() -> String:
 
 func _set_run(r: Run) -> void:
 	run = r
+	close_menu()
 	_enter_screen()
 
 
 ## Call after every run action: shows the right screen and saves.
 func _enter_screen() -> void:
 	var fighting := run_screen() == "fight"
-	world.visible = fighting
-	text.visible = fighting
-	run_view.visible = not fighting
+	_show_game(menu_base != "title")
 	if fighting and combat != run.combat:
 		_start(run.combat)
 	if not fighting:
@@ -119,6 +132,16 @@ func _enter_screen() -> void:
 		layout = null
 	_build_run_layout()
 	_save()
+
+
+## The fight and run screens are hidden under the title menu, and dimmed
+## under the others.
+func _show_game(on: bool) -> void:
+	var fighting := run != null and run_screen() == "fight"
+	world.visible = on and fighting
+	text.visible = on and fighting
+	run_view.visible = on and run != null and not fighting
+	menu_view.visible = menu != ""
 
 
 func _build_run_layout() -> void:
@@ -172,6 +195,7 @@ func _on_resize() -> void:
 	if combat:
 		_rebuild_layout()
 	_build_run_layout()
+	_build_menu_layout()
 
 
 func _rebuild_layout() -> void:
@@ -198,9 +222,9 @@ func _save() -> void:
 	if run == null:
 		return
 	if run.state in ["lost", "reach_done"]:
-		SaveService.erase(SAVE_SLOT)
+		SaveService.erase(SAVE_SLOT, save_dir)
 	else:
-		SaveService.write(SAVE_SLOT, {"run": run.to_dict()})
+		SaveService.write(SAVE_SLOT, {"run": run.to_dict()}, save_dir)
 
 
 func _notification(what: int) -> void:
@@ -234,10 +258,20 @@ func _on_leave() -> void:
 
 
 func _process(delta: float) -> void:
-	if run == null or screen.is_empty() or feedback == null:
+	if screen.is_empty() or feedback == null:
 		return
 	feedback.update(delta)
 	haptics.update(delta)
+	if run != null and menu == "":
+		_tick_game(delta)
+	_play_feedback()
+	world.queue_redraw()
+	text.queue_redraw()
+	run_view.queue_redraw()
+	menu_view.queue_redraw()
+
+
+func _tick_game(delta: float) -> void:
 	if combat and layout and not paused and combat.state == "fighting" and not feedback.frozen():
 		_acc += minf(delta, 0.25)
 		var steps := 0
@@ -260,10 +294,6 @@ func _process(delta: float) -> void:
 		flashes[k] -= delta
 		if flashes[k] <= 0.0:
 			flashes.erase(k)
-	_play_feedback()
-	world.queue_redraw()
-	text.queue_redraw()
-	run_view.queue_redraw()
 
 
 func _play_feedback() -> void:
@@ -281,6 +311,8 @@ func _play_feedback() -> void:
 
 ## Which music layers fit the screen: see "states" in data/feedback.json.
 func music_state() -> String:
+	if run == null or menu_base == "title":
+		return "chart"
 	match run_screen():
 		"fight":
 			if combat == null:
@@ -361,7 +393,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			_tap(mb.position, true)  # right click stands in for a long press on desktop
 	elif event is InputEventKey and event.pressed and not event.echo:
-		if (event as InputEventKey).keycode == KEY_SPACE and combat:
+		var key := (event as InputEventKey).keycode
+		if key == KEY_ESCAPE:
+			back()
+		elif key == KEY_SPACE and combat and menu == "":
 			_toggle_pause()  # pause only means something in a fight
 
 
@@ -375,8 +410,16 @@ func _toggle_pause() -> void:
 
 func _tap(window_pos: Vector2, long: bool) -> void:
 	var p := Vector2i((window_pos / float(screen.scale)).floor())
+	if menu != "":
+		_tap_menu(p)
+		return
+	if run == null:
+		return
 	if combat == null:
 		_tap_run(p)
+		return
+	if layout.button_at(p).get("kind", "") == "menu":
+		_press_button(layout.button_at(p), long)
 		return
 	if combat.state != "fighting":
 		if layout.again_rect().grow(4).has_point(p):
@@ -434,6 +477,9 @@ func _press_button(b: Dictionary, long: bool) -> void:
 		"pause":
 			_toggle_pause()
 			ui_cue("tap")
+		"menu":
+			ui_cue("tap")
+			open_menu("pause")
 
 
 func _tap_run(p: Vector2i) -> void:
@@ -443,6 +489,10 @@ func _tap_run(p: Vector2i) -> void:
 	if b.is_empty():
 		return
 	match b.kind:
+		"menu":
+			ui_cue("tap")
+			open_menu("pause")
+			return
 		"beacon":
 			if not run.jump(str(b.id)):
 				ui_cue("refused")
@@ -470,3 +520,172 @@ func _tap_run(p: Vector2i) -> void:
 				return
 			ui_cue("tap")
 	_enter_screen()
+
+
+# ------------------------------------------------------------------ menus
+
+
+## The buttons on a title, pause or confirm page, top to bottom.
+func menu_items(page: String) -> Array[String]:
+	var out: Array[String] = []
+	match page:
+		"title":
+			if run != null:
+				out.append("continue")
+			out.append_array(["new_run", "options"])
+			if can_quit():
+				out.append("quit")
+		"pause":
+			out.assign(["resume", "options", "abandon", "to_title"])
+		"confirm":
+			out.assign(["yes", "no"])
+	return out
+
+
+## iOS apps must not quit themselves (Apple rejects it); Android and desktop may.
+func can_quit() -> bool:
+	return not OS.has_feature("ios") and not OS.has_feature("web")
+
+
+func open_menu(page: String) -> void:
+	if page == "title" or page == "pause":
+		if menu == "" and page == "pause":
+			_paused_before_menu = paused
+			paused = true
+		menu_base = page
+	menu = page
+	_build_menu_layout()
+	_show_game(menu_base != "title")
+	_save()
+
+
+func close_menu() -> void:
+	menu = ""
+	menu_base = ""
+	menu_layout = null
+	_show_game(true)
+
+
+func _build_menu_layout() -> void:
+	if screen.is_empty() or menu == "":
+		return
+	menu_layout = MenuLayout.build(screen, menu, menu_items(menu))
+
+
+## Android back, Escape on desktop: up one level, and out of the app from the title.
+func back() -> void:
+	match menu:
+		"":
+			if run != null:
+				open_menu("pause")
+		"options", "confirm":
+			open_menu(menu_base)
+		"pause":
+			_resume()
+		"title":
+			if can_quit():
+				_quit()
+
+
+func _resume() -> void:
+	paused = _paused_before_menu
+	close_menu()
+
+
+func _tap_menu(p: Vector2i) -> void:
+	if menu_layout == null:
+		return
+	var b := menu_layout.button_at(p)
+	if b.is_empty():
+		return
+	ui_cue("tap")
+	if menu == "options":
+		_press_option(b)
+		return
+	match str(b.id):
+		"continue":
+			_continue()
+		"new_run":
+			if run == null:
+				_new_run()
+			else:
+				_confirm("new_run")
+		"options":
+			open_menu("options")
+		"quit":
+			_quit()
+		"resume":
+			_resume()
+		"abandon":
+			_confirm("abandon")
+		"to_title":
+			if combat and combat.state == "fighting":
+				pause_reason = "UI_TAP_TO_RESUME"  # come back to a paused fight
+			open_menu("title")
+		"yes":
+			if confirm_action == "abandon":
+				_abandon()
+			else:
+				_new_run()
+		"no":
+			open_menu(menu_base)
+
+
+func _confirm(what: String) -> void:
+	confirm_action = what
+	open_menu("confirm")
+
+
+func _continue() -> void:
+	close_menu()
+	_enter_screen()
+	if combat and combat.state == "fighting":
+		_pause("UI_TAP_TO_RESUME")  # never drop a player straight back into a live fight
+
+
+func _new_run() -> void:
+	close_menu()
+	_set_run(Run.create(_fresh_seed()))
+
+
+## Ends the run for good: the save goes, and the title has no Continue.
+func _abandon() -> void:
+	SaveService.erase(SAVE_SLOT, save_dir)
+	run = null
+	combat = null
+	layout = null
+	run_layout = null
+	paused = false
+	pause_reason = ""
+	open_menu("title")
+
+
+func _quit() -> void:
+	_save()
+	get_tree().quit()
+
+
+func _press_option(b: Dictionary) -> void:
+	match b.kind:
+		"less", "more", "toggle":
+			settings.adjust(str(b.id), -1 if b.kind == "less" else 1)
+			_preview(str(b.id))
+		"defaults":
+			settings.reset()
+		"back":
+			open_menu(menu_base)
+			return
+	audio.apply_settings(settings)
+	haptics.strength = settings.haptics
+	settings.save(save_dir)
+
+
+## Lets the player feel or hear the level they just picked.
+func _preview(id: String) -> void:
+	match id:
+		"haptics":
+			haptics.strength = settings.haptics
+			haptics.play("thud", 9)
+		"SFX":
+			audio.apply_settings(settings)
+			audio.play("hull_hit_light", 9)

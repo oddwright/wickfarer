@@ -23,6 +23,7 @@ func _draw() -> void:
 		_:
 			_draw_next(run, l)
 	_draw_status(run, l)
+	Pixel.menu_icon(self, l.button("menu").rect)
 
 
 func _draw_status(run: Run, l: RunLayout) -> void:
@@ -38,7 +39,7 @@ func _draw_status(run: Run, l: RunLayout) -> void:
 		Pixel.c("w")
 	)
 	_text(
-		Vector2(l.native.x - 204, 11),
+		Vector2(l.native.x - 238, 11),
 		tr(str(run.reach().name)),
 		5.0,
 		Pixel.c("g"),

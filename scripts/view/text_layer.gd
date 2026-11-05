@@ -2,7 +2,8 @@ class_name TextLayer
 extends Node2D
 ## Text drawn in the pixel world with the 3x5 pixel font from the concept art,
 ## so it scales with the same whole-number pixels as everything else.
-## Large text (titles) draws each font pixel as 2x2 canvas pixels.
+## Large text (titles) draws each font pixel as 2x2 canvas pixels, and the game
+## title as 3x3.
 
 const CELL := 5  ## glyph slot width in the font strip
 const GLYPH_H := 5
@@ -56,7 +57,7 @@ func _text(
 	align := HORIZONTAL_ALIGNMENT_LEFT,
 	width := -1.0
 ) -> void:
-	var k := 2 if size_px >= 10.0 else 1
+	var k := 3 if size_px >= 15.0 else (2 if size_px >= 10.0 else 1)
 	var up := s.to_upper()
 	var lines: PackedStringArray = [up] if width <= 0 else _wrap(up, int(width), k)
 	var y := int(round(native_pos.y)) - GLYPH_H * k - (lines.size() - 1) * LINE * k / 2
@@ -124,7 +125,7 @@ func _draw() -> void:
 		quiet
 	)
 	_text(
-		Vector2(l.native.x - 4 - 200, 11),
+		Vector2(l.native.x - 34 - 200, 11),
 		(
 			"%s   %s %d/%d"
 			% [tr(ContentDB.ships[foe.content_id].name), tr("UI_HULL"), foe.hull, foe.max_hull]
@@ -136,7 +137,7 @@ func _draw() -> void:
 	)
 	var ev := foe.evasion()
 	_text(
-		Vector2(l.native.x - 4 - 200, 37),
+		Vector2(l.native.x - 34 - 200, 37),
 		"%s %d%%" % [tr("UI_EVASION"), ev],
 		5.0,
 		quiet,
@@ -198,7 +199,7 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_CENTER,
 			mr.size.x
 		)
-	if main.paused and combat.state == "fighting":
+	if main.paused and combat.state == "fighting" and main.menu == "":  # the menu says it
 		_text(
 			Vector2(0, l.native.y / 2 - 26),
 			tr("UI_PAUSED"),

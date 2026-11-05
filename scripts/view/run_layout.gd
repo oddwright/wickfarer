@@ -39,6 +39,7 @@ static func build(
 		l.text_rect = Rect2i(12, TOP + 8, w - 24, 60)
 	else:
 		l.text_rect = Rect2i(12, TOP + 8, l.hinge.position.x - 20, h - TOP - 24)
+	l._add("menu", 0, MenuLayout.menu_button(l.native))
 	match mode:
 		"chart":
 			for n in chart.nodes:
@@ -124,7 +125,7 @@ func problems() -> Array[String]:
 		var r: Rect2i = b.rect
 		if not canvas.encloses(r):
 			out.append("%s %s outside the canvas" % [b.kind, b.id])
-		if r.position.y < TOP:
+		if r.position.y < TOP and b.kind != "menu":  # the menu button lives in the bar
 			out.append("%s %s under the status bar" % [b.kind, b.id])
 		if hinge.size.x > 0 and r.intersects(hinge):
 			out.append("%s %s sits on the fold" % [b.kind, b.id])
