@@ -63,6 +63,8 @@ func _draw_chart(run: Run, l: RunLayout) -> void:
 	var blink := int(main.world.anim_time * 3.0) % 2 == 0
 	for n in run.chart.nodes:
 		_draw_beacon(run, l, n, targets.has(n.id), blink)
+	if main.coach_speaking():
+		return  # the coach writes in the message line
 	var msg := tr("UI_JUMP")
 	if not run.messages.is_empty():
 		msg = tr(run.messages[-1])
