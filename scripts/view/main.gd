@@ -19,6 +19,10 @@ var container: SubViewportContainer
 var viewport: SubViewport
 var world: WorldView
 var text: TextLayer
+var settings: GameSettings
+var feedback: FeedbackDirector
+var audio: AudioService
+var haptics: Haptics
 
 var paused := false
 var pause_reason := ""
@@ -39,6 +43,7 @@ func _ready() -> void:
 	var errors := ContentDB.validate()
 	for e in errors:
 		push_error("content: " + e)
+	_setup_feedback()
 	container = SubViewportContainer.new()
 	container.stretch = true
 	container.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -63,6 +68,22 @@ func _ready() -> void:
 	_set_run(_load_or_new())
 	if run.state == "fight" and run.outcome == "" and run.combat.state == "fighting":
 		_pause("UI_TAP_TO_RESUME")  # never drop a player straight back into a live fight
+
+
+func _setup_feedback() -> void:
+	settings = GameSettings.load_or_default()
+	feedback = FeedbackDirector.new(ContentDB.feedback.get("cues", {}), settings)
+	audio = AudioService.new()
+	add_child(audio)
+	audio.apply_settings(settings)
+	haptics = Haptics.new(ContentDB.feedback.get("haptics", {}))
+	haptics.strength = settings.haptics
+
+
+## Plays a UI cue (a tap, a refused order). Safe before _ready, for tests.
+func ui_cue(what: String) -> void:
+	if feedback:
+		feedback.cue("ui." + what)
 
 
 func _load_or_new() -> Run:
@@ -129,6 +150,8 @@ func _start(c: Combat) -> void:
 	selected_crew = -1
 	floaters.clear()
 	flashes.clear()
+	if feedback:
+		feedback.reset_fight()
 	world.setup(self)
 	text.setup(self)
 	if not screen.is_empty():
@@ -187,11 +210,20 @@ func _notification(what: int) -> void:
 		NOTIFICATION_APPLICATION_FOCUS_OUT,
 		NOTIFICATION_WM_CLOSE_REQUEST,
 	]
+	const BACK: Array[int] = [
+		NOTIFICATION_APPLICATION_RESUMED,
+		NOTIFICATION_APPLICATION_FOCUS_IN,
+	]
 	if what in LEAVING:
 		_on_leave()
+	elif what in BACK and audio:
+		audio.suspend(false)
 
 
 func _on_leave() -> void:
+	if audio:
+		audio.suspend(true)
+		haptics.stop()
 	if combat and combat.state == "fighting":
 		_pause("UI_TAP_TO_RESUME")
 	else:
@@ -202,9 +234,11 @@ func _on_leave() -> void:
 
 
 func _process(delta: float) -> void:
-	if run == null or screen.is_empty():
+	if run == null or screen.is_empty() or feedback == null:
 		return
-	if combat and layout and not paused and combat.state == "fighting":
+	feedback.update(delta)
+	haptics.update(delta)
+	if combat and layout and not paused and combat.state == "fighting" and not feedback.frozen():
 		_acc += minf(delta, 0.25)
 		var steps := 0
 		while _acc >= Combat.TICK and steps < MAX_STEPS_PER_FRAME:
@@ -212,6 +246,8 @@ func _process(delta: float) -> void:
 			_on_events(combat.events)
 			_acc -= Combat.TICK
 			steps += 1
+			if feedback.frozen():
+				break  # hit-stop: hold the next tick back until it ends
 		_autosave += delta
 		if _autosave >= AUTOSAVE_EVERY:
 			_autosave = 0.0
@@ -224,16 +260,53 @@ func _process(delta: float) -> void:
 		flashes[k] -= delta
 		if flashes[k] <= 0.0:
 			flashes.erase(k)
+	_play_feedback()
 	world.queue_redraw()
 	text.queue_redraw()
 	run_view.queue_redraw()
 
 
+func _play_feedback() -> void:
+	for f in feedback.drain():
+		if f.sound != "":
+			audio.play(f.sound, f.priority)
+		if f.haptic != "":
+			haptics.play(f.haptic, f.priority)
+		if f.duck:
+			audio.duck()
+	world.shake = feedback.shake_offset()
+	audio.hush = FeedbackDirector.hush_closeness(run)
+	audio.set_music_state(music_state())
+
+
+## Which music layers fit the screen: see "states" in data/feedback.json.
+func music_state() -> String:
+	match run_screen():
+		"fight":
+			if combat == null:
+				return "combat"
+			if combat.state != "fighting":
+				return "victory" if combat.state == "won" else "defeat"
+			var me := combat.player()
+			var low := float(me.hull) / me.max_hull <= FeedbackDirector.DANGER_HULL
+			return "danger" if low else "combat"
+		"event", "outcome":
+			return "event"
+		"store":
+			return "store"
+		"lost":
+			return "defeat"
+	return "chart"
+
+
 func flash_amount(side: int, room_id: String) -> float:
-	return clampf(flashes.get("%d:%s" % [side, room_id], 0.0) / 0.15, 0.0, 1.0)
+	var a := clampf(flashes.get("%d:%s" % [side, room_id], 0.0) / 0.15, 0.0, 1.0)
+	return a * (0.35 if settings and settings.reduce_flashing else 1.0)
 
 
 func _on_events(events: Array) -> void:
+	if feedback:
+		feedback.on_sim_events(events, combat)
 	for e: Dictionary in events:
 		match e.type:
 			"hit":
@@ -307,6 +380,7 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 		return
 	if combat.state != "fighting":
 		if layout.again_rect().grow(4).has_point(p):
+			ui_cue("tap")
 			paused = false
 			pause_reason = ""
 			run.finish_fight()
@@ -318,17 +392,20 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 		return
 	var enemy_room := world.room_at(1, p)
 	if selected_weapon >= 0 and enemy_room:
-		combat.apply({"type": "aim", "weapon": selected_weapon, "room": enemy_room.id})
+		var aimed := combat.apply({"type": "aim", "weapon": selected_weapon, "room": enemy_room.id})
+		ui_cue("aim" if aimed else "refused")
 		selected_weapon = -1
 		return
 	var c := world.crew_at(0, p)
 	if c:
 		selected_crew = -1 if selected_crew == c.uid else c.uid
 		selected_weapon = -1
+		ui_cue("select")
 		return
 	var my_room := world.room_at(0, p)
 	if selected_crew >= 0 and my_room:
-		combat.apply({"type": "move", "crew": selected_crew, "room": my_room.id})
+		var moved := combat.apply({"type": "move", "crew": selected_crew, "room": my_room.id})
+		ui_cue("tap" if moved else "refused")
 		selected_crew = -1
 		return
 	selected_weapon = -1
@@ -338,22 +415,25 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 func _press_button(b: Dictionary, long: bool) -> void:
 	match b.kind:
 		"system":
-			if long:
-				combat.apply({"type": "power_down", "system": b.id})
-			else:
-				combat.apply({"type": "power_up", "system": b.id})
+			var cmd := "power_down" if long else "power_up"
+			var ok := combat.apply({"type": cmd, "system": b.id})
+			ui_cue(cmd if ok else "refused")
 		"weapon":
 			var i := int(b.id)
 			if long:
 				combat.apply({"type": "aim", "weapon": i, "room": ""})
 				selected_weapon = -1
+				ui_cue("power_down")
 			else:
 				selected_weapon = -1 if selected_weapon == i else i
 				selected_crew = -1
+				ui_cue("select")
 		"ward":
 			combat.apply({"type": "ward_deck", "deck": 1 - combat.player().ward_deck})
+			ui_cue("tap")
 		"pause":
 			_toggle_pause()
+			ui_cue("tap")
 
 
 func _tap_run(p: Vector2i) -> void:
@@ -365,20 +445,28 @@ func _tap_run(p: Vector2i) -> void:
 	match b.kind:
 		"beacon":
 			if not run.jump(str(b.id)):
+				ui_cue("refused")
 				return
+			ui_cue("jump")
 		"choice":
 			if not run.choose(int(b.id)):
+				ui_cue("refused")
 				return
+			ui_cue("choose")
 		"store":
 			var items := run.store_items()
 			var i := int(b.id)
 			var done := run.buy(items[i]) if i < items.size() else run.leave_store()
 			if not done:
+				ui_cue("refused")
 				return
+			ui_cue("buy" if i < items.size() else "tap")
 		"next":
 			if run.state in ["lost", "reach_done"] and run.outcome == "":
+				ui_cue("tap")
 				_set_run(Run.create(_fresh_seed()))
 				return
 			if not run.read_outcome():
 				return
+			ui_cue("tap")
 	_enter_screen()
