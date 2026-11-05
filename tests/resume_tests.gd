@@ -43,6 +43,7 @@ static func flow(t: SceneTree) -> void:
 	_check(t, a.menu == "title", "with no save the app opens on the title")
 	a.tutorial.skip()  # a returning player: tests/tutorial_tests.gd covers training
 	a._new_run()
+	a.start_run()
 	var r: Run = a.run
 	r._start_fight("ashmarket_skiff")
 	a._set_run(r)

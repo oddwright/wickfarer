@@ -1,5 +1,6 @@
 {
   "rivet_gun":   {"name": "WPN_RIVET_GUN",   "family": "kinetic", "power": 1, "charge": 9.0,  "shots": 2, "hull_damage": 1, "system_damage": 1, "crew_damage": 10, "fire_chance": 0.0, "strips_ward": true},
   "heavy_rivet": {"name": "WPN_HEAVY_RIVET", "family": "kinetic", "power": 2, "charge": 12.0, "shots": 1, "hull_damage": 2, "system_damage": 2, "crew_damage": 15, "fire_chance": 0.1, "strips_ward": true},
-  "torch_lance": {"name": "WPN_TORCH_LANCE", "family": "torch",   "power": 2, "charge": 12.0, "shots": 1, "hull_damage": 1, "system_damage": 2, "crew_damage": 25, "fire_chance": 0.5, "strips_ward": false}
+  "torch_lance": {"name": "WPN_TORCH_LANCE", "family": "torch",   "power": 2, "charge": 12.0, "shots": 1, "hull_damage": 1, "system_damage": 2, "crew_damage": 25, "fire_chance": 0.5, "strips_ward": false},
+  "kiln_brand":  {"name": "WPN_KILN_BRAND",  "family": "torch",   "power": 1, "charge": 8.0,  "shots": 1, "hull_damage": 1, "system_damage": 1, "crew_damage": 15, "fire_chance": 0.35, "strips_ward": false}
 }

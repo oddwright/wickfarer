@@ -3,6 +3,7 @@ extends RefCounted
 ## lint limit. Each takes the runner, whose check() records the result.
 
 const SCREEN_TESTS = preload("res://tests/screen_tests.gd")
+const SHIP_TESTS = preload("res://tests/ship_tests.gd")
 
 
 static func _check(t: SceneTree, cond: bool, what: String) -> void:
@@ -50,6 +51,7 @@ static func screens(t: SceneTree, screen_sizes: Dictionary) -> void:
 			elif scr.hinge.size.x > 0 and r.intersects(scr.hinge):
 				probs.append("the menu button sits on the fold")
 		_check(t, probs.is_empty(), "%s menus: %s" % [name, probs.slice(0, 4)])
+	SHIP_TESTS.screens(t, screen_sizes)
 
 
 static func options_adjust(t: SceneTree) -> void:
@@ -100,7 +102,9 @@ static func flow(t: SceneTree) -> void:
 	_check(t, not main.world.visible and not main.run_view.visible, "the title hides the game")
 	main.tutorial.skip()  # a returning player: tests/tutorial_tests.gd covers training
 	_tap_menu(main, "new_run")
-	_check(t, main.menu == "" and main.run != null, "New run starts a run")
+	_check(t, main.menu == "ship" and main.run == null, "New run opens ship select")
+	_tap_menu(main, "launch")
+	_check(t, main.menu == "" and main.run != null, "Launch starts a run")
 	_check(t, main.run_view.visible, "on the chart")
 	_tap_rect(main, main.run_layout.menu_rect)
 	_check(
@@ -164,6 +168,11 @@ static func flow(t: SceneTree) -> void:
 	)
 	_tap_menu(main, "no")
 	_check(t, main.menu == "title" and main.run == r, "No keeps the run")
+	_tap_menu(main, "new_run")
+	_tap_menu(main, "yes")
+	_check(t, main.menu == "ship" and main.run == r, "Start over picks a hull first")
+	main.back()
+	_check(t, main.menu == "title" and main.run == r, "and Back from it keeps the run")
 	# abandon
 	_tap_menu(main, "continue")
 	main.back()
@@ -174,6 +183,7 @@ static func flow(t: SceneTree) -> void:
 	_check(t, main.menu_items("title")[0] == "new_run", "so there is nothing to continue")
 	# a fold while the pause menu is open still leaves the fight paused
 	_tap_menu(main, "new_run")
+	_tap_menu(main, "launch")
 	var r2: Run = main.run
 	r2._start_fight("ashmarket_skiff")
 	main._set_run(r2)
@@ -193,6 +203,7 @@ static func flow(t: SceneTree) -> void:
 	_tap_menu(main, "to_title")
 	_check(t, main.run == null, "Quit to menu after a loss drops the run")
 	_check(t, main.menu_items("title")[0] == "new_run", "so the title has no Continue")
+	SHIP_TESTS.flow(t, main)
 	main.queue_free()
 	for slot in ["run", GameSettings.SLOT]:
 		SaveService.erase(slot, dir)

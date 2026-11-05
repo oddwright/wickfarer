@@ -10,6 +10,7 @@ const MENU_TESTS = preload("res://tests/menu_tests.gd")
 const AUDIO_TESTS = preload("res://tests/audio_tests.gd")
 const STORY_TESTS = preload("res://tests/story_tests.gd")
 const SCREEN_TESTS = preload("res://tests/screen_tests.gd")
+const SHIP_TESTS = preload("res://tests/ship_tests.gd")
 const CREW_TESTS = preload("res://tests/crew_tests.gd")
 const PROGRESS_TESTS = preload("res://tests/progress_tests.gd")
 const PROFILE_TESTS = preload("res://tests/profile_tests.gd")
@@ -130,6 +131,7 @@ func test_content_is_valid() -> void:
 	for e in errors:
 		print("  content: ", e)
 	check(errors.is_empty(), "content has %d problems" % errors.size())
+	SHIP_TESTS.roster(self)
 	var bad: Array[String] = []
 	var reach: Dictionary = ContentDB.reaches.reach_1.duplicate(true)
 	reach.enemies = []

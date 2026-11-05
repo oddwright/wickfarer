@@ -1,6 +1,9 @@
 {
   "tallow_wren": {
     "name": "SHIP_TALLOW_WREN",
+    "playable": true,
+    "blurb": "SHIP_TALLOW_WREN_BLURB",
+    "unlock": "",
     "sprite": "res://art/ship_tallow_wren.png",
     "frame_size": [
       236,
@@ -159,6 +162,308 @@
       "helm": 1,
       "engines": 1,
       "mend": 1
+    },
+    "ward_deck": 1
+  },
+  "brine_cathedral": {
+    "name": "SHIP_BRINE_CATHEDRAL",
+    "playable": true,
+    "blurb": "SHIP_BRINE_CATHEDRAL_BLURB",
+    "unlock": "hull_brine_cathedral",
+    "sprite": "res://art/ship_brine_cathedral.png",
+    "frame_size": [
+      236,
+      80
+    ],
+    "hull": 24,
+    "reactor": 9,
+    "rooms": [
+      {
+        "id": "cistern_aft",
+        "deck": 1,
+        "rect": [
+          30,
+          23,
+          55,
+          42
+        ],
+        "system": ""
+      },
+      {
+        "id": "engines",
+        "deck": 1,
+        "rect": [
+          58,
+          23,
+          81,
+          42
+        ],
+        "system": "engines",
+        "level": 1
+      },
+      {
+        "id": "ember",
+        "deck": 1,
+        "rect": [
+          84,
+          23,
+          107,
+          42
+        ],
+        "system": "ember",
+        "level": 2
+      },
+      {
+        "id": "cistern_fore",
+        "deck": 1,
+        "rect": [
+          110,
+          23,
+          135,
+          42
+        ],
+        "system": ""
+      },
+      {
+        "id": "helm",
+        "deck": 1,
+        "rect": [
+          138,
+          23,
+          163,
+          42
+        ],
+        "system": "helm",
+        "level": 1
+      },
+      {
+        "id": "bilge",
+        "deck": 0,
+        "rect": [
+          30,
+          45,
+          55,
+          64
+        ],
+        "system": ""
+      },
+      {
+        "id": "mend",
+        "deck": 0,
+        "rect": [
+          58,
+          45,
+          89,
+          64
+        ],
+        "system": "mend",
+        "level": 1
+      },
+      {
+        "id": "wards",
+        "deck": 0,
+        "rect": [
+          92,
+          45,
+          115,
+          64
+        ],
+        "system": "wards",
+        "level": 6
+      },
+      {
+        "id": "weapons",
+        "deck": 0,
+        "rect": [
+          118,
+          45,
+          143,
+          64
+        ],
+        "system": "weapons",
+        "level": 3
+      },
+      {
+        "id": "hold",
+        "deck": 0,
+        "rect": [
+          146,
+          45,
+          171,
+          64
+        ],
+        "system": ""
+      }
+    ],
+    "ladders": [
+      {
+        "upper": "cistern_aft",
+        "lower": "bilge",
+        "x": 44
+      },
+      {
+        "upper": "ember",
+        "lower": "wards",
+        "x": 100
+      },
+      {
+        "upper": "helm",
+        "lower": "hold",
+        "x": 156
+      }
+    ],
+    "weapons": [
+      "heavy_rivet",
+      "rivet_gun"
+    ],
+    "crew": [
+      {
+        "name": "CREW_MOR",
+        "species": "oru",
+        "room": "wards"
+      },
+      {
+        "name": "CREW_LUT",
+        "species": "oru",
+        "room": "weapons"
+      },
+      {
+        "name": "CREW_PELL",
+        "species": "drifter",
+        "room": "helm"
+      },
+      {
+        "name": "CREW_JOS",
+        "species": "drifter",
+        "room": "engines"
+      }
+    ],
+    "start_power": {
+      "wards": 4,
+      "weapons": 3,
+      "helm": 1,
+      "mend": 1
+    },
+    "ward_deck": 0
+  },
+  "porcelain_saint": {
+    "name": "SHIP_PORCELAIN_SAINT",
+    "playable": true,
+    "blurb": "SHIP_PORCELAIN_SAINT_BLURB",
+    "unlock": "hull_porcelain_saint",
+    "sprite": "res://art/ship_porcelain_saint.png",
+    "frame_size": [
+      216,
+      72
+    ],
+    "hull": 24,
+    "reactor": 9,
+    "rooms": [
+      {
+        "id": "chancel",
+        "deck": 1,
+        "rect": [
+          42,
+          18,
+          65,
+          37
+        ],
+        "system": ""
+      },
+      {
+        "id": "weapons",
+        "deck": 1,
+        "rect": [
+          68,
+          18,
+          91,
+          37
+        ],
+        "system": "weapons",
+        "level": 3
+      },
+      {
+        "id": "helm",
+        "deck": 1,
+        "rect": [
+          94,
+          18,
+          121,
+          37
+        ],
+        "system": "helm",
+        "level": 3
+      },
+      {
+        "id": "engines",
+        "deck": 0,
+        "rect": [
+          36,
+          40,
+          59,
+          59
+        ],
+        "system": "engines",
+        "level": 3
+      },
+      {
+        "id": "ember",
+        "deck": 0,
+        "rect": [
+          62,
+          40,
+          83,
+          59
+        ],
+        "system": "ember",
+        "level": 1
+      },
+      {
+        "id": "wards",
+        "deck": 0,
+        "rect": [
+          86,
+          40,
+          107,
+          59
+        ],
+        "system": "wards",
+        "level": 2
+      }
+    ],
+    "ladders": [
+      {
+        "upper": "weapons",
+        "lower": "ember",
+        "x": 76
+      }
+    ],
+    "weapons": [
+      "torch_lance",
+      "kiln_brand"
+    ],
+    "crew": [
+      {
+        "name": "CREW_VESPER",
+        "species": "sable",
+        "room": "helm"
+      },
+      {
+        "name": "CREW_ORISON",
+        "species": "sable",
+        "room": "weapons"
+      },
+      {
+        "name": "CREW_THRUM",
+        "species": "kith",
+        "room": "engines"
+      }
+    ],
+    "start_power": {
+      "weapons": 3,
+      "helm": 2,
+      "engines": 2,
+      "wards": 2
     },
     "ward_deck": 1
   },

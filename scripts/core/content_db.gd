@@ -40,6 +40,7 @@ const MUSIC_ENTRIES: Array[String] = ["now", "beat", "bar"]  ## when a music cli
 const PHONE_LOW_HZ := 150  ## phone speakers barely play anything lower
 const MAX_HITSTOP := 0.15  ## seconds; longer freezes read as lag
 const SYNTH_WAVES := ["sine", "tri", "square", "saw", "noise"]
+const PLAYABLE_FRAME := Vector2i(240, 80)  ## the largest frame the ship select preview shows
 
 static var ships: Dictionary = {}
 static var weapons: Dictionary = {}
@@ -133,6 +134,8 @@ static func validate() -> Array[String]:
 			errors.append("refit offers unknown system %s" % sys_id)
 	for ship_id: String in ships:
 		_validate_ship(ship_id, ships[ship_id], errors)
+	if ShipRoster.default_ship() == "":
+		errors.append("ships: at least one playable hull must be open from the start")
 	for eid: String in events:
 		_validate_event(eid, events[eid], errors)
 	for rid: String in reaches:
@@ -326,6 +329,7 @@ static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]
 			errors.append("%s: room %s has a bad rect" % [where, r.id])
 	if not has_ember:
 		errors.append("%s: every ship needs an ember room" % where)
+	_validate_playable(where, s, errors)
 	for l: Dictionary in s.get("ladders", []):
 		if not room_ids.has(l.upper) or not room_ids.has(l.lower):
 			errors.append("%s: ladder joins unknown rooms" % where)
@@ -353,6 +357,23 @@ static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]
 		for rid: String in room_ids:
 			if rid != first and ship.find_path(first, rid).is_empty():
 				errors.append("%s: room %s can't be reached" % [where, rid])
+
+
+## A hull the player can pick needs words for the select screen, a valid
+## unlock, and a frame the select screen's preview can hold.
+static func _validate_playable(where: String, s: Dictionary, errors: Array[String]) -> void:
+	var playable: Variant = s.get("playable", false)
+	if not playable is bool:
+		errors.append("%s: playable must be true or false" % where)
+		return
+	if not playable:
+		return
+	_check_string(str(s.get("blurb", "")), where + " blurb", errors)
+	if not s.get("unlock", null) is String:
+		errors.append('%s: unlock must be an unlock id, or "" for open from the start' % where)
+	var fs: Array = s.get("frame_size", [0, 0])
+	if fs.size() != 2 or int(fs[0]) > PLAYABLE_FRAME.x or int(fs[1]) > PLAYABLE_FRAME.y:
+		errors.append("%s: a playable frame must fit %s" % [where, PLAYABLE_FRAME])
 
 
 static func _validate_event(eid: String, e: Dictionary, errors: Array[String]) -> void:

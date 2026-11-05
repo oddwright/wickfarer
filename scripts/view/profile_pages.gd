@@ -29,7 +29,9 @@ static func tap(main: Node, id: String) -> bool:
 		"set_out":
 			main.start_run()
 		"back":
-			main.open_menu(main.menu_base)
+			# the depth page comes after ship select: Back goes up one level, to it
+			var after_ship: bool = main.menu == "depth" and main.menu_base == "title"
+			main.open_menu("ship" if after_ship else main.menu_base)
 		_:
 			return false
 	return true

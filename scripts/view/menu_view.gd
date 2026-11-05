@@ -6,6 +6,9 @@ extends TextLayer
 
 const SEGMENTS := 10  ## one per options step
 
+var _shadow_tex: Dictionary = {}  ## ship id -> a locked hull's silhouette
+var _info_cache: Dictionary = {}  ## "id:open:width" -> the info column's wrapped lines
+
 
 func _draw() -> void:
 	if main == null or main.menu == "" or main.menu_layout == null:
@@ -23,6 +26,8 @@ func _draw() -> void:
 			_draw_options(l)
 		"confirm":
 			_draw_confirm(l)
+		"ship":
+			_draw_ship(l)
 		"depth", "log":
 			_draw_profile_page(l)
 		_:
@@ -136,6 +141,126 @@ func _draw_confirm(l: MenuLayout) -> void:
 		if b.id == "yes":
 			label = "UI_YES_" + main.confirm_action.to_upper()
 		_button(b.rect, tr(label), true)
+
+
+func _draw_ship(l: MenuLayout) -> void:
+	var id: String = main.ships.picked()
+	var c: Dictionary = ContentDB.ships[id]
+	var open: bool = main.ships.is_open(id)
+	var r := l.title_rect
+	_text(
+		Vector2(r.position.x, r.end.y),
+		tr(c.name),
+		10.0,
+		Pixel.c("w") if open else Pixel.c("g"),
+		HORIZONTAL_ALIGNMENT_CENTER,
+		r.size.x
+	)
+	_draw_hull_preview(l.preview_rect, id, open)
+	_draw_ship_info(l.info_rect, id, open)
+	_draw_pips(l.pips_rect)
+	for b in l.buttons:
+		match b.kind:
+			"prev":
+				_button(b.rect, "<", true)
+			"next":
+				_button(b.rect, ">", true)
+			"launch":
+				_button(b.rect, tr("UI_MENU_LAUNCH"), open)
+			"back":
+				_button(b.rect, tr("UI_MENU_BACK"), true)
+
+
+## The hull centred on its drawn pixels, animated like in a fight. A locked
+## hull is a flat silhouette: you see its shape, not its rooms.
+func _draw_hull_preview(box: Rect2i, id: String, open: bool) -> void:
+	var c: Dictionary = ContentDB.ships[id]
+	var fs := Vector2i(int(c.frame_size[0]), int(c.frame_size[1]))
+	var tex := _ship_texture(id)
+	var used := Pixel.used_rect(tex, fs)
+	var at := box.get_center() - used.get_center()
+	if open:
+		var frame := int(main.world.anim_time * 6.0) % 4
+		draw_texture_rect_region(tex, Rect2(at, fs), Rect2(Vector2(fs.x * frame, 0), fs))
+	else:
+		draw_texture_rect_region(_shadow(id, fs), Rect2(at, fs), Rect2(Vector2.ZERO, fs))
+
+
+func _ship_texture(id: String) -> Texture2D:
+	return load(ContentDB.ships[id].sprite)
+
+
+func _shadow(id: String, fs: Vector2i) -> Texture2D:
+	if not _shadow_tex.has(id):
+		var img := _ship_texture(id).get_image()
+		if img.is_compressed():
+			img.decompress()
+		img = img.get_region(Rect2i(Vector2i.ZERO, fs))
+		img.convert(Image.FORMAT_RGBA8)
+		var ink := Pixel.c("c")
+		for y in fs.y:
+			for x in fs.x:
+				if img.get_pixel(x, y).a > 0.0:
+					img.set_pixel(x, y, ink)
+		_shadow_tex[id] = ImageTexture.create_from_image(img)
+	return _shadow_tex[id]
+
+
+## The blurb, then one line per stat. A locked hull shows how to open it instead.
+func _draw_ship_info(box: Rect2i, id: String, open: bool) -> void:
+	var key := "%s:%s:%d" % [id, open, box.size.x]
+	if not _info_cache.has(key):  # wrapping every frame is wasted work
+		_info_cache[key] = ship_info_lines(id, open, box.size.x)
+	var y := box.position.y + GLYPH_H
+	for l: Array in _info_cache[key]:
+		_text(Vector2(box.position.x, y), l[0], 5.0, Pixel.c(l[1]))
+		y += LINE
+
+
+## The info column's lines, wrapped to width: [text, colour key] each.
+static func ship_info_lines(id: String, open: bool, width: int) -> Array[Array]:
+	var lines: Array[Array] = []
+	if open:
+		for line in _wrap(_t(ContentDB.ships[id].blurb).to_upper(), width, 1):
+			lines.append([line, "h"])
+	else:
+		lines.append([_t("UI_SHIP_LOCKED").to_upper(), "U"])
+		for line in _wrap(_t(ShipRoster.unlock_hint(id)).to_upper(), width, 1):
+			lines.append([line, "h"])
+	lines.append(["", "h"])
+	for stat in ship_stats(id, open):
+		for line in _wrap(stat.to_upper(), width, 1):
+			lines.append([line, "g" if open else "e"])
+	return lines
+
+
+## What a hull brings to a run, one translated line each. Unknown until it opens.
+static func ship_stats(id: String, open := true) -> Array[String]:
+	var c: Dictionary = ContentDB.ships[id]
+	var guns: Array[String] = []
+	for w: String in c.weapons:
+		guns.append(_t(ContentDB.weapons[w].name))
+	var vals: Array[String] = [
+		str(int(c.hull)), str(int(c.reactor)), str((c.crew as Array).size()), ", ".join(guns)
+	]
+	var out: Array[String] = []
+	var keys: Array[String] = ["UI_SHIP_HULL", "UI_SHIP_REACTOR", "UI_SHIP_CREW", "UI_SHIP_GUNS"]
+	for i in keys.size():
+		out.append(_t(keys[i]) % (vals[i] if open else "?"))
+	return out
+
+
+static func _t(key: String) -> String:
+	return str(TranslationServer.translate(key))
+
+
+## One dot per hull, the shown one lit. Decoration: the arrows and swipes move.
+func _draw_pips(box: Rect2i) -> void:
+	var ids := ShipRoster.playable()
+	var x0 := box.get_center().x - (ids.size() * 6 - 2) / 2
+	for i in ids.size():
+		var col := Pixel.c("v") if i == main.ships.pick else Pixel.c("d")
+		draw_rect(Rect2(x0 + i * 6, box.get_center().y - 2, 4, 4), col)
 
 
 func _draw_options(l: MenuLayout) -> void:
