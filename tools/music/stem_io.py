@@ -11,10 +11,14 @@ def write_import(path, loop, bpm, beats):
               "beat_count": str(beats), "bar_beats": "4"}
     imp = path + ".import"
     if os.path.exists(imp):
-        lines = open(imp).read().split("\n")
-        lines = [f"{l.split('=')[0]}={params[l.split('=')[0]]}" if l.split("=")[0] in params else l
-                 for l in lines]
-        text = "\n".join(lines)
+        text = open(imp).read()
+        if "[params]" not in text:
+            text = text.rstrip("\n") + "\n\n[params]\n"
+        head, _, body = text.partition("[params]")
+        kept = [l for l in body.split("\n") if l.split("=")[0] not in params]
+        rest = "\n".join(l for l in kept if l.strip())
+        text = head + "[params]\n\n" + "".join(f"{k}={v}\n" for k, v in params.items())
+        text += (rest + "\n") if rest else ""
     else:
         text = '[remap]\n\nimporter="oggvorbisstr"\ntype="AudioStreamOggVorbis"\n\n[params]\n\n'
         text += "".join(f"{k}={v}\n" for k, v in params.items())

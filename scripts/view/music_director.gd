@@ -50,8 +50,10 @@ func state_for(combat: Combat) -> String:
 func _begin(combat: Combat) -> void:
 	_combat = combat
 	_start_hull = [combat.player().hull, combat.enemy().hull]
-	_theme = false
-	_full = false
+	# A fight that is already underway (resumed from a save) keeps its theme; its
+	# starting hulls are lost, so damage counts from the resume.
+	_theme = combat.time() > 0.0
+	_full = combat.time() >= FULL_AFTER
 
 
 static func _burning(ship: Ship) -> bool:

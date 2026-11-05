@@ -98,6 +98,9 @@ static func director_stages(t: SceneTree) -> void:
 	_check(t, d.state_for(c3) == "victory", "a win plays the victory")
 	c3.state = "lost"
 	_check(t, d.state_for(c3) == "defeat", "a loss plays the defeat")
+	var resumed := Combat.create(8)
+	resumed.tick_count = 200
+	_check(t, d.state_for(resumed) == "engage_theme", "a fight resumed from a save keeps its theme")
 
 
 ## How clips hand over: intros first, bar-line cuts within the fight, the
@@ -143,24 +146,23 @@ static func clips_are_synced_stems(t: SceneTree) -> void:
 	var errors: Array[String] = []
 	ContentDB._validate_music(music, errors)
 	_check(t, errors.is_empty(), "the music table is valid: %s" % [errors])
-	var loops := ["hearth", "engage", "danger", "kill"]
 	for id: String in music.clips:
 		var shape := ContentDB._clip_shape(id, music.clips[id], errors)
-		if shape.is_empty():
-			continue
-		_check(t, shape[0] == (id in loops), "%s loops only if it should" % id)
-		if id != "hearth":
-			_check(t, float(shape[1]) == 144.0, "%s is in the fight's tempo" % id)
-			_check(t, int(shape[2]) % 4 == 0, "%s is whole bars" % id)
+		var once: bool = music.clips[id].get("once", false)
+		_check(t, not shape.is_empty() and shape[0] != once, "%s loops unless it plays once" % id)
 	var engage := ContentDB._clip_shape("engage", music.clips.engage, errors)
 	_check(t, int(engage[2]) >= 128, "the fight loop runs 32 bars before it repeats")
 	var bad: Dictionary = music.duplicate(true)
-	bad.clips.victory.then = "nowhere"
+	bad.clips.defeat.then = "nowhere"
 	bad.clips.kill.enter = "whenever"
 	bad.clips.surge.layers.core.file = "res://audio/music/ember_engage_core.ogg"
 	bad.clips.hearth.intro = "engage"
 	bad.states.chart.clip = "jukebox"
 	bad.clips.defeat.fade = "dissolve"
+	bad.states.danger.layers = ["core", "pressure"]
+	bad.states.store = ["pad"]
+	bad.clips.engage.intro_from = "hearth"
+	bad.clips.danger.once = true
 	errors.clear()
 	ContentDB._validate_music(bad, errors)
-	_check(t, errors.size() == 6, "every broken music field is caught, got %s" % [errors])
+	_check(t, errors.size() == 10, "every broken music field is caught, got %s" % [errors])

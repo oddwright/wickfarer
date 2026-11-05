@@ -316,7 +316,7 @@ func _play_feedback() -> void:
 ## Which music fits the screen: see "states" in data/feedback.json. A fight
 ## picks its own stage (MusicDirector).
 func music_state() -> String:
-	if run == null or menu_base == "title":
+	if not _in_run():
 		return "chart"
 	match run_screen():
 		"fight":
@@ -332,7 +332,12 @@ func music_state() -> String:
 
 ## A paused fight keeps its music, muffled, so coming back doesn't restart it.
 func music_muffled() -> bool:
-	return run != null and menu_base != "title" and run_screen() == "fight" and paused
+	return _in_run() and run_screen() == "fight" and paused
+
+
+## A run is on screen (not hidden under the title menu).
+func _in_run() -> bool:
+	return run != null and menu_base != "title"
 
 
 func flash_amount(side: int, room_id: String) -> float:

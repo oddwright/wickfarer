@@ -26,7 +26,6 @@ const HUSH_CUTOFF := 600.0
 const OPEN_CUTOFF := 20000.0
 const MUFFLE_CUTOFF := 900.0
 const MUFFLE_DB := -6.0
-const LEAVING_TIME := 2.0  ## seconds a clip we just left keeps its mix while it fades
 const FADES := {"out": AudioStreamInteractive.FADE_OUT, "cross": AudioStreamInteractive.FADE_CROSS}
 const ENTER := {
 	"now": AudioStreamInteractive.TRANSITION_FROM_TIME_IMMEDIATE,
@@ -55,8 +54,7 @@ var _clip_layers: Array[PackedStringArray] = []  ## layer names of each clip
 var _clip_db: Array[PackedFloat32Array] = []  ## each layer's volume right now
 var _asked := ""  ## the clip we last switched to
 var _playing_clip := ""
-var _leaving := ""  ## the clip we just left, fading out on its own
-var _leaving_time := 0.0
+var _leaving := ""  ## the clip we cut away from, fading out on its own
 var _muffle_db := 0.0
 var _duck := 0.0
 var _clock := 0.0
@@ -310,6 +308,8 @@ func _start_music() -> void:
 	if not _music_player.is_inside_tree():
 		return
 	_asked = next_clip(music.clips, want, "")
+	_playing_clip = ""
+	_leaving = ""
 	_music_stream.initial_clip = _clips.find(_asked)
 	_set_levels(0.0, true)  # the first clip starts at its mix, not from silence
 	_music_player.play()
@@ -325,7 +325,6 @@ func _follow_state() -> void:
 	var now := _clips[pb.get_current_clip_index()] if pb.get_current_clip_index() >= 0 else ""
 	if now != _playing_clip:
 		_leaving = _playing_clip
-		_leaving_time = LEAVING_TIME
 		_playing_clip = now
 	var want := str(_state().get("clip", ""))
 	var next := next_clip(music.clips, want, now)
@@ -368,7 +367,6 @@ func _process(delta: float) -> void:
 	finish_build()
 	_clock += delta
 	_duck = maxf(0.0, _duck - delta)
-	_leaving_time = maxf(0.0, _leaving_time - delta)
 	_muffle_db = move_toward(
 		_muffle_db, MUFFLE_DB if muffle else 0.0, absf(MUFFLE_DB) * delta * 2.0
 	)
@@ -385,34 +383,52 @@ func _process(delta: float) -> void:
 		_lowpass.cutoff_hz = lerpf(_lowpass.cutoff_hz, goal_hz, clampf(delta * 2.0, 0.0, 1.0))
 
 
-## Layers of the playing clip fade toward the state; every other clip is set at
-## once, so it starts at the right mix. The clip we just left keeps its levels
-## while the transition fades it out.
+## Each clip's layers head for the state's mix. The playing clip fades there
+## when the state wants it (or the playing clip is its intro or "then"); while
+## a cut to another clip is pending it holds its mix, so the band doesn't thin
+## out in the beat before the cut. The clip we cut away from holds its mix while
+## the transition fades it out. Every other clip is set at once, so it starts
+## at the right mix.
 func _set_levels(delta: float, snap := false) -> void:
 	var targets := layer_targets()
+	var want := str(_state().get("clip", ""))
 	var fade := maxf(0.05, float(music.get("fade", 1.5)))
 	var step := absf(SILENT_DB) * delta / fade
 	var extra := DUCK_DB * (_duck / DUCK_TIME) + _muffle_db
+	var pending := not snap and not serves(music.clips, want, _playing_clip)
 	for c in _clips.size():
 		var live := _clips[c] == _playing_clip and not snap
-		if _clips[c] == _leaving and _leaving_time > 0.0:
-			continue
+		var hold := not snap and (_clips[c] == _leaving or (live and pending))
 		for k in _clip_layers[c].size():
-			var goal := float(targets.get(_clip_layers[c][k], SILENT_DB))
-			_clip_db[c][k] = move_toward(_clip_db[c][k], goal, step) if live else goal
+			if not hold:
+				var goal := float(targets.get(_clip_layers[c][k], SILENT_DB))
+				_clip_db[c][k] = move_toward(_clip_db[c][k], goal, step) if live else goal
 			_clip_sync[c].set_sync_stream_volume(k, _clip_db[c][k] + extra)
 
 
-## Every stem decodes even at -60 dB, which costs battery: stop once silent.
+## Whether `clip` playing is what the state wanting `want` sounds like: the clip
+## itself, its intro, the clip it hands over to, or anything fading to silence.
+static func serves(clips: Dictionary, want: String, clip: String) -> bool:
+	if want == "" or clip == want:
+		return true
+	var c: Dictionary = clips.get(want, {})
+	return clip == str(c.get("intro", "")) or clip == str(c.get("then", ""))
+
+
+## Every stem decodes even at -60 dB, which costs battery: stop once the
+## playing clip has faded out.
 func _stop_when_silent() -> void:
 	if str(_state().get("clip", "")) != "" or not _music_player.playing:
 		return
-	for dbs in _clip_db:
-		for db in dbs:
+	var c := _clips.find(_playing_clip)
+	if c != -1:
+		for db in _clip_db[c]:
 			if db > SILENT_DB:
 				return
 	_music_player.stop()
 	_asked = ""
+	_playing_clip = ""
+	_leaving = ""
 
 
 ## Phones can pause the app at any time: silence everything until it's back.

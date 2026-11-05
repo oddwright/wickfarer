@@ -738,9 +738,13 @@ func test_feedback_content_is_checked() -> void:
 	bad.sounds["ui_nope"].pitch_jitter = 1.5
 	bad.music.clips.engage.layers.core = {"file": "res://audio/music/missing.ogg"}
 	bad.cues["ui.tap"].priority = -1
+	bad.sounds["crew_bell"].synth.freq_end = 55  # stays a sine: under 150 Hz a phone is silent
+	bad.sounds["crew_bell"].synth.freq = 55
 	var errors: Array[String] = []
 	ContentDB._validate_feedback(bad, errors)
-	check(errors.size() == 8, "every broken feedback field is caught, got %s" % [errors])
+	check(errors.size() == 9, "every broken feedback field is caught, got %s" % [errors])
+	var cues: Dictionary = ContentDB.feedback.cues
+	check(cues.lost.sound != cues.won.sound, "losing doesn't sound like winning")
 
 
 func test_haptic_patterns() -> void:
