@@ -6,6 +6,7 @@ const J = preload("res://scripts/core/json_util.gd")
 const MAIN = preload("res://scripts/view/main.gd")
 const MENU_TESTS = preload("res://tests/menu_tests.gd")
 const STORY_TESTS = preload("res://tests/story_tests.gd")
+const SCREEN_TESTS = preload("res://tests/screen_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -49,6 +50,7 @@ func _init() -> void:
 		"test_warmth_needs_the_ember",
 		"test_fire_spreads_and_crew_put_it_out",
 		"test_layouts_on_every_screen",
+		"test_ui_size_setting",
 		"test_run_screens_on_every_screen",
 		"test_view_screens_follow_the_run",
 		"test_weapon_ready_event",
@@ -348,31 +350,11 @@ func test_fire_spreads_and_crew_put_it_out() -> void:
 
 
 func test_layouts_on_every_screen() -> void:
-	var screens := SCREENS
-	var pf := Vector2i(236, 76)
-	var ef := Vector2i(196, 66)
-	for name: String in screens:
-		var scr := ScreenManager.compute(screens[name])
-		var l := HudLayout.build(scr, pf, ef, HudLayout.SYSTEM_ORDER, 2)
-		var probs := l.problems(pf, ef)
-		print(
-			(
-				"  %-44s %dx  %s  canvas %dx%d  %s"
-				% [
-					name,
-					scr.scale,
-					scr.layout,
-					scr.native.x,
-					scr.native.y,
-					"ok" if probs.is_empty() else str(probs)
-				]
-			)
-		)
-		check(probs.is_empty(), "%s layout: %s" % [name, probs])
-	check(
-		ScreenManager.compute(Vector2i(2400, 1080)).native == Vector2i(480, 216),
-		"2400x1080 is 5x, 480x216"
-	)
+	SCREEN_TESTS.hud(self, SCREEN_TESTS.variants(SCREENS))
+
+
+func test_ui_size_setting() -> void:
+	SCREEN_TESTS.ui_size(self)
 
 
 ## Saves from every released version live in tests/fixtures. They must always load and play on.
@@ -567,7 +549,7 @@ func test_beacon_openers() -> void:
 	STORY_TESTS.every_beacon(self)
 	STORY_TESTS.lead_in(self)
 	STORY_TESTS.effects_checked(self)
-	STORY_TESTS.text_fits(self, SCREENS)
+	STORY_TESTS.text_fits(self, SCREEN_TESTS.variants(SCREENS))
 
 
 func test_run_saves_and_resumes_at_every_step() -> void:
@@ -600,8 +582,9 @@ func test_autopilot_runs_always_end() -> void:
 
 
 func test_run_screens_on_every_screen() -> void:
-	for name: String in SCREENS:
-		var scr := ScreenManager.compute(SCREENS[name])
+	var screens := SCREEN_TESTS.variants(SCREENS)
+	for name: String in screens:
+		var scr: Dictionary = screens[name]
 		var probs: Array[String] = []
 		for seed_value in 30:
 			var chart := Run.create(seed_value).chart
@@ -882,7 +865,7 @@ func test_music_layers_are_synced_stems() -> void:
 
 
 func test_menu_screens_on_every_screen() -> void:
-	MENU_TESTS.screens(self, SCREENS)
+	MENU_TESTS.screens(self, SCREEN_TESTS.variants(SCREENS))
 
 
 func test_options_adjust_settings() -> void:

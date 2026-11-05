@@ -23,6 +23,8 @@ var message_rect: Rect2i  ## a one or two line note at the bottom
 var buttons: Array[Dictionary] = []  ## {kind, id, rect}
 ## Opens the pause menu; it sits in the status bar, so it is kept out of buttons.
 var menu_rect: Rect2i
+## Beacon heights by node id, nudged so a column's beacons never touch on a short canvas.
+var _beacon_y: Dictionary = {}
 
 
 ## mode is "chart", "event", "store" or "next" (one Continue button).
@@ -42,6 +44,7 @@ static func build(
 	else:
 		l.text_rect = Rect2i(12, TOP + 8, l.hinge.position.x - 20, h - TOP - 24)
 	l.menu_rect = MenuLayout.menu_button(l.native)
+	l._spread_columns(chart)
 	match mode:
 		"chart":
 			for n in chart.nodes:
@@ -61,7 +64,7 @@ static func build(
 ## Spreads beacons over the chart area, skipping the fold in the Square layout.
 func beacon_pos(n: Dictionary) -> Vector2i:
 	var r := chart_rect
-	var y := r.position.y + int(round(float(n.y) * r.size.y))
+	var y: int = _beacon_y.get(n.get("id", ""), r.position.y + int(round(float(n.y) * r.size.y)))
 	if hinge.size.x == 0:
 		return Vector2i(r.position.x + int(round(float(n.x) * r.size.x)), y)
 	var gap := hinge.size.x + BEACON + 4
@@ -70,6 +73,31 @@ func beacon_pos(n: Dictionary) -> Vector2i:
 	if x > hinge.position.x - BEACON / 2 - 2:
 		x += gap
 	return Vector2i(x, y)
+
+
+## Beacons in a column sit at least a hit box and a gap apart. A tall chart
+## already is; a short one (a larger UI) pushes them apart and back up from the bottom.
+func _spread_columns(chart: StarChart) -> void:
+	var cols := {}
+	for n: Dictionary in chart.nodes:
+		if not cols.has(n.col):
+			cols[n.col] = []
+		cols[n.col].append(n)
+	var gap := BEACON + 3
+	var r := chart_rect
+	for col: Variant in cols:
+		var ns: Array = cols[col]
+		ns.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.y < b.y)
+		var ys: Array[int] = []
+		for n: Dictionary in ns:
+			ys.append(r.position.y + int(round(float(n.y) * r.size.y)))
+		for i in range(1, ys.size()):
+			ys[i] = maxi(ys[i], ys[i - 1] + gap)
+		ys[-1] = mini(ys[-1], r.end.y)
+		for i in range(ys.size() - 2, -1, -1):
+			ys[i] = mini(ys[i], ys[i + 1] - gap)
+		for i in ns.size():
+			_beacon_y[ns[i].id] = ys[i]
 
 
 func _choices(count: int, kind_name: String) -> void:

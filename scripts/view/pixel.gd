@@ -138,3 +138,19 @@ static func menu_icon(ci: CanvasItem, r: Rect2i) -> void:
 	var x := r.position.x + (r.size.x - 12) / 2
 	for k in 3:
 		ci.draw_rect(Rect2(x, r.position.y + 3 + k * 3, 12, 2), c("w"))
+
+
+## The smallest box holding every drawn pixel of a strip of animation frames,
+## in frame coordinates, so layouts can place a ship by its hull, not its frame.
+static func used_rect(tex: Texture2D, frame: Vector2i) -> Rect2i:
+	var img := tex.get_image()
+	if img == null or frame.x <= 0:
+		return Rect2i(Vector2i.ZERO, frame)
+	if img.is_compressed():
+		img.decompress()
+	var out := Rect2i()
+	for i in maxi(1, img.get_width() / frame.x):
+		var r := img.get_region(Rect2i(frame.x * i, 0, frame.x, frame.y)).get_used_rect()
+		if r.has_area():
+			out = r if not out.has_area() else out.merge(r)
+	return out if out.has_area() else Rect2i(Vector2i.ZERO, frame)

@@ -2,6 +2,8 @@ extends RefCounted
 ## Menu checks for tests/run_tests.gd, kept here so that file stays under the
 ## lint limit. Each takes the runner, whose check() records the result.
 
+const SCREEN_TESTS = preload("res://tests/screen_tests.gd")
+
 
 static func _check(t: SceneTree, cond: bool, what: String) -> void:
 	t.call("check", cond, what)
@@ -18,7 +20,7 @@ static func screens(t: SceneTree, screen_sizes: Dictionary) -> void:
 		"options": [],
 	}
 	for name: String in screen_sizes:
-		var scr := ScreenManager.compute(screen_sizes[name])
+		var scr: Dictionary = screen_sizes[name]
 		var probs: Array[String] = []
 		for page: String in pages:
 			var ids: Array[String] = []
@@ -135,6 +137,7 @@ static func flow(t: SceneTree) -> void:
 	_check(t, main.settings.reduce_flashing, "toggles work")
 	_tap_menu(main, "defaults")
 	_check(t, main.settings.volume.Master == 0.8 and not main.settings.reduce_flashing, "Defaults")
+	SCREEN_TESTS.options_flow(t, main)
 	_tap_menu(main, "back")
 	_check(t, main.menu == "pause", "Back returns to the pause menu")
 	# quit to the title and continue

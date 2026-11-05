@@ -1,14 +1,16 @@
 extends SceneTree
 ## Screenshot one screen at a given window size (needs a display; use xvfb-run).
-## godot --path . -s tools/shot.gd -- <width> <height> <out.png> [ticks] [screen]
+## godot --path . -s tools/shot.gd -- <width> <height> <out.png> [ticks] [screen] [ui size]
 ## screen is fight (default), chart, event, event:<event id>, store or lost,
-## or a menu over a fight: title, pause, options or confirm.
+## or a menu over a fight: title, pause, options or confirm. ui size is the
+## options setting, a step from auto (-2 to 1); it is not saved.
 
 var frames := 0
 var main: Node
 var out := ""
 var ticks := 500
 var which := "fight"
+var ui_size := 0
 
 
 func _init() -> void:
@@ -19,6 +21,8 @@ func _init() -> void:
 		ticks = int(a[3])
 	if a.size() > 4:
 		which = a[4]
+	if a.size() > 5:
+		ui_size = int(a[5])
 	DisplayServer.window_set_size(size)
 	root.size = size
 	SaveService.erase("run")
@@ -40,6 +44,8 @@ func _process(_delta: float) -> bool:
 
 
 func _set_up() -> void:
+	main.settings.ui_size = ui_size
+	main._on_resize()
 	var run := Run.create(4242)
 	for i in 2:  # two jumps in, whatever is at those beacons
 		run.jump(run.jump_targets()[0])

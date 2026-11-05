@@ -114,7 +114,7 @@ static func text_fits(t: SceneTree, screens: Dictionary) -> void:
 	var probs: Array[String] = []
 	var chart := Run.create(1).chart
 	for name: String in screens:
-		var scr := ScreenManager.compute(screens[name])
+		var scr: Dictionary = screens[name]
 		var out := RunLayout.build(scr, chart, "next")
 		for eid: String in ContentDB.events:
 			var ev: Dictionary = ContentDB.events[eid]
@@ -137,13 +137,15 @@ static func text_fits(t: SceneTree, screens: Dictionary) -> void:
 	_check(t, probs.is_empty(), "story text fits: %s" % [probs.slice(0, 4)])
 
 
-## Mirrors RunView._button: one centred line with no note; label and note on
-## one line if they fit; else two label lines with the note on the second,
-## which only a tall (Square) button has room for.
+## Mirrors RunView._button: one centred line with no note, or two in a tall
+## button; label and note on one line if they fit; else two label lines with
+## the note on the second, which only a tall (Square) button has room for.
 static func _label_fits(tl: RunView, r: Rect2i, label: String, note: String) -> bool:
-	if note == "":
-		return TextLayer.text_width(label) <= r.size.x - 4
 	var inner := r.size.x - 12
+	if note == "":
+		if TextLayer.text_width(label) <= r.size.x - 4:
+			return true
+		return r.size.y >= 30 and tl._wrap(label, inner, 1).size() <= 2
 	if TextLayer.text_width(label) + TextLayer.text_width(note) + 8 <= inner:
 		return true
 	var lines := tl._wrap(label, inner, 1)

@@ -20,15 +20,19 @@ const MARGIN := 8
 const COL_GAP := 12  ## between the two options columns in Wide
 ## The two options columns, top to bottom. Volumes are GameSettings bus names.
 const AUDIO_ROWS: Array[String] = ["Master", "Music", "SFX", "UI"]
-const FEEL_ROWS: Array[String] = ["haptics", "shake", "hitstop", "reduce_flashing"]
+const FEEL_ROWS: Array[String] = ["haptics", "shake", "hitstop", "reduce_flashing", "ui_size"]
 const TOGGLES: Array[String] = ["hitstop", "reduce_flashing"]
+## Rows that step through a few named values, written between - and +, not a bar.
+const STEPPERS: Array[String] = ["ui_size"]
 
 var kind: String
 var native: Vector2i
 var hinge: Rect2i
 var title_rect: Rect2i  ## the title or question text
 var buttons: Array[Dictionary] = []  ## {kind, id, rect}
-var rows: Array[Dictionary] = []  ## options only: {id, label_at, bar}; bar is empty for toggles
+## options only: {id, label_at, bar, value}; bar is a level's slider (empty for toggles
+## and steppers), value is where a stepper writes its value.
+var rows: Array[Dictionary] = []
 
 
 ## The menu button on the fight and run screens: top right, in the status bar,
@@ -95,7 +99,8 @@ func _options() -> void:
 		_row(AUDIO_ROWS[i], lx, lw, TOP + i * ROW)
 	for i in FEEL_ROWS.size():
 		_row(FEEL_ROWS[i], rx, rw, TOP + i * ROW)
-	var foot_y := maxi(TOP + 4 * ROW + 4, native.y - BTN_H - MARGIN)
+	var deepest := maxi(AUDIO_ROWS.size(), FEEL_ROWS.size())
+	var foot_y := maxi(TOP + deepest * ROW + 4, native.y - BTN_H - MARGIN)
 	_add("defaults", 0, Rect2i(lx, foot_y, FOOT_W, BTN_H))
 	_add("back", 0, Rect2i(rx + rw - FOOT_W, foot_y, FOOT_W, BTN_H))
 
@@ -103,7 +108,9 @@ func _options() -> void:
 func _row(id: String, x: int, width: int, y: int) -> void:
 	var ctrl_x := x + LABEL_W
 	var ctrl_w := width - LABEL_W
-	var row := {"id": id, "label_at": Vector2i(x, y + CTRL_H / 2 + 3), "bar": Rect2i()}
+	var row := {
+		"id": id, "label_at": Vector2i(x, y + CTRL_H / 2 + 3), "bar": Rect2i(), "value": Rect2i()
+	}
 	if id in TOGGLES:
 		_add("toggle", id, Rect2i(ctrl_x, y, ctrl_w, CTRL_H))
 	else:
@@ -111,7 +118,11 @@ func _row(id: String, x: int, width: int, y: int) -> void:
 		var plus := Rect2i(x + width - STEP_W, y, STEP_W, CTRL_H)
 		_add("less", id, minus)
 		_add("more", id, plus)
-		row.bar = Rect2i(minus.end.x + 4, y + 5, plus.position.x - minus.end.x - 8, CTRL_H - 10)
+		var between := Rect2i(minus.end.x + 4, y, plus.position.x - minus.end.x - 8, CTRL_H)
+		if id in STEPPERS:
+			row.value = between
+		else:
+			row.bar = Rect2i(between.position.x, y + 5, between.size.x, CTRL_H - 10)
 	rows.append(row)
 
 
@@ -155,6 +166,9 @@ func problems() -> Array[String]:
 		var bar: Rect2i = row.bar
 		if bar.size.x != 0 and bar.size.x < 20:
 			out.append("%s slider is too short to read" % row.id)
+		var value: Rect2i = row.value
+		if row.id in STEPPERS and value.size.x < 28:
+			out.append("%s has no room for its value" % row.id)
 		if hinge.size.x > 0 and bar.intersects(hinge):
 			out.append("%s slider sits on the fold" % row.id)
 	return out

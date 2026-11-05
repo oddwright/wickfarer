@@ -132,10 +132,19 @@ func _button(r: Rect2i, label: String, enabled := true, note := "", short := fal
 	var col := Pixel.c("w") if enabled else Pixel.c("f")
 	var note_col := Pixel.c("U") if short else (Pixel.c("g") if enabled else Pixel.c("f"))
 	var y := r.position.y + r.size.y / 2 + 3
-	if note == "":
-		_text(Vector2(r.position.x, y), label, 5.0, col, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
-		return
 	var inner := r.size.x - 12
+	if note == "":
+		if text_width(label.to_upper()) <= r.size.x - 4 or r.size.y < 30:
+			_text(Vector2(r.position.x, y), label, 5.0, col, HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
+			return
+		# A narrow page (a larger UI size): two centred lines in the tall button.
+		var two := _wrap(label.to_upper(), inner, 1)
+		for i in mini(two.size(), 2):
+			var ly := r.position.y + 10 if i == 0 else r.end.y - 5
+			_text(
+				Vector2(r.position.x, ly), two[i], 5.0, col, HORIZONTAL_ALIGNMENT_CENTER, r.size.x
+			)
+		return
 	if text_width(label.to_upper()) + text_width(note.to_upper()) + 8 <= inner:
 		_text(Vector2(r.position.x + 6, y), label, 5.0, col)
 		_text(
