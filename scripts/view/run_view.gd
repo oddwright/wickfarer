@@ -23,7 +23,7 @@ func _draw() -> void:
 		_:
 			_draw_next(run, l)
 	_draw_status(run, l)
-	Pixel.menu_icon(self, l.button("menu").rect)
+	Pixel.menu_icon(self, l.menu_rect)
 
 
 func _draw_status(run: Run, l: RunLayout) -> void:

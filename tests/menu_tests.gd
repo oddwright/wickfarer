@@ -39,10 +39,10 @@ static func screens(t: SceneTree, screen_sizes: Dictionary) -> void:
 		var hud := HudLayout.build(scr, pf, ef, HudLayout.SYSTEM_ORDER, 2)
 		var run_l := RunLayout.build(scr, Run.create(1).chart, "chart")
 		for l: Variant in [hud, run_l]:
-			var b: Dictionary = l.button("menu")
-			if b.is_empty():
+			var r: Rect2i = l.menu_rect
+			if r.size.x < 10 or r.size.y < 10:
 				probs.append("a screen has no menu button")
-			elif scr.hinge.size.x > 0 and (b.rect as Rect2i).intersects(scr.hinge):
+			elif scr.hinge.size.x > 0 and r.intersects(scr.hinge):
 				probs.append("the menu button sits on the fold")
 		_check(t, probs.is_empty(), "%s menus: %s" % [name, probs.slice(0, 4)])
 
@@ -96,7 +96,7 @@ static func flow(t: SceneTree) -> void:
 	_tap_menu(main, "new_run")
 	_check(t, main.menu == "" and main.run != null, "New run starts a run")
 	_check(t, main.run_view.visible, "on the chart")
-	_tap_menu_button(main, main.run_layout.button("menu"))
+	_tap_rect(main, main.run_layout.menu_rect)
 	_check(
 		t, main.menu == "pause" and main.run_view.visible, "the chart's menu button pauses over it"
 	)
@@ -109,7 +109,7 @@ static func flow(t: SceneTree) -> void:
 	main._process(0.2)
 	var t0: float = main.combat.time()
 	_check(t, t0 > 0.0, "the fight runs")
-	_tap_menu_button(main, main.layout.button("menu"))
+	_tap_rect(main, main.layout.menu_rect)
 	_check(t, main.menu == "pause" and main.paused, "the fight's menu button pauses it")
 	main._process(1.0)
 	_check(t, main.combat.time() == t0, "no ticks behind the pause menu")
@@ -165,6 +165,27 @@ static func flow(t: SceneTree) -> void:
 	_check(t, main.menu == "title" and main.run == null, "Abandon ends the run")
 	_check(t, not SaveService.read("run", dir).has("run"), "and deletes its save")
 	_check(t, main.menu_items("title")[0] == "new_run", "so there is nothing to continue")
+	# a fold while the pause menu is open still leaves the fight paused
+	_tap_menu(main, "new_run")
+	var r2: Run = main.run
+	r2._start_fight("ashmarket_skiff")
+	main._set_run(r2)
+	check_fold_pause(t, main)
+	# after a won fight, Quit to menu and Continue leave nothing paused
+	main.combat.state = "won"
+	main.back()
+	_tap_menu(main, "to_title")
+	_tap_menu(main, "continue")
+	_check(t, not main.paused, "Continue after a won fight is not left paused")
+	# a lost run can't be continued or abandoned from the menus
+	r2.state = "lost"
+	main.combat = null
+	main._enter_screen()
+	main.back()
+	_check(t, not main.menu_items("pause").has("abandon"), "no Abandon on a lost run")
+	_tap_menu(main, "to_title")
+	_check(t, main.run == null, "Quit to menu after a loss drops the run")
+	_check(t, main.menu_items("title")[0] == "new_run", "so the title has no Continue")
 	main.queue_free()
 	for slot in ["run", GameSettings.SLOT]:
 		SaveService.erase(slot, dir)
@@ -173,3 +194,17 @@ static func flow(t: SceneTree) -> void:
 static func _tap_menu_button(main: Node, b: Dictionary) -> void:
 	var c: Vector2 = Vector2((b.rect as Rect2i).get_center()) * main.screen.scale
 	main._tap(c, false)
+
+
+static func _tap_rect(main: Node, r: Rect2i) -> void:
+	main._tap(Vector2(r.get_center()) * main.screen.scale, false)
+
+
+static func check_fold_pause(t: SceneTree, main: Node) -> void:
+	main.paused = false
+	main.back()
+	main._pause("UI_FOLD_PAUSE")  # what _on_resize does when the layout changes mid-fight
+	main.back()
+	_check(
+		t, main.menu == "" and main.paused, "a fold during the pause menu keeps the fight paused"
+	)

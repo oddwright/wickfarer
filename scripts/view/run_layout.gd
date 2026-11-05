@@ -21,6 +21,8 @@ var chart_rect: Rect2i  ## the area beacons are spread over
 var text_rect: Rect2i  ## the story or store text
 var message_rect: Rect2i  ## a one or two line note at the bottom
 var buttons: Array[Dictionary] = []  ## {kind, id, rect}
+## Opens the pause menu; it sits in the status bar, so it is kept out of buttons.
+var menu_rect: Rect2i
 
 
 ## mode is "chart", "event", "store" or "next" (one Continue button).
@@ -39,7 +41,7 @@ static func build(
 		l.text_rect = Rect2i(12, TOP + 8, w - 24, 60)
 	else:
 		l.text_rect = Rect2i(12, TOP + 8, l.hinge.position.x - 20, h - TOP - 24)
-	l._add("menu", 0, MenuLayout.menu_button(l.native))
+	l.menu_rect = MenuLayout.menu_button(l.native)
 	match mode:
 		"chart":
 			for n in chart.nodes:
@@ -125,7 +127,7 @@ func problems() -> Array[String]:
 		var r: Rect2i = b.rect
 		if not canvas.encloses(r):
 			out.append("%s %s outside the canvas" % [b.kind, b.id])
-		if r.position.y < TOP and b.kind != "menu":  # the menu button lives in the bar
+		if r.position.y < TOP:
 			out.append("%s %s under the status bar" % [b.kind, b.id])
 		if hinge.size.x > 0 and r.intersects(hinge):
 			out.append("%s %s sits on the fold" % [b.kind, b.id])
@@ -134,4 +136,8 @@ func problems() -> Array[String]:
 		for o in buttons:
 			if o != b and r.grow(1).intersects(o.rect):
 				out.append("%s %s and %s %s overlap" % [b.kind, b.id, o.kind, o.id])
+		if r.grow(1).intersects(menu_rect):
+			out.append("%s %s covers the menu button" % [b.kind, b.id])
+	if not canvas.encloses(menu_rect) or (hinge.size.x > 0 and menu_rect.intersects(hinge)):
+		out.append("the menu button is off the canvas or on the fold")
 	return out

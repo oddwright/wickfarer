@@ -600,8 +600,9 @@ func test_run_screens_on_every_screen() -> void:
 		for mode in ["event", "store", "next"]:
 			var l := RunLayout.build(scr, chart0, mode, 3)
 			probs.append_array(l.problems())
-			if l.buttons.is_empty():
-				probs.append("%s has no buttons" % mode)
+			var own := {"event": "choice", "store": "store", "next": "next"}
+			if l.button(own[mode]).is_empty():
+				probs.append("%s has no %s button" % [mode, own[mode]])
 			for b in l.buttons:
 				if (b.rect as Rect2i).end.y > scr.native.y - 4:
 					probs.append("%s button falls off the bottom" % mode)

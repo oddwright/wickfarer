@@ -213,6 +213,8 @@ func _rebuild_layout() -> void:
 
 
 func _pause(reason := "") -> void:
+	if menu != "":
+		_paused_before_menu = true  # a fold or a trip away while in the menu still counts
 	paused = true
 	pause_reason = reason
 	_save()
@@ -415,11 +417,12 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 		return
 	if run == null:
 		return
+	if MenuLayout.menu_button(screen.native).grow(2).has_point(p):
+		ui_cue("tap")
+		open_menu("pause")
+		return
 	if combat == null:
 		_tap_run(p)
-		return
-	if layout.button_at(p).get("kind", "") == "menu":
-		_press_button(layout.button_at(p), long)
 		return
 	if combat.state != "fighting":
 		if layout.again_rect().grow(4).has_point(p):
@@ -477,9 +480,6 @@ func _press_button(b: Dictionary, long: bool) -> void:
 		"pause":
 			_toggle_pause()
 			ui_cue("tap")
-		"menu":
-			ui_cue("tap")
-			open_menu("pause")
 
 
 func _tap_run(p: Vector2i) -> void:
@@ -489,10 +489,6 @@ func _tap_run(p: Vector2i) -> void:
 	if b.is_empty():
 		return
 	match b.kind:
-		"menu":
-			ui_cue("tap")
-			open_menu("pause")
-			return
 		"beacon":
 			if not run.jump(str(b.id)):
 				ui_cue("refused")
@@ -536,10 +532,18 @@ func menu_items(page: String) -> Array[String]:
 			if can_quit():
 				out.append("quit")
 		"pause":
-			out.assign(["resume", "options", "abandon", "to_title"])
+			out.assign(["resume", "options"])
+			if not run_over():
+				out.append("abandon")
+			out.append("to_title")
 		"confirm":
 			out.assign(["yes", "no"])
 	return out
+
+
+## A lost or finished run waiting on its ending screen; nothing to continue.
+func run_over() -> bool:
+	return run != null and run.state in ["lost", "reach_done"]
 
 
 ## iOS apps must not quit themselves (Apple rejects it); Android and desktop may.
@@ -619,8 +623,11 @@ func _tap_menu(p: Vector2i) -> void:
 		"abandon":
 			_confirm("abandon")
 		"to_title":
-			if combat and combat.state == "fighting":
-				pause_reason = "UI_TAP_TO_RESUME"  # come back to a paused fight
+			if run_over():
+				run = null  # its save is already gone; the title offers no Continue
+				combat = null
+				layout = null
+				run_layout = null
 			open_menu("title")
 		"yes":
 			if confirm_action == "abandon":
@@ -641,6 +648,9 @@ func _continue() -> void:
 	_enter_screen()
 	if combat and combat.state == "fighting":
 		_pause("UI_TAP_TO_RESUME")  # never drop a player straight back into a live fight
+	else:
+		paused = false
+		pause_reason = ""
 
 
 func _new_run() -> void:
@@ -685,7 +695,7 @@ func _preview(id: String) -> void:
 	match id:
 		"haptics":
 			haptics.strength = settings.haptics
-			haptics.play("thud", 9)
+			feedback.cue("ui.preview_haptics")
 		"SFX":
 			audio.apply_settings(settings)
-			audio.play("hull_hit_light", 9)
+			feedback.cue("ui.preview_sfx")

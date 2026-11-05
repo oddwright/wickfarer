@@ -310,6 +310,7 @@ func _draw_hud() -> void:
 	var me := combat.player()
 	_draw_hull(me, Vector2i(4, 4), false)
 	_draw_hull(combat.enemy(), Vector2i(l.native.x - 34, 4), true)  # clear of the menu button
+	Pixel.menu_icon(self, l.menu_rect)
 	# reactor: green = in use, outline = spare, red = lost to Ember damage
 	var used := me.used_power()
 	for k in me.reactor:
@@ -339,8 +340,6 @@ func _draw_hud() -> void:
 					draw_rect(
 						Rect2(r.position.x + 4, y, 10, 7), Pixel.c("j") if on else Pixel.c("c")
 					)
-			"menu":
-				Pixel.menu_icon(self, r)
 			"pause":
 				_draw_panel(r, main.paused)
 				var cx := r.position.x + 11
