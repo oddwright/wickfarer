@@ -9,6 +9,8 @@ const OLD_FIGHT_SLOT := "combat"  ## Phase 0 saved a lone fight here
 const LONG_PRESS := 0.4
 const AUTOSAVE_EVERY := 10.0
 const MAX_STEPS_PER_FRAME := 5
+## The stations offered in the roster's post picker, in this order, then "none".
+const POST_ORDER: Array[String] = ["helm", "weapons", "wards", "engines", "ember", "mend"]
 
 var save_dir := SaveService.DIR  ## tests point this at a scratch folder
 var run: Run
@@ -28,6 +30,10 @@ var audio: AudioService
 var haptics: Haptics
 var menu_view: MenuView
 var menu_layout: MenuLayout
+var crew_view: CrewView
+var crew_layout: CrewLayout
+var roster_open := false  ## the crew roster is over the fight (and pauses it)
+var roster_pick := -1  ## the roster row whose post is being picked, or -1
 ## The open menu page: "" (playing), "title", "pause", "options" or "confirm".
 var menu := ""
 ## The page Back returns to: "title" hides the game, "pause" dims it.
@@ -47,6 +53,7 @@ var _press_pos := Vector2.ZERO
 var _press_time := 0
 var _pressing := false
 var _paused_before_menu := false
+var _paused_before_roster := false
 
 
 func _ready() -> void:
@@ -74,6 +81,9 @@ func _ready() -> void:
 	run_view = RunView.new()
 	viewport.add_child(run_view)
 	run_view.setup(self)
+	crew_view = CrewView.new()
+	viewport.add_child(crew_view)
+	crew_view.setup(self)
 	menu_view = MenuView.new()
 	viewport.add_child(menu_view)  # last, so the menus draw over the game
 	menu_view.setup(self)
@@ -142,6 +152,7 @@ func _show_game(on: bool) -> void:
 	world.visible = on and fighting
 	text.visible = on and fighting
 	run_view.visible = on and run != null and not fighting
+	crew_view.visible = on and fighting and roster_open
 	menu_view.visible = menu != ""
 
 
@@ -172,6 +183,8 @@ func _start(c: Combat) -> void:
 	pause_reason = ""
 	selected_weapon = -1
 	selected_crew = -1
+	roster_open = false
+	roster_pick = -1
 	floaters.clear()
 	flashes.clear()
 	if feedback:
@@ -197,6 +210,7 @@ func _on_resize() -> void:
 		_rebuild_layout()
 	_build_run_layout()
 	_build_menu_layout()
+	_build_crew_layout()
 
 
 func _rebuild_layout() -> void:
@@ -272,6 +286,7 @@ func _process(delta: float) -> void:
 	_play_feedback()
 	world.queue_redraw()
 	text.queue_redraw()
+	crew_view.queue_redraw()
 	run_view.queue_redraw()
 	menu_view.queue_redraw()
 
@@ -362,6 +377,13 @@ func _on_events(events: Array) -> void:
 			"crew_died":
 				if e.side == 0 and selected_crew == e.uid:
 					selected_crew = -1
+			"skill_up":
+				if e.side == 0:
+					var label := (
+						tr("UI_SKILL_UP")
+						% [tr(Skills.spec(e.skill).name), tr(Skills.rank_name(int(e.rank)))]
+					)
+					_float(0, e.room, label, Pixel.c("v"))
 			"won", "lost":
 				_save()
 
@@ -407,7 +429,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var key := (event as InputEventKey).keycode
 		if key == KEY_ESCAPE:
 			back()
-		elif key == KEY_SPACE and combat and menu == "":
+		elif key == KEY_SPACE and combat and menu == "" and not roster_open:
 			_toggle_pause()  # pause only means something in a fight
 
 
@@ -425,6 +447,9 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 		_tap_menu(p)
 		return
 	if run == null:
+		return
+	if roster_open and combat:
+		_tap_roster(p)
 		return
 	if MenuLayout.menu_button(screen.native).grow(2).has_point(p):
 		ui_cue("tap")
@@ -453,9 +478,7 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 		return
 	var c := world.crew_at(0, p)
 	if c:
-		selected_crew = -1 if selected_crew == c.uid else c.uid
-		selected_weapon = -1
-		ui_cue("select")
+		_tap_crew(c, long)
 		return
 	var my_room := world.room_at(0, p)
 	if selected_crew >= 0 and my_room:
@@ -489,6 +512,118 @@ func _press_button(b: Dictionary, long: bool) -> void:
 		"pause":
 			_toggle_pause()
 			ui_cue("tap")
+		"crew":
+			ui_cue("tap")
+			open_roster()
+		"muster":
+			ui_cue("tap" if combat.apply({"type": "muster"}) else "refused")
+
+
+# ------------------------------------------------------------------ crew
+
+
+## Tap selects a crew member (tap again to let go); long press posts them.
+func _tap_crew(c: Crew, long: bool) -> void:
+	if long:
+		_post_here(c)
+		return
+	selected_crew = -1 if selected_crew == c.uid else c.uid
+	selected_weapon = -1
+	ui_cue("select")
+
+
+## Long press on a crew member: where they stand (or are headed) becomes their post.
+func _post_here(c: Crew) -> void:
+	var dest: String = c.path.back() if c.is_moving() else c.room
+	if not combat.apply({"type": "post", "crew": c.uid, "room": dest}):
+		ui_cue("refused")
+		return
+	ui_cue("select")
+	selected_crew = -1
+	_float(0, dest, tr("UI_POST_SET") % tr(combat.player().role_of(c)), Pixel.c("w"))
+
+
+## The crew listed in the roster, top to bottom.
+func roster_crew() -> Array[Crew]:
+	var out: Array[Crew] = []
+	if combat:
+		out = combat.player().alive_crew()
+	return out
+
+
+## The posts the picker offers: each station on the ship, then "" for none.
+func roster_picks() -> Array[String]:
+	var out: Array[String] = []
+	if combat:
+		for sys in POST_ORDER:
+			var r := combat.player().system_room(sys)
+			if r:
+				out.append(r.id)
+	out.append("")
+	return out
+
+
+## Opens the roster. It pauses the fight; closing it puts the pause back as it was.
+func open_roster() -> void:
+	if combat == null or combat.state != "fighting" or roster_open:
+		return
+	_paused_before_roster = paused
+	paused = true
+	roster_open = true
+	roster_pick = -1
+	selected_crew = -1
+	selected_weapon = -1
+	_build_crew_layout()
+	_show_game(menu_base != "title")
+
+
+func close_roster() -> void:
+	if not roster_open:
+		return
+	roster_open = false
+	roster_pick = -1
+	paused = _paused_before_roster
+	if not paused:
+		pause_reason = ""
+	_show_game(menu_base != "title")
+
+
+func _build_crew_layout() -> void:
+	if screen.is_empty() or not roster_open:
+		return
+	var picks: Array[String] = []
+	if roster_pick >= 0:
+		picks = roster_picks()
+	crew_layout = CrewLayout.build(screen, roster_crew().size(), picks)
+
+
+func _tap_roster(p: Vector2i) -> void:
+	var b := crew_layout.button_at(p) if crew_layout else {}
+	if b.is_empty():
+		return
+	var crew := roster_crew()
+	match b.kind:
+		"post":
+			var i := int(b.id)
+			roster_pick = -1 if roster_pick == i or i >= crew.size() else i
+			ui_cue("select")
+		"pick":
+			var picks := roster_picks()
+			var ok := roster_pick >= 0 and roster_pick < crew.size()
+			if ok:
+				var cmd := {"type": "post", "crew": crew[roster_pick].uid, "room": picks[int(b.id)]}
+				ok = combat.apply(cmd)
+			ui_cue("tap" if ok else "refused")
+			roster_pick = -1
+		"muster":
+			ui_cue("tap" if combat.apply({"type": "muster"}) else "refused")
+			close_roster()
+			return
+		"close":
+			ui_cue("tap")
+			close_roster()
+			return
+	_build_crew_layout()
 
 
 func _tap_run(p: Vector2i) -> void:
@@ -589,7 +724,9 @@ func _build_menu_layout() -> void:
 func back() -> void:
 	match menu:
 		"":
-			if run != null:
+			if roster_open:
+				close_roster()
+			elif run != null:
 				open_menu("pause")
 		"options", "confirm":
 			open_menu(menu_base)

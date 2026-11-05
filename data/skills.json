@@ -1,0 +1,16 @@
+{
+  "ranks": [0, 60, 170, 340],
+  "rank_names": ["SKILL_RANK_GREEN", "SKILL_RANK_STEADY", "SKILL_RANK_KEEN", "SKILL_RANK_MASTER"],
+  "fight_cap": 60,
+  "learn_warmth": 40,
+  "mentor": 2.0,
+  "patch_xp_per_damage": 4,
+  "patch_xp_per_fire": 0.07,
+  "skills": {
+    "steer": {"name": "SKILL_STEER", "short": "SKILL_STEER_SHORT", "stations": ["helm", "engines"], "per_rank": 3.0},
+    "guns":  {"name": "SKILL_GUNS",  "short": "SKILL_GUNS_SHORT",  "stations": ["weapons"], "per_rank": 0.07},
+    "wards": {"name": "SKILL_WARDS", "short": "SKILL_WARDS_SHORT", "stations": ["wards"], "per_rank": 0.15},
+    "stoke": {"name": "SKILL_STOKE", "short": "SKILL_STOKE_SHORT", "stations": ["ember"], "per_rank": 0.08},
+    "patch": {"name": "SKILL_PATCH", "short": "SKILL_PATCH_SHORT", "stations": [], "per_rank": 0.12}
+  }
+}

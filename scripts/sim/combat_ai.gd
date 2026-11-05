@@ -101,16 +101,24 @@ func _crew(combat: Combat, me: Ship, side: int) -> void:
 			taken[c.path.back()] = true
 		elif me.room(c.room).system in STATIONS:
 			taken[c.room] = true
+	var spare: Array[Crew] = []
 	for c in idle:
-		if (
-			me.room(c.room).system in STATIONS
-			and me.room(c.room).fire <= 0.0
-			and me.room(c.room).damage <= 0.0
-		):
+		var here := me.room(c.room)
+		if not (here.system in STATIONS and here.fire <= 0.0 and here.damage <= 0.0):
+			spare.append(c)
+	# Fill empty stations most important first; whoever's post it is takes it,
+	# so their skill keeps growing there.
+	for st in STATIONS:
+		var room := me.system_room(st)
+		if spare.is_empty():
+			return
+		if room == null or taken.has(room.id):
 			continue
-		for st in STATIONS:
-			var room := me.system_room(st)
-			if room and not taken.has(room.id):
-				combat.apply({"type": "move", "crew": c.uid, "room": room.id}, side)
-				taken[room.id] = true
+		var pick: Crew = spare[0]
+		for c in spare:
+			if c.post == room.id:
+				pick = c
 				break
+		combat.apply({"type": "move", "crew": pick.uid, "room": room.id}, side)
+		taken[room.id] = true
+		spare.erase(pick)

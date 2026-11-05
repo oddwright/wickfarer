@@ -8,6 +8,7 @@ const MENU_TESTS = preload("res://tests/menu_tests.gd")
 const AUDIO_TESTS = preload("res://tests/audio_tests.gd")
 const STORY_TESTS = preload("res://tests/story_tests.gd")
 const SCREEN_TESTS = preload("res://tests/screen_tests.gd")
+const CREW_TESTS = preload("res://tests/crew_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -47,6 +48,7 @@ func _init() -> void:
 		"test_event_results_and_messages_survive_saves",
 		"test_run_saves_and_resumes_at_every_step",
 		"test_autopilot_runs_always_end",
+		"test_crew_posts_and_skills",
 		"test_power_rules",
 		"test_every_room_reachable_and_ladders_used",
 		"test_wards_block_and_strip",
@@ -76,7 +78,7 @@ func _init() -> void:
 ## Tests that need the real scene in the tree run on the first frame, once the
 ## root has entered it (it hasn't during _init).
 func _process(_delta: float) -> bool:
-	for t in ["test_menu_flow"]:
+	for t in ["test_scene_flows"]:
 		current = t
 		call(t)
 	_finish()
@@ -102,12 +104,12 @@ func check(cond: bool, what: String) -> void:
 		failures.append("%s: %s" % [current, what])
 
 
-func run(c: Combat, ticks: int) -> void:
+func _run(c: Combat, ticks: int) -> void:
 	for i in ticks:
 		c.tick()
 
 
-func aim_player(c: Combat) -> void:
+func _aim_player(c: Combat) -> void:
 	c.apply({"type": "aim", "weapon": 0, "room": "weapons"})
 	c.apply({"type": "aim", "weapon": 1, "room": "weapons"})
 
@@ -155,22 +157,22 @@ func test_rng_streams_are_independent_and_saveable() -> void:
 func test_same_seed_same_fight() -> void:
 	var a := Combat.create(7)
 	var b := Combat.create(7)
-	aim_player(a)
-	aim_player(b)
-	run(a, 1200)
-	run(b, 1200)
+	_aim_player(a)
+	_aim_player(b)
+	_run(a, 1200)
+	_run(b, 1200)
 	check(J.canonical(a.to_dict()) == J.canonical(b.to_dict()), "two fights with one seed differ")
 
 
 func test_save_mid_fight_resumes_identically() -> void:
 	var a := Combat.create(99)
-	aim_player(a)
-	run(a, 300)
+	_aim_player(a)
+	_run(a, 300)
 	var text := J.s(a.to_dict())
 	var b := Combat.from_dict(JSON.parse_string(text))
 	check(J.canonical(b.to_dict()) == J.canonical(a.to_dict()), "load then save changes the data")
-	run(a, 600)
-	run(b, 600)
+	_run(a, 600)
+	_run(b, 600)
 	check(
 		J.canonical(a.to_dict()) == J.canonical(b.to_dict()),
 		"resumed fight drifts from the original"
@@ -229,6 +231,15 @@ func test_old_save_is_migrated() -> void:
 	check(J.canonical(v0) == original, "upgrading never edits the save it was given")
 
 
+func test_crew_posts_and_skills() -> void:
+	CREW_TESTS.posts_and_roles(self)
+	CREW_TESTS.learning(self)
+	CREW_TESTS.bonuses(self)
+	CREW_TESTS.ai_uses_posts(self)
+	CREW_TESTS.resume(self)
+	CREW_TESTS.layouts(self, SCREEN_TESTS.variants(SCREENS))
+
+
 func test_power_rules() -> void:
 	var c := Combat.create(1)
 	var s := c.player()
@@ -274,14 +285,14 @@ func test_every_room_reachable_and_ladders_used() -> void:
 	var c := Combat.create(3)
 	var bo := c.player().crew[2]
 	c.apply({"type": "move", "crew": bo.uid, "room": "galley"})
-	run(c, 200)
+	_run(c, 200)
 	check(bo.room == "galley" and not bo.is_moving(), "crew arrive (Bo is in %s)" % bo.room)
 
 
 func test_wards_block_and_strip() -> void:
 	var c := Combat.create(11)
 	var foe := c.enemy()
-	run(c, 60)  # let the ward charge
+	_run(c, 60)  # let the ward charge
 	check(foe.ward_layers == 1, "enemy ward charged to 1 layer")
 	c.projectiles.append(
 		{
@@ -388,7 +399,7 @@ func test_every_save_fixture_still_loads() -> void:
 			continue  # already failed above; loading {} would only crash the runner
 		var c := Combat.from_dict(up.get("data", {}).get("combat", {}))
 		var before := c.tick_count
-		run(c, 200)
+		_run(c, 200)
 		check(c.tick_count == before + 200, "%s resumes and plays on" % name)
 	check(found >= 1, "at least one save fixture")
 	var runs := 0
@@ -645,10 +656,10 @@ func test_weapon_ready_event() -> void:
 	check(ready == 1, "an idle weapon says it is ready once, got %d" % ready)
 	var a := Combat.create(5)
 	var b := Combat.create(5)
-	aim_player(a)
-	aim_player(b)
-	run(a, 600)
-	run(b, 600)
+	_aim_player(a)
+	_aim_player(b)
+	_run(a, 600)
+	_run(b, 600)
 	check(J.canonical(a.to_dict()) == J.canonical(b.to_dict()), "ready events keep fights seeded")
 
 
@@ -671,7 +682,7 @@ func test_feedback_cues_follow_events() -> void:
 		f.cue_for({"type": "weapon_ready", "side": 0, "weapon": 0}, c) == "weapon_ready.us",
 		"an idle gun pings when ready"
 	)
-	aim_player(c)
+	_aim_player(c)
 	check(
 		f.cue_for({"type": "weapon_ready", "side": 0, "weapon": 0}, c) == "",
 		"an aimed gun fires instead of pinging"
@@ -832,5 +843,7 @@ func test_options_adjust_settings() -> void:
 	MENU_TESTS.options_adjust(self)
 
 
-func test_menu_flow() -> void:
+## The menus and the crew roster, driven through the real scene.
+func test_scene_flows() -> void:
 	MENU_TESTS.flow(self)
+	CREW_TESTS.roster_flow(self)

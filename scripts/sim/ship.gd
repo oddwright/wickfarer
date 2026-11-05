@@ -8,6 +8,9 @@ const COLD := 25.0  ## below this, crew work at half speed
 const FREEZING := 15.0  ## below this, crew lose health
 const POWER_SHED_ORDER: Array[String] = ["mend", "engines", "helm", "weapons", "wards"]
 const WARD_REGEN_TIME := 2.5
+const GUN_BOOST := 1.1  ## weapons charge this much faster with someone at the post
+const WARD_BOOST := 1.25
+const STOKE_BOOST := 0.1  ## extra Ember heat with a stoker, before skill
 
 var content_id: String
 var side: int  ## 0 = player, 1 = enemy
@@ -63,6 +66,11 @@ static func from_content(id: String, side_value: int) -> Ship:
 		m.room = cd.room
 		m.max_hp = float(ContentDB.species[m.species].hp)
 		m.hp = m.max_hp
+		m.post = str(cd.get("post", cd.room if s.room(cd.room).system != "" else ""))
+		var start: Dictionary = cd.get("skills", {})
+		for k: String in start:
+			if int(start[k]) > 0:
+				m.xp[k] = Skills.xp_for_rank(int(start[k]))
 		s.crew.append(m)
 	for sys: String in c.get("start_power", {}):
 		var r := s.system_room(sys)
@@ -277,6 +285,56 @@ func order_move(uid: int, room_id: String) -> bool:
 	return true
 
 
+## Makes a room a crew member's post (their role), or clears it with "".
+func set_post(uid: int, room_id: String) -> bool:
+	var c := crew_by_uid(uid)
+	if c == null or c.hp <= 0.0 or (room_id != "" and room(room_id) == null):
+		return false
+	c.post = room_id
+	return true
+
+
+## Sends everyone who has a post back to it.
+func muster() -> bool:
+	var sent := false
+	for c in alive_crew():
+		if c.post == "" or (c.room == c.post and not c.is_moving()):
+			continue
+		if c.is_moving() and c.path.back() == c.post:
+			continue
+		sent = order_move(c.uid, c.post) or sent
+	return sent
+
+
+## The translation key for a crew member's role, from their post.
+func role_of(c: Crew) -> String:
+	var r := room(c.post)
+	if r == null or r.system == "":
+		return Skills.ROLE_NONE
+	return str(ContentDB.systems[r.system].get("role", Skills.ROLE_NONE))
+
+
+## The best rank at a station's skill among the crew working there, or -1 if
+## nobody is. Only the best hand counts, so stacking a room doesn't stack bonuses.
+func station_rank(sys: String) -> int:
+	var r := system_room(sys)
+	if r == null:
+		return -1
+	var skill := Skills.for_station(sys)
+	var best := -1
+	for c in crew_in(r.id):
+		best = maxi(best, c.rank(skill))
+	return best
+
+
+## The bonus a station gets from whoever works it: 0 when nobody does.
+func station_bonus(sys: String, base: float) -> float:
+	var rank := station_rank(sys)
+	if rank < 0:
+		return 0.0
+	return base + Skills.per_rank(Skills.for_station(sys)) * rank
+
+
 # ---------------------------------------------------------------- combat stats
 
 
@@ -285,8 +343,7 @@ func evasion() -> float:
 	if helm == null or helm.power <= 0 or not manned("helm"):
 		return 0.0
 	var ev := 5.0 * helm.power + 5.0 * system_power("engines")
-	if manned("engines"):
-		ev += 5.0
+	ev += station_bonus("helm", 0.0) + station_bonus("engines", 5.0)
 	if helm.warmth < COLD:
 		ev *= 0.5
 	return minf(ev, 45.0)
@@ -308,6 +365,7 @@ func tick(dt: float, rng: RandomNumberGenerator, events: Array) -> void:
 		return
 	enforce_power()
 	_tick_crew(dt, events)
+	_tick_learning(dt, events)
 	_tick_warmth(dt)
 	_tick_fire(dt, rng, events)
 	_tick_wards(dt)
@@ -326,6 +384,10 @@ func quantize() -> void:
 	for c in crew:
 		c.hp = Q.q(c.hp)
 		c.progress = Q.q(c.progress)
+		for k: String in c.xp:
+			c.xp[k] = Q.q(c.xp[k])
+		for k: String in c.fight_xp:
+			c.fight_xp[k] = Q.q(c.fight_xp[k])
 	for i in weapon_charge.size():
 		weapon_charge[i] = Q.q(weapon_charge[i])
 	ward_regen = Q.q(ward_regen)
@@ -333,7 +395,8 @@ func quantize() -> void:
 
 func _work_rate(c: Crew) -> float:
 	var r := room(c.room)
-	return 0.5 if r.warmth < COLD else 1.0
+	var skill := 1.0 + Skills.per_rank("patch") * c.rank("patch")
+	return skill * (0.5 if r.warmth < COLD else 1.0)
 
 
 func _tick_crew(dt: float, events: Array) -> void:
@@ -357,9 +420,13 @@ func _tick_crew(dt: float, events: Array) -> void:
 		# work: fire first, then repairs
 		var rate := _work_rate(c)
 		if here.fire > 0.0:
-			here.fire = maxf(0.0, here.fire - 15.0 * float(spec.firefight) * rate * dt)
+			var put_out := minf(here.fire, 15.0 * float(spec.firefight) * rate * dt)
+			here.fire -= put_out
+			_practice(c, "patch", put_out * Skills.num("patch_xp_per_fire"), events)
 		elif here.damage > 0.0:
-			here.damage = maxf(0.0, here.damage - 0.25 * float(spec.repair) * rate * dt)
+			var fixed := minf(here.damage, 0.25 * float(spec.repair) * rate * dt)
+			here.damage -= fixed
+			_practice(c, "patch", fixed * Skills.num("patch_xp_per_damage"), events)
 	# harm and healing
 	for c in crew:
 		if c.hp <= 0.0:
@@ -377,12 +444,73 @@ func _tick_crew(dt: float, events: Array) -> void:
 			events.append({"type": "crew_died", "side": side, "uid": c.uid, "room": c.room})
 
 
+## Crew at a working station practise its skill.
+func _tick_learning(dt: float, events: Array) -> void:
+	for c in crew:
+		if c.hp <= 0.0 or c.is_moving():
+			continue
+		var here := room(c.room)
+		var skill := Skills.for_station(here.system)
+		if skill != "" and _station_working(here):
+			_practice(c, skill, dt, events)
+
+
+func _station_working(r: Room) -> bool:
+	return r.effective_level() > 0 if r.system == "ember" else r.power > 0
+
+
+## Adds practice. Crew only learn somewhere warm; a better hand in the same
+## room doubles it; and each skill can only grow so much a fight, so dragging
+## a fight out never pays. Practice is banked after the fight (see
+## recover_after_fight), so ranks never change mid-fight: a fresh fight is
+## balanced the same however long it runs, and enemy crew never grow.
+func _practice(c: Crew, skill: String, amount: float, events: Array) -> void:
+	var here := room(c.room)
+	if amount <= 0.0 or here.warmth < Skills.num("learn_warmth"):
+		return
+	var earned := c.earned_rank(skill)
+	if earned >= Skills.MAX_RANK:
+		return
+	for o in crew_in(here.id):
+		if o != c and o.rank(skill) > c.rank(skill):
+			amount *= Skills.num("mentor")
+			break
+	amount *= c.learn_rate(skill)
+	var room_left := Skills.num("fight_cap") - c.fight_practice(skill)
+	amount = minf(amount, room_left)
+	if amount <= 0.0:
+		return
+	c.fight_xp[skill] = c.fight_practice(skill) + amount
+	if c.earned_rank(skill) > earned:
+		events.append(
+			{
+				"type": "skill_up",
+				"side": side,
+				"uid": c.uid,
+				"room": c.room,
+				"skill": skill,
+				"rank": c.earned_rank(skill)
+			}
+		)
+
+
+## Crew who would rank up once this fight's practice is banked: {uid, skill, rank}.
+func promotions() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for c in alive_crew():
+		for skill: String in c.fight_xp:
+			if c.earned_rank(skill) > c.rank(skill):
+				out.append({"uid": c.uid, "skill": skill, "rank": c.earned_rank(skill)})
+	return out
+
+
 func _tick_warmth(dt: float) -> void:
 	var delta := {}
 	for r in rooms:
 		var d := -1.2
 		if r.system == "ember" and r.level > 0:
-			d += 7.0 * float(r.effective_level()) / float(r.level)
+			var stoked := 1.0 + station_bonus("ember", STOKE_BOOST)
+			d += 7.0 * stoked * float(r.effective_level()) / float(r.level)
 		d += 0.3 * r.power
 		d += 4.0 * r.fire / 100.0
 		delta[r.id] = d * dt
@@ -427,7 +555,7 @@ func _tick_wards(dt: float) -> void:
 	if ward_layers > cap:
 		ward_layers = cap
 	if ward_layers < cap:
-		ward_regen += dt * (1.25 if manned("wards") else 1.0)
+		ward_regen += dt * maxf(1.0, station_bonus("wards", WARD_BOOST))
 		if ward_regen >= WARD_REGEN_TIME:
 			ward_layers += 1
 			ward_regen = 0.0
@@ -436,7 +564,7 @@ func _tick_wards(dt: float) -> void:
 
 
 func _tick_weapons(dt: float, events: Array) -> void:
-	var boost := 1.1 if manned("weapons") else 1.0
+	var boost := maxf(1.0, station_bonus("weapons", GUN_BOOST))
 	for i in weapon_ids.size():
 		var full := float(ContentDB.weapons[weapon_ids[i]].charge)
 		if weapon_powered(i):
@@ -448,13 +576,19 @@ func _tick_weapons(dt: float, events: Array) -> void:
 			weapon_charge[i] = maxf(0.0, weapon_charge[i] - dt * 2.0)
 
 
-## Between fights: crew patch systems, put out fires and rest. Hull damage stays.
+## Between fights: crew bank what they practised, patch systems, put out
+## fires, rest and go back to their posts. Hull damage stays.
 func recover_after_fight() -> void:
 	var survivors: Array[Crew] = []
 	for c in crew:
 		if c.hp > 0.0:
 			c.path.clear()
 			c.progress = 0.0
+			for skill: String in c.fight_xp:
+				c.xp[skill] = Q.q(c.skill_xp(skill) + float(c.fight_xp[skill]))
+			c.fight_xp.clear()
+			if room(c.post):
+				c.room = c.post
 			c.hp = Q.q(minf(c.max_hp, c.hp + (c.max_hp - c.hp) * 0.5))
 			survivors.append(c)
 	crew = survivors

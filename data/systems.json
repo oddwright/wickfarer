@@ -1,8 +1,8 @@
 {
-  "ember":   {"name": "SYS_EMBER",   "powered": false},
-  "wards":   {"name": "SYS_WARDS",   "powered": true},
-  "weapons": {"name": "SYS_WEAPONS", "powered": true},
-  "helm":    {"name": "SYS_HELM",    "powered": true},
-  "engines": {"name": "SYS_ENGINES", "powered": true},
-  "mend":    {"name": "SYS_MEND",    "powered": true}
+  "ember":   {"name": "SYS_EMBER", "powered": false, "role": "ROLE_STOKER"},
+  "wards":   {"name": "SYS_WARDS", "powered": true, "role": "ROLE_WARDEN"},
+  "weapons": {"name": "SYS_WEAPONS", "powered": true, "role": "ROLE_GUNNER"},
+  "helm":    {"name": "SYS_HELM", "powered": true, "role": "ROLE_PILOT"},
+  "engines": {"name": "SYS_ENGINES", "powered": true, "role": "ROLE_ENGINEER"},
+  "mend":    {"name": "SYS_MEND", "powered": true, "role": "ROLE_MEDIC"}
 }

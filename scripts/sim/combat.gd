@@ -73,6 +73,10 @@ func apply(cmd: Dictionary, side := 0) -> bool:
 			return true
 		"move":
 			return s.order_move(int(cmd.crew), cmd.room)
+		"post":
+			return s.set_post(int(cmd.crew), str(cmd.get("room", "")))
+		"muster":
+			return s.muster()
 		"ward_deck":
 			s.set_ward_deck(int(cmd.deck))
 			return true

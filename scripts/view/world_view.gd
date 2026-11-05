@@ -263,6 +263,9 @@ func _draw_crew(side: int) -> void:
 			dst.size.x = -dst.size.x
 		draw_texture_rect_region(tex, dst, src)
 		if side == 0 and main.selected_crew == c.uid:
+			var post := s.room(c.post)
+			if post:  # show where their post is, so a move away from it is a choice
+				_corners(room_rect(0, post).grow(-1), Pixel.c("w", 0.7), 2)
 			var y := fp.y + 1
 			draw_rect(Rect2(roundf(fp.x) - 4, y, 9, 1), Pixel.c("w"))
 			draw_rect(Rect2(roundf(fp.x) - 4, y - 1, 1, 1), Pixel.c("w"))
@@ -343,6 +346,8 @@ func _draw_hud() -> void:
 					draw_rect(
 						Rect2(r.position.x + 4, y, 10, 7), Pixel.c("j") if on else Pixel.c("c")
 					)
+			"crew", "muster":
+				_draw_panel(r, b.kind == "crew" and main.roster_open)
 			"pause":
 				_draw_panel(r, main.paused)
 				var cx := r.position.x + 11
