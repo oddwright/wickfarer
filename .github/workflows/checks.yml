@@ -91,24 +91,20 @@ jobs:
           export/android/java_sdk_path = "$JAVA_HOME"
           CFG
           done
-      - name: Load the signing key from repo secrets
+      - name: Check for a signing key in repo secrets
         id: secret_key
         # A key kept in secrets never expires. Without one, fall back to a key kept in the
         # Actions cache, which GitHub drops after 7 days without a build.
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > debug.keystore
-            {
-              echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$PWD/debug.keystore"
-              echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=${KEY_ALIAS:-emberwake}"
-              echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=$KEYSTORE_PASSWORD"
-            } >> "$GITHUB_ENV"
             echo "found=true" >> "$GITHUB_OUTPUT"
           else
+            if [ -n "$KEYSTORE_BASE64$KEYSTORE_PASSWORD" ]; then
+              echo "::warning::Only one of ANDROID_KEYSTORE_BASE64 and ANDROID_KEYSTORE_PASSWORD is set, so this build uses the cached key instead (docs/INSTALL.md)."
+            fi
             echo "found=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Restore the cached debug keystore
@@ -126,18 +122,38 @@ jobs:
           keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey \
             -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           echo "::warning::Made a new signing key. Phone builds signed with the old key must be uninstalled first. Add the ANDROID_KEYSTORE_* secrets to stop this (docs/INSTALL.md)."
-      - name: Use the cached debug keystore
-        if: steps.secret_key.outputs.found != 'true'
+      - name: Sign with the chosen key
+        env:
+          FROM_SECRETS: ${{ steps.secret_key.outputs.found }}
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
-          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$PWD/debug.keystore" >> "$GITHUB_ENV"
-          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
-          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+          if [ "$FROM_SECRETS" = true ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > debug.keystore
+            user="${KEY_ALIAS:-emberwake}"
+            password="$KEYSTORE_PASSWORD"
+          else
+            user=androiddebugkey
+            password=android
+          fi
+          {
+            echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$PWD/debug.keystore"
+            echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=$user"
+            echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=$password"
+          } >> "$GITHUB_ENV"
       - name: Number this build
         id: version
         # Each CI build gets a higher versionCode, so a phone installs it over the last one, and a
         # version name ending in the build number, so updaters like Obtainium can compare builds.
+        # run_number restarts at 1 if this workflow file is renamed or replaced: keep the name, or
+        # add an offset above the last published code.
         run: |
           base=$(sed -n 's/^version\/name="\(.*\)"$/\1/p' export_presets.cfg)
+          if ! [[ "$base" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+            echo "::error::Expected one version/name like \"0.0.1\" in export_presets.cfg, got: $base"
+            exit 1
+          fi
           name="$base.${{ github.run_number }}"
           sed -i "s/^version\/code=.*/version\/code=${{ github.run_number }}/" export_presets.cfg
           sed -i "s/^version\/name=.*/version\/name=\"$name\"/" export_presets.cfg
@@ -192,18 +208,21 @@ jobs:
     name: Publish the phone build
     # Every green build of main becomes a GitHub Release, so the newest APK is always at
     # releases/latest/download/emberwake.apk and updaters like Obtainium can follow it.
+    # It is a debug export on purpose: it is for our own test phones, not a store.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [lint, test, android, screens]
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    concurrency:
-      group: release
-      cancel-in-progress: false
+    defaults:
+      run:
+        shell: bash  # -eo pipefail, so a failed gh call fails the step
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       VERSION: ${{ needs.android.outputs.version }}
+      # CI releases are recognised by this title suffix; hand-made releases never carry it.
+      CI_MARK: "(CI build)"
       KEEP_BUILDS: 20
     steps:
       - uses: actions/download-artifact@v4
@@ -221,21 +240,26 @@ jobs:
             # A re-run of the same build: replace the APK, keep the notes.
             gh release upload "$tag" build/emberwake.apk --clobber
           else
-            gh release create "$tag" build/emberwake.apk --target "$GITHUB_SHA" --latest \
-              --title "Emberwake $VERSION" --generate-notes
+            gh release create "$tag" build/emberwake.apk --target "$GITHUB_SHA" --latest=false \
+              --title "Emberwake $VERSION $CI_MARK" --generate-notes
           fi
+      - name: Mark the newest build as latest
+        # Release jobs can finish out of order, and re-runs publish old builds, so "latest" goes
+        # to the highest build number rather than to whichever job finished last.
+        run: |
+          ci_tags=$(gh release list --limit 200 --exclude-drafts --json tagName,name \
+            --jq ".[] | select(.name | endswith(\" $CI_MARK\")) | .tagName")
+          newest=$(awk -F. '{print $NF, $0}' <<< "$ci_tags" | sort -n | tail -n 1 | cut -d" " -f2)
+          gh release edit "$newest" --latest
           {
             echo "### Phone build $VERSION"
-            echo "Latest APK: https://github.com/$GH_REPO/releases/latest/download/emberwake.apk"
+            echo "Latest is $newest: https://github.com/$GH_REPO/releases/latest/download/emberwake.apk"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Delete old builds
-        # Only CI builds (tags v<base>.<run>) are pruned; hand-made releases are left alone.
         run: |
-          gh release list --limit 200 --exclude-drafts --json tagName,createdAt \
-            --jq 'sort_by(.createdAt) | reverse | .[].tagName' \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' \
-            | tail -n +$((KEEP_BUILDS + 1)) \
-            | while read -r old; do
-                echo "Deleting $old"
-                gh release delete "$old" --yes --cleanup-tag
-              done
+          ci_tags=$(gh release list --limit 200 --exclude-drafts --json tagName,name \
+            --jq ".[] | select(.name | endswith(\" $CI_MARK\")) | .tagName")
+          awk -F. '{print $NF, $0}' <<< "$ci_tags" | sort -nr | cut -d" " -f2 | tail -n +$((KEEP_BUILDS + 1)) | while read -r old; do
+            echo "Deleting $old"
+            gh release delete "$old" --yes --cleanup-tag
+          done

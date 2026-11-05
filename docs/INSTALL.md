@@ -6,7 +6,8 @@ Every change merged into `main` that passes CI is published as a GitHub Release,
 https://github.com/oddwright/emberwake/releases/latest/download/emberwake.apk
 
 The repo is private, so this link needs you signed in to GitHub (in the phone's browser, or
-through Obtainium with a token, below). CI keeps the last 20 builds.
+through Obtainium with a token, below). CI keeps the last 20 builds. They are debug builds,
+meant for test phones, not for a store.
 
 ## Option A: Obtainium (updates itself)
 
