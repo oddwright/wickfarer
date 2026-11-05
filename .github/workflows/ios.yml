@@ -24,7 +24,7 @@ concurrency:
 jobs:
   testflight:
     name: iOS build (TestFlight on main)
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 45
     permissions:
       contents: read
@@ -72,6 +72,18 @@ jobs:
           done
           if [ -n "$missing" ]; then
             echo "::error::Missing repo secrets:$missing. See docs/INSTALL.md, iOS."
+            exit 1
+          fi
+      - name: Check the Xcode version
+        if: steps.changed.outputs.skip != 'true'
+        # Godot 4.7's iOS templates link against iOS 26 APIs, so Xcode 16 fails at the link step,
+        # and the App Store only takes builds made with the current SDK. The macos-26 image's
+        # default Xcode is a released 26.x with the iOS platform installed, so use that as is.
+        run: |
+          xcodebuild -version
+          major=$(xcodebuild -version | sed -n 's/^Xcode \([0-9]*\).*/\1/p')
+          if [ "${major:-0}" -lt 26 ]; then
+            echo "::error::Need Xcode 26 or newer for Godot 4.7's iOS templates; got $major."
             exit 1
           fi
       - name: Cache Godot and its export templates
