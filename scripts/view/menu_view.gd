@@ -70,6 +70,24 @@ func _draw_list(l: MenuLayout) -> void:
 		_button(b.rect, tr("UI_MENU_" + str(b.id).to_upper()), true)
 
 
+## The wrapped text rows of a page that fit in `height` pixels, as [text, y]
+## pairs from the top. A blank line is a half-line gap. Once a row doesn't fit,
+## nothing after it is drawn, so a long Wake Log ends cleanly at the bottom.
+static func page_rows(lines: Array[String], width: int, height: int) -> Array[Array]:
+	var out: Array[Array] = []
+	var y := 0
+	for line in lines:
+		if line == "":
+			y += LINE / 2
+			continue
+		for part in _wrap(line.to_upper(), width, 1):
+			if y + LINE > height:
+				return out
+			out.append([part, y])
+			y += LINE
+	return out
+
+
 ## The Hush Depth picker or the Wake Log: a heading, wrapped lines under it,
 ## as many as fit, then the page's buttons.
 func _draw_profile_page(l: MenuLayout) -> void:
@@ -83,15 +101,9 @@ func _draw_profile_page(l: MenuLayout) -> void:
 	else:
 		lines = ProfilePages.log_lines(main.profile)
 	_text(Vector2(r.position.x, r.position.y + 10), heading, 10.0, Pixel.c("w"))
-	var y := r.position.y + 22
-	for line in lines:
-		for part in _wrap(line.to_upper(), r.size.x, 1):
-			if y + LINE > r.end.y + 4:
-				break
-			_text(Vector2(r.position.x, y), part, 5.0, Pixel.c("h"))
-			y += LINE
-		if line == "":
-			y += LINE / 2
+	var top := r.position.y + 22
+	for row: Array in page_rows(lines, r.size.x, r.end.y + 4 - top):
+		_text(Vector2(r.position.x, top + int(row[1])), str(row[0]), 5.0, Pixel.c("h"))
 	for b in l.buttons:
 		var on := true
 		if b.id == "depth_less":

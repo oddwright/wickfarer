@@ -228,6 +228,52 @@ static func fixture_loads(t: SceneTree) -> void:
 	_check(t, p.history.size() == 3 and p.recorded.size() == 3, "and its Wake Log")
 
 
+## Follow-ups from review: the depth sums follow a depth changed after the run
+## is made, the markup treats stores and refits alike, and a Wake Log too long
+## for its page stops cleanly at the bottom.
+static func review_fixes(t: SceneTree) -> void:
+	var r := Run.create(15)
+	var start_price := r.price("repair")
+	r.depth = 4
+	var markup := 0
+	for i in 4:
+		markup += int(ContentDB.depths.depths[i].effects.get("store_markup", 0))
+	_check(
+		t,
+		markup > 0 and r.price("repair") == start_price + markup,
+		"a depth set after creation applies its rules"
+	)
+	r.depth = 0
+	_check(t, r.price("repair") == start_price, "and setting it back drops them")
+	r.depth = 4
+	r.state = "store"
+	r.open_refit()
+	var plain := Run.create(15)
+	plain.state = "store"
+	plain.open_refit()
+	_check(
+		t,
+		(
+			r.refit_price("helm") - plain.refit_price("helm")
+			== r.price("light") - plain.price("light")
+		),
+		"stores and refits carry the same markup"
+	)
+	_check(t, r._marked_up(-1) == -1 and r._marked_up(0) == 0, "only a real price is marked up")
+	var lines: Array[String] = []
+	for i in 40:
+		lines.append("run %d of a very long wake log that wraps onto a second line" % i)
+		lines.append("")
+	var rows := MenuView.page_rows(lines, 120, 70)
+	var last := -1
+	var inside := true
+	for row: Array in rows:
+		inside = inside and int(row[1]) + TextLayer.LINE <= 70 and int(row[1]) > last
+		last = int(row[1])
+	var filled := not rows.is_empty() and int(rows.back()[1]) + TextLayer.LINE > 70 - TextLayer.LINE
+	_check(t, inside and filled, "a long log fills the page and stops at its foot")
+
+
 static func content_checked(t: SceneTree) -> void:
 	var keep_u: Dictionary = ContentDB.unlocks.duplicate(true)
 	var keep_d: Dictionary = ContentDB.depths.duplicate(true)

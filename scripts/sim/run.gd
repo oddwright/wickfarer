@@ -38,7 +38,8 @@ var seen_events: Array[String] = []
 var fight_bonus_scrap: int = 0
 var messages: Array[String] = []  ## translation keys of what the last jump did, newest last
 var outcome: String = ""  ## an event result the player hasn't read yet (a translation key)
-var _mods := {}  ## the depth rules summed, worked out once per run
+var _mods := {}  ## the depth rules summed for _mods_depth
+var _mods_depth := -1  ## the depth _mods was summed for; -1 before the first sum
 
 
 static func create(
@@ -70,8 +71,11 @@ static func depth_count() -> int:
 
 ## The sum of one Hush Depth rule over every depth up to this run's.
 func mod(effect: String) -> float:
-	if _mods.is_empty():
-		_mods["_"] = 0.0  # marks the sums as worked out, even with no rules
+	# Summed again if the depth changed since. The starting Scrap and Light are
+	# the one part a later change can't reach: they were paid out in create().
+	if _mods_depth != depth:
+		_mods.clear()
+		_mods_depth = depth
 		var list: Array = ContentDB.depths.get("depths", [])
 		for i in mini(depth, list.size()):
 			var fx: Dictionary = list[i].get("effects", {})
@@ -330,7 +334,7 @@ func store_items() -> Array[String]:
 func price(item: String) -> int:
 	var prices: Dictionary = reach().store
 	var p := int(prices.get(item + "_scrap", -1)) if item in STORE_ITEMS else -1
-	return p + int(mod("store_markup")) if p > 0 else p
+	return _marked_up(p)
 
 
 func can_buy(item: String) -> bool:
@@ -419,7 +423,13 @@ func refit_price(sys: String) -> int:
 	if not ship.can_upgrade(sys):
 		return -1
 	var prices: Array = ContentDB.systems[sys].get("upgrade_scrap", [])
-	return int(prices[ship.system_room(sys).level - 1]) + int(mod("store_markup"))
+	return _marked_up(int(prices[ship.system_room(sys).level - 1]))
+
+
+## A store or refit price with the Hush Depth's markup. Only a real price is
+## marked up: -1 (not for sale) and 0 (dropped by the Reach) stay as they are.
+func _marked_up(p: int) -> int:
+	return p + int(mod("store_markup")) if p > 0 else p
 
 
 func can_refit(sys: String) -> bool:
