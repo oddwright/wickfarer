@@ -31,9 +31,8 @@
   "UI_WARD_DECK_UPPER": "Ward: upper deck",
   "UI_WARD_DECK_LOWER": "Ward: lower deck",
   "UI_EVASION": "Evade",
-  "UI_WON": "The cutter goes dark.",
+  "UI_WON": "The raider goes dark.",
   "UI_LOST": "The Ember gutters out.",
-  "UI_AGAIN": "Fight again",
   "UI_SEED": "Seed",
   "UI_MISS": "miss",
   "UI_WARDED": "warded",
@@ -114,5 +113,10 @@
   "UI_HUSH_HIT": "The Hush catches you. The hull freezes and cracks.",
   "UI_DARK_JUMP": "No Light left. You jump dark and the hull takes it.",
   "UI_CONTINUE": "Continue",
-  "UI_NEEDS": "Needs"
+  "UI_NEEDS": "Needs",
+  "UI_NEW_RUN": "New run",
+  "UI_JUMPS": "Jumps",
+  "UI_REACH_DONE_TITLE": "Through the Gate",
+  "UI_RUN_LOST_TITLE": "Gone dark",
+  "UI_STORE_TEXT": "A Tallow trading post hangs in the lane, lamps lit. They sell hull plate and bottled Light, and they take scrap."
 }

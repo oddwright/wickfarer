@@ -127,9 +127,11 @@ jobs:
         run: |
           mkdir -p screens
           while read -r w h name; do
-            xvfb-run -a -s "-screen 0 2600x2300x24" godot --path . --rendering-driver opengl3 \
-              -s tools/shot.gd -- "$w" "$h" "screens/$name.png" 300
-            test -s "screens/$name.png"
+            for screen in fight chart event store; do
+              xvfb-run -a -s "-screen 0 2600x2300x24" godot --path . --rendering-driver opengl3 \
+                -s tools/shot.gd -- "$w" "$h" "screens/$name-$screen.png" 300 "$screen"
+              test -s "screens/$name-$screen.png"
+            done
           done <<LIST
           2400 1080 phone-20x9
           2520 1080 fold7-cover

@@ -215,26 +215,34 @@ func _apply(fx: Dictionary) -> void:
 # ---------------------------------------------------------------- store
 
 
-func buy(item: String) -> bool:
-	if state != "store":
-		return false
+## The scrap price of a store item, or -1 if the store doesn't sell it.
+func price(item: String) -> int:
 	var prices: Dictionary = reach().store
 	match item:
 		"repair":
-			var price := int(prices.repair_scrap)
-			if scrap < price or ship.hull >= ship.max_hull:
-				return false
-			scrap -= price
-			ship.hull += 1
-			return true
+			return int(prices.repair_scrap)
 		"light":
-			var price := int(prices.light_scrap)
-			if scrap < price:
-				return false
-			scrap -= price
+			return int(prices.light_scrap)
+	return -1
+
+
+func can_buy(item: String) -> bool:
+	var p := price(item)
+	if state != "store" or p < 0 or scrap < p:
+		return false
+	return not (item == "repair" and ship.hull >= ship.max_hull)
+
+
+func buy(item: String) -> bool:
+	if not can_buy(item):
+		return false
+	scrap -= price(item)
+	match item:
+		"repair":
+			ship.hull += 1
+		"light":
 			light += 1
-			return true
-	return false
+	return true
 
 
 func leave_store() -> bool:
