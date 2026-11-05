@@ -110,6 +110,7 @@ func crew_at(side: int, p: Vector2i, radius := 10.0) -> Crew:
 
 # ------------------------------------------------------------------ draw
 
+
 func _draw() -> void:
 	if main == null or main.layout == null:
 		return
@@ -155,13 +156,13 @@ func _draw_rooms(side: int) -> void:
 		if flash > 0.0:
 			draw_rect(inner, Pixel.c("x", flash * 0.8))
 		if r.system != "":
-			_draw_system_icon(r, rr, side)
+			_draw_system_icon(r, rr)
 		if side == 1 and r.system == "ember":
 			var t := Pixel.grid("..w..\n.wvw.\nwvxvw\n.wvw.\n..w..")
 			draw_texture(t, Vector2(rr.get_center()) + Vector2(-2, 0))
 
 
-func _draw_system_icon(r: Room, rr: Rect2i, side: int) -> void:
+func _draw_system_icon(r: Room, rr: Rect2i) -> void:
 	var idx: int = icon_index.get(r.system, -1)
 	if idx < 0:
 		return
@@ -256,7 +257,9 @@ func _draw_crew(side: int) -> void:
 			f = 2 + int(anim_time * 8.0 + c.uid) % 4
 		else:
 			f = int(anim_time * 2.0 + c.uid * 0.37) % 2
-		var dst := Rect2(Vector2(roundf(fp.x) - CREW_CELL.x / 2, fp.y - CREW_CELL.y), Vector2(CREW_CELL))
+		var dst := Rect2(
+			Vector2(roundf(fp.x) - CREW_CELL.x / 2, fp.y - CREW_CELL.y), Vector2(CREW_CELL)
+		)
 		var src := Rect2(f * CREW_CELL.x, 0, CREW_CELL.x, CREW_CELL.y)
 		if side == 1:
 			dst.position.x += dst.size.x
@@ -271,7 +274,10 @@ func _draw_crew(side: int) -> void:
 			var w := 7.0 * c.hp / c.max_hp
 			var top := fp.y - CREW_CELL.y - 2
 			draw_rect(Rect2(roundf(fp.x) - 3, top, 7, 1), Pixel.c("r"))
-			draw_rect(Rect2(roundf(fp.x) - 3, top, maxf(1.0, roundf(w)), 1), Pixel.c("H") if c.hp > c.max_hp * 0.35 else Pixel.c("U"))
+			draw_rect(
+				Rect2(roundf(fp.x) - 3, top, maxf(1.0, roundf(w)), 1),
+				Pixel.c("H") if c.hp > c.max_hp * 0.35 else Pixel.c("U")
+			)
 
 
 func _draw_projectiles() -> void:
@@ -298,6 +304,7 @@ func _draw_projectiles() -> void:
 
 
 # ------------------------------------------------------------------ HUD
+
 
 func _draw_panel(r: Rect2i, active: bool) -> void:
 	draw_rect(Rect2(r), Pixel.c("b"))
@@ -332,16 +339,23 @@ func _draw_hud() -> void:
 			"ward":
 				_draw_panel(r, false)
 				var ic: int = icon_index.wards
-				draw_texture_rect_region(icons, Rect2(r.position + Vector2i(4, 4), Vector2(9, 9)), Rect2(ic * 9, 0, 9, 9))
+				draw_texture_rect_region(
+					icons, Rect2(r.position + Vector2i(4, 4), Vector2(9, 9)), Rect2(ic * 9, 0, 9, 9)
+				)
 				for d in 2:
 					var y := r.position.y + 18 + (1 - d) * 10
 					var on := me.ward_deck == d
-					draw_rect(Rect2(r.position.x + 4, y, 10, 7), Pixel.c("j") if on else Pixel.c("c"))
+					draw_rect(
+						Rect2(r.position.x + 4, y, 10, 7), Pixel.c("j") if on else Pixel.c("c")
+					)
 			"pause":
 				_draw_panel(r, main.paused)
 				var cx := r.position.x + 11
 				if main.paused:
-					draw_texture(Pixel.grid("w....\nwww..\nwwwww\nwww..\nw...."), Vector2(cx, r.position.y + 12))
+					draw_texture(
+						Pixel.grid("w....\nwww..\nwwwww\nwww..\nw...."),
+						Vector2(cx, r.position.y + 12)
+					)
 				else:
 					draw_rect(Rect2(cx, r.position.y + 11, 3, 8), Pixel.c("w"))
 					draw_rect(Rect2(cx + 5, r.position.y + 11, 3, 8), Pixel.c("w"))
@@ -364,7 +378,11 @@ func _draw_system_button(me: Ship, sys: String, r: Rect2i) -> void:
 	if room == null:
 		return
 	var ic: int = icon_index.get(sys, 0)
-	draw_texture_rect_region(icons, Rect2(r.position + Vector2i((r.size.x - 9) / 2, 3), Vector2(9, 9)), Rect2(ic * 9, 0, 9, 9))
+	draw_texture_rect_region(
+		icons,
+		Rect2(r.position + Vector2i((r.size.x - 9) / 2, 3), Vector2(9, 9)),
+		Rect2(ic * 9, 0, 9, 9)
+	)
 	var eff := room.effective_level()
 	for k in room.level:
 		var y := r.end.y - 5 - k * 5
@@ -393,6 +411,11 @@ func _draw_weapon_button(me: Ship, i: int, r: Rect2i) -> void:
 	draw_rect(Rect2(bar.position, Vector2(roundf(bar.size.x * k), 3)), fill_col)
 	# power cost pips
 	for p in int(w.power):
-		draw_rect(Rect2(r.position.x + 4 + p * 5, r.end.y - 13, 4, 3), Pixel.c("H") if powered else Pixel.c("e"))
+		draw_rect(
+			Rect2(r.position.x + 4 + p * 5, r.end.y - 13, 4, 3),
+			Pixel.c("H") if powered else Pixel.c("e")
+		)
 	if me.weapon_target[i] != "":
-		_corners(Rect2i(r.end.x - 12, r.end.y - 16, 8, 8), Pixel.c("v") if i == 0 else Pixel.c("u"), 2)
+		_corners(
+			Rect2i(r.end.x - 12, r.end.y - 16, 8, 8), Pixel.c("v") if i == 0 else Pixel.c("u"), 2
+		)

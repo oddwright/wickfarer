@@ -75,7 +75,12 @@ func _crew(combat: Combat, me: Ship, side: int) -> void:
 		if room.fire > 0.0 and me.crew_in(room.id).is_empty() and not busy.has(room.id):
 			jobs.append(room.id)
 	for room in me.rooms:
-		if room.damage > 0.0 and room.fire <= 0.0 and me.crew_in(room.id).is_empty() and not busy.has(room.id):
+		if (
+			room.damage > 0.0
+			and room.fire <= 0.0
+			and me.crew_in(room.id).is_empty()
+			and not busy.has(room.id)
+		):
 			jobs.append(room.id)
 	for job in jobs:
 		if idle.is_empty():
@@ -97,7 +102,11 @@ func _crew(combat: Combat, me: Ship, side: int) -> void:
 		elif me.room(c.room).system in STATIONS:
 			taken[c.room] = true
 	for c in idle:
-		if me.room(c.room).system in STATIONS and me.room(c.room).fire <= 0.0 and me.room(c.room).damage <= 0.0:
+		if (
+			me.room(c.room).system in STATIONS
+			and me.room(c.room).fire <= 0.0
+			and me.room(c.room).damage <= 0.0
+		):
 			continue
 		for st in STATIONS:
 			var room := me.system_room(st)

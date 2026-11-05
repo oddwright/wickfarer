@@ -57,7 +57,18 @@ static func validate() -> Array[String]:
 	var errors: Array[String] = []
 	for wid: String in weapons:
 		var w: Dictionary = weapons[wid]
-		for field in ["name", "family", "power", "charge", "shots", "hull_damage", "system_damage", "crew_damage", "fire_chance", "strips_ward"]:
+		for field in [
+			"name",
+			"family",
+			"power",
+			"charge",
+			"shots",
+			"hull_damage",
+			"system_damage",
+			"crew_damage",
+			"fire_chance",
+			"strips_ward"
+		]:
 			if not w.has(field):
 				errors.append("weapon %s: missing %s" % [wid, field])
 		if w.get("charge", 0.0) <= 0.0:

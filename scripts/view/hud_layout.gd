@@ -20,8 +20,13 @@ var buttons: Array[Dictionary] = []  ## {kind, id, rect}
 var message_rect: Rect2i  ## where prompts and hints are written
 
 
-static func build(screen: Dictionary, player_frame: Vector2i, enemy_frame: Vector2i,
-		systems: Array[String], weapon_count: int) -> HudLayout:
+static func build(
+	screen: Dictionary,
+	player_frame: Vector2i,
+	enemy_frame: Vector2i,
+	systems: Array[String],
+	weapon_count: int
+) -> HudLayout:
 	var l := HudLayout.new()
 	l.kind = screen.layout
 	l.native = screen.native
@@ -46,7 +51,12 @@ static func build(screen: Dictionary, player_frame: Vector2i, enemy_frame: Vecto
 			x += WPN_GAP
 		l._add("ward", 0, Rect2i(x, row_y, SMALL_W, ROW_H))
 		l._add("pause", 0, Rect2i(w - 34, row_y + 14, 30, 30))
-		l.message_rect = Rect2i(4, l.player_origin.y + player_frame.y + 2, w - 8, row_y - (l.player_origin.y + player_frame.y) - 4)
+		l.message_rect = Rect2i(
+			4,
+			l.player_origin.y + player_frame.y + 2,
+			w - 8,
+			row_y - (l.player_origin.y + player_frame.y) - 4
+		)
 	else:
 		# Spread the two ships evenly down the space above the buttons.
 		var row2_top := row_y - ROW_H - 4

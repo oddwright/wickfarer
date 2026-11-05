@@ -18,6 +18,7 @@ func _init() -> void:
 		"test_save_mid_fight_resumes_identically",
 		"test_save_file_safety",
 		"test_old_save_is_migrated",
+		"test_every_save_fixture_still_loads",
 		"test_power_rules",
 		"test_every_room_reachable_and_ladders_used",
 		"test_wards_block_and_strip",
@@ -57,6 +58,7 @@ func aim_player(c: Combat) -> void:
 
 # ------------------------------------------------------------------ tests
 
+
 func test_content_is_valid() -> void:
 	var errors := ContentDB.validate()
 	for e in errors:
@@ -93,7 +95,10 @@ func test_save_mid_fight_resumes_identically() -> void:
 	check(J.canonical(b.to_dict()) == J.canonical(a.to_dict()), "load then save changes the data")
 	run(a, 600)
 	run(b, 600)
-	check(J.canonical(a.to_dict()) == J.canonical(b.to_dict()), "resumed fight drifts from the original")
+	check(
+		J.canonical(a.to_dict()) == J.canonical(b.to_dict()),
+		"resumed fight drifts from the original"
+	)
 
 
 func test_save_file_safety() -> void:
@@ -108,7 +113,10 @@ func test_save_file_safety() -> void:
 	var f := FileAccess.open(SaveService.path_for("slot", dir), FileAccess.WRITE)
 	f.store_string("{ this is not json")
 	f.close()
-	check(int(SaveService.read("slot", dir).get("n", 0)) == 1, "falls back to the backup when the save is corrupt")
+	check(
+		int(SaveService.read("slot", dir).get("n", 0)) == 1,
+		"falls back to the backup when the save is corrupt"
+	)
 	# A save from the future is left alone.
 	f = FileAccess.open(SaveService.path_for("future", dir), FileAccess.WRITE)
 	f.store_string(J.s({"version": SaveService.VERSION + 5, "data": {"n": 3}}))
@@ -127,6 +135,16 @@ func test_old_save_is_migrated() -> void:
 	check(int(up.get("version", -1)) == SaveService.VERSION, "upgraded to the current version")
 	var restored := Combat.from_dict(up.data.combat)
 	check(restored.rng.run_seed == 5, "seed carried over from the old layout")
+	var big := {"version": 0, "data": {"rng_seed": 987654321, "combat": inner.duplicate(true)}}
+	var up_big := SaveService.upgrade(JSON.parse_string(J.s(big)))
+	check(str(up_big.data.combat.rng.seed) == "987654321", "a JSON seed is read as a whole number")
+	var empty := {"version": 0, "data": {}}
+	check(not SaveService.upgrade(empty).is_empty(), "a step that returns empty data still counts")
+	var from_future := {"version": SaveService.VERSION + 1, "data": {"x": 1}}
+	check(SaveService.upgrade(from_future).is_empty(), "a save from a newer game is refused")
+	var original := J.canonical(v0)
+	SaveService.upgrade(v0)
+	check(J.canonical(v0) == original, "upgrading never edits the save it was given")
 
 
 func test_power_rules() -> void:
@@ -167,14 +185,27 @@ func test_wards_block_and_strip() -> void:
 	var foe := c.enemy()
 	run(c, 60)  # let the ward charge
 	check(foe.ward_layers == 1, "enemy ward charged to 1 layer")
-	c.projectiles.append({"owner": 0, "weapon": "torch_lance", "slot": 1, "target": "weapons", "t": 0.01, "total": 1.0})
+	c.projectiles.append(
+		{
+			"owner": 0,
+			"weapon": "torch_lance",
+			"slot": 1,
+			"target": "weapons",
+			"t": 0.01,
+			"total": 1.0
+		}
+	)
 	var hull := foe.hull
 	c.tick()
 	check(foe.hull == hull and foe.ward_layers == 1, "a torch can't get through a ward")
-	c.projectiles.append({"owner": 0, "weapon": "rivet_gun", "slot": 0, "target": "weapons", "t": 0.01, "total": 1.0})
+	c.projectiles.append(
+		{"owner": 0, "weapon": "rivet_gun", "slot": 0, "target": "weapons", "t": 0.01, "total": 1.0}
+	)
 	c.tick()
 	check(foe.ward_layers == 0 and foe.hull == hull, "a rivet strips one ward layer")
-	c.projectiles.append({"owner": 0, "weapon": "torch_lance", "slot": 1, "target": "ember", "t": 0.01, "total": 1.0})
+	c.projectiles.append(
+		{"owner": 0, "weapon": "torch_lance", "slot": 1, "target": "ember", "t": 0.01, "total": 1.0}
+	)
 	var ev := foe.evasion()
 	c.tick()
 	check(foe.hull < hull or ev > 0.0, "the unwarded deck takes hits")
@@ -189,8 +220,13 @@ func test_warmth_needs_the_ember() -> void:
 	for r in s.rooms:
 		coldest = minf(coldest, r.warmth)
 	print("  warmth with a healthy Ember: ", _warmths(s))
-	check(coldest > Ship.COLD, "a healthy ship keeps every room above cold (coldest %.0f)" % coldest)
-	check(s.room("helm").warmth > s.room("hold").warmth, "heat rises: the helm stays warmer than the hold below it")
+	check(
+		coldest > Ship.COLD, "a healthy ship keeps every room above cold (coldest %.0f)" % coldest
+	)
+	check(
+		s.room("helm").warmth > s.room("hold").warmth,
+		"heat rises: the helm stays warmer than the hold below it"
+	)
 	s.system_room("ember").damage = 2.0
 	for i in 1200:
 		s.tick(Combat.TICK, c.rng.stream("combat"), [])
@@ -239,7 +275,52 @@ func test_layouts_on_every_screen() -> void:
 		var scr := ScreenManager.compute(screens[name])
 		var l := HudLayout.build(scr, pf, ef, HudLayout.SYSTEM_ORDER, 2)
 		var probs := l.problems(pf, ef)
-		print("  %-44s %dx  %s  canvas %dx%d  %s" % [name, scr.scale, scr.layout, scr.native.x, scr.native.y,
-			"ok" if probs.is_empty() else str(probs)])
+		print(
+			(
+				"  %-44s %dx  %s  canvas %dx%d  %s"
+				% [
+					name,
+					scr.scale,
+					scr.layout,
+					scr.native.x,
+					scr.native.y,
+					"ok" if probs.is_empty() else str(probs)
+				]
+			)
+		)
 		check(probs.is_empty(), "%s layout: %s" % [name, probs])
-	check(ScreenManager.compute(Vector2i(2400, 1080)).native == Vector2i(480, 216), "2400x1080 is 5x, 480x216")
+	check(
+		ScreenManager.compute(Vector2i(2400, 1080)).native == Vector2i(480, 216),
+		"2400x1080 is 5x, 480x216"
+	)
+
+
+## Saves from every released version live in tests/fixtures. They must always load and play on.
+func test_every_save_fixture_still_loads() -> void:
+	var dir := DirAccess.open("res://tests/fixtures")
+	check(dir != null, "fixtures folder exists")
+	if dir == null:
+		return
+	var found := 0
+	for name in dir.get_files():
+		if not name.begins_with("save_v") or not name.ends_with(".json"):
+			continue
+		found += 1
+		var raw: Variant = JSON.parse_string(
+			FileAccess.get_file_as_string("res://tests/fixtures/" + name)
+		)
+		if not raw is Dictionary:
+			check(false, "%s is not a JSON object" % name)
+			continue
+		var up := SaveService.upgrade(raw)
+		check(
+			int(up.get("version", -1)) == SaveService.VERSION,
+			"%s upgrades to the current version" % name
+		)
+		if up.is_empty():
+			continue  # already failed above; loading {} would only crash the runner
+		var c := Combat.from_dict(up.get("data", {}).get("combat", {}))
+		var before := c.tick_count
+		run(c, 200)
+		check(c.tick_count == before + 200, "%s resumes and plays on" % name)
+	check(found >= 1, "at least one save fixture")

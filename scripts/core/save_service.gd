@@ -5,23 +5,27 @@ extends RefCounted
 ## - Write to a temp file, then swap it in, so a phone killing the app
 ##   mid-write can't leave a half-written save. The last good save is kept
 ##   as a .bak and used if the main file is unreadable.
-## - Old saves are upgraded one version at a time by MIGRATIONS.
+## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
 const VERSION := 1
 const DIR := "user://"
 
-## MIGRATIONS[n] upgrades a version n save to version n + 1.
-static var MIGRATIONS := {
-	0: func(d: Dictionary) -> Dictionary:
-		# Version 0 kept the seed at the top level as "rng_seed".
-		var combat: Dictionary = d.get("combat", {})
-		if d.has("rng_seed") and not combat.has("rng"):
-			combat["rng"] = {"seed": str(d.rng_seed), "states": {}}
-		d.erase("rng_seed")
-		d["combat"] = combat
-		return d,
-}
+
+## Upgrades a version n save's data to version n + 1, or returns null if there
+## is no step. (An empty dictionary is a valid result, so it can't mean "no step".)
+## Never delete a step: a player who skipped many updates still needs it.
+static func migrate(from_version: int, d: Dictionary) -> Variant:
+	match from_version:
+		0:
+			# Version 0 kept the seed at the top level as "rng_seed".
+			var combat: Dictionary = d.get("combat", {})
+			if d.has("rng_seed") and not combat.has("rng"):
+				combat["rng"] = {"seed": str(int(d.rng_seed)), "states": {}}
+			d.erase("rng_seed")
+			d["combat"] = combat
+			return d
+	return null
 
 
 static func path_for(slot: String, dir := DIR) -> String:
@@ -68,21 +72,23 @@ static func read(slot: String, dir := DIR) -> Dictionary:
 	return {}
 
 
+## Returns the save upgraded to VERSION, or {} if it can't be. Works on a copy,
+## so a save that fails half way through is left exactly as it was read.
 static func upgrade(d: Dictionary) -> Dictionary:
 	var v := int(d.get("version", 0))  # JSON numbers are floats: always int() them
 	if v > VERSION:
 		push_warning("Save is from a newer version (%d > %d); leaving it alone" % [v, VERSION])
 		return {}
+	var out := d.duplicate(true)
 	while v < VERSION:
-		if not MIGRATIONS.has(v):
+		var inner: Variant = migrate(v, out.get("data", {}))
+		if not inner is Dictionary:
 			push_error("No migration from save version %d" % v)
 			return {}
-		var inner: Dictionary = d.get("data", {})
-		inner = MIGRATIONS[v].call(inner)
-		d["data"] = inner
+		out["data"] = inner
 		v += 1
-		d["version"] = v
-	return d
+		out["version"] = v
+	return out
 
 
 static func erase(slot: String, dir := DIR) -> void:

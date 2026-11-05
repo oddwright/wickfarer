@@ -19,7 +19,9 @@ var ai_timer: float = 0.0
 var ai: CombatAI
 
 
-static func create(seed_value: int, player_ship := "tallow_wren", enemy_ship := "ashmarket_cutter") -> Combat:
+static func create(
+	seed_value: int, player_ship := "tallow_wren", enemy_ship := "ashmarket_cutter"
+) -> Combat:
 	ContentDB.load_all()
 	var c := Combat.new()
 	c.rng = RngStreams.new(seed_value)
@@ -108,8 +110,16 @@ func _fire_weapons() -> void:
 			s.weapon_charge[i] = 0.0
 			for k in int(w.shots):
 				var t := Q.q(FLIGHT_TIME + SHOT_SPACING * k)
-				projectiles.append({"owner": side, "weapon": s.weapon_ids[i], "slot": i,
-					"target": s.weapon_target[i], "t": t, "total": t})
+				projectiles.append(
+					{
+						"owner": side,
+						"weapon": s.weapon_ids[i],
+						"slot": i,
+						"target": s.weapon_target[i],
+						"t": t,
+						"total": t
+					}
+				)
 			events.append({"type": "fire", "side": side, "weapon": i})
 
 
@@ -155,10 +165,17 @@ func _resolve(p: Dictionary) -> void:
 
 # ---------------------------------------------------------------- save
 
+
 func to_dict() -> Dictionary:
-	return {"ships": [ships[0].to_dict(), ships[1].to_dict()], "projectiles": projectiles.duplicate(true),
-		"rng": rng.to_dict(), "tick": tick_count, "state": state, "ai_timer": ai_timer,
-		"ai_ward_timer": ai.ward_timer}
+	return {
+		"ships": [ships[0].to_dict(), ships[1].to_dict()],
+		"projectiles": projectiles.duplicate(true),
+		"rng": rng.to_dict(),
+		"tick": tick_count,
+		"state": state,
+		"ai_timer": ai_timer,
+		"ai_ward_timer": ai.ward_timer
+	}
 
 
 static func from_dict(d: Dictionary) -> Combat:
@@ -168,8 +185,16 @@ static func from_dict(d: Dictionary) -> Combat:
 	for sd: Dictionary in d.ships:
 		c.ships.append(Ship.from_dict(sd))
 	for p: Dictionary in d.get("projectiles", []):
-		c.projectiles.append({"owner": int(p.owner), "weapon": str(p.weapon), "slot": int(p.slot),
-			"target": str(p.target), "t": float(p.t), "total": float(p.total)})
+		c.projectiles.append(
+			{
+				"owner": int(p.owner),
+				"weapon": str(p.weapon),
+				"slot": int(p.slot),
+				"target": str(p.target),
+				"t": float(p.t),
+				"total": float(p.total)
+			}
+		)
 	c.tick_count = int(d.tick)
 	c.state = str(d.state)
 	c.ai_timer = float(d.get("ai_timer", 0.0))

@@ -1,0 +1,249 @@
+{
+  "data": {
+    "combat": {
+      "ai_timer": 0.421875,
+      "ai_ward_timer": 1.5,
+      "projectiles": [],
+      "rng": {
+        "seed": "31337",
+        "states": {
+          "ai": "3089105726054262022",
+          "combat": "-500281312794571214",
+          "events": "5542026852448367971",
+          "loot": "1994238186573614136",
+          "map": "9068204449395729912"
+        }
+      },
+      "ships": [
+        {
+          "content_id": "tallow_wren",
+          "crew": [
+            {
+              "hp": 100.0,
+              "name": "CREW_NESS",
+              "path": [],
+              "progress": 0.0,
+              "room": "helm",
+              "species": "drifter",
+              "uid": 1
+            },
+            {
+              "hp": 44.701171875,
+              "name": "CREW_TAMSIN",
+              "path": [],
+              "progress": 0.0,
+              "room": "weapons",
+              "species": "kith",
+              "uid": 2
+            },
+            {
+              "hp": 140.0,
+              "name": "CREW_BO",
+              "path": [],
+              "progress": 0.0,
+              "room": "engines",
+              "species": "oru",
+              "uid": 3
+            },
+            {
+              "hp": 100.0,
+              "name": "CREW_QUILL",
+              "path": [],
+              "progress": 0.0,
+              "room": "wards",
+              "species": "sable",
+              "uid": 4
+            }
+          ],
+          "hull": 15,
+          "next_uid": 5,
+          "rooms": [
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "galley",
+              "power": 0,
+              "warmth": 67.935546875
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "ember",
+              "power": 0,
+              "warmth": 72.48046875
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "wards",
+              "power": 2,
+              "warmth": 63.2529296875
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "helm",
+              "power": 1,
+              "warmth": 55.1787109375
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "engines",
+              "power": 1,
+              "warmth": 41.923828125
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "cells",
+              "power": 0,
+              "warmth": 40.927734375
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "mend",
+              "power": 1,
+              "warmth": 39.3427734375
+            },
+            {
+              "damage": 2.505859375,
+              "fire": 0.0,
+              "id": "weapons",
+              "power": 0,
+              "warmth": 28.826171875
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "hold",
+              "power": 0,
+              "warmth": 34.1396484375
+            }
+          ],
+          "side": 0,
+          "ward_deck": 1,
+          "ward_layers": 1,
+          "ward_regen": 0.0,
+          "weapon_charge": [
+            0.0,
+            0.0
+          ],
+          "weapon_target": [
+            "weapons",
+            "ember"
+          ]
+        },
+        {
+          "content_id": "ashmarket_cutter",
+          "crew": [
+            {
+              "hp": 100.0,
+              "name": "CREW_RAIDER_1",
+              "path": [],
+              "progress": 0.0,
+              "room": "weapons",
+              "species": "drifter",
+              "uid": 1
+            },
+            {
+              "hp": 100.0,
+              "name": "CREW_RAIDER_2",
+              "path": [],
+              "progress": 0.0,
+              "room": "helm",
+              "species": "drifter",
+              "uid": 2
+            },
+            {
+              "hp": 90.0,
+              "name": "CREW_RAIDER_3",
+              "path": [],
+              "progress": 0.0,
+              "room": "wards",
+              "species": "kith",
+              "uid": 3
+            }
+          ],
+          "hull": 14,
+          "next_uid": 4,
+          "rooms": [
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "helm",
+              "power": 1,
+              "warmth": 58.3583984375
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "weapons",
+              "power": 3,
+              "warmth": 61.9189453125
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "wards",
+              "power": 4,
+              "warmth": 57.7392578125
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "stores",
+              "power": 0,
+              "warmth": 53.2880859375
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "engines",
+              "power": 0,
+              "warmth": 63.3408203125
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "ember",
+              "power": 0,
+              "warmth": 68.2578125
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "mend",
+              "power": 0,
+              "warmth": 58.8720703125
+            },
+            {
+              "damage": 0.0,
+              "fire": 0.0,
+              "id": "hold",
+              "power": 0,
+              "warmth": 54.19140625
+            }
+          ],
+          "side": 1,
+          "ward_deck": 1,
+          "ward_layers": 2,
+          "ward_regen": 0.0,
+          "weapon_charge": [
+            3.828125,
+            9.84375
+          ],
+          "weapon_target": [
+            "weapons",
+            "weapons"
+          ]
+        }
+      ],
+      "state": "fighting",
+      "tick": 400
+    }
+  },
+  "saved_at": 0,
+  "version": 1
+}

@@ -28,3 +28,10 @@ Godot 4.7.2, GDScript, Compatibility renderer.
 - `scripts/view/`: drawing, text and touch input. Reads the sim, sends it orders.
 - `data/`: ships, weapons, species, systems and English strings as JSON.
 - `art/`: placeholder pixel sprites exported from the concept-art generators.
+
+## Working on the game
+- Read `CLAUDE.md` first: it has the architecture rules every change follows.
+- Every PR runs format and lint, the headless tests, a balance report, layout screenshots on
+  five phone and foldable sizes, and an Android debug APK build. Claude reviews every PR in the
+  project session at high effort before it is merged.
+- Bugs: use the issue template and include the fight's seed and your device.

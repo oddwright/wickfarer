@@ -1,0 +1,14 @@
+name: Idea or change
+description: A feature, content or balance idea
+labels: [idea]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it makes the game better
