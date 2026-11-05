@@ -22,21 +22,34 @@ static func variants(screens: Dictionary) -> Dictionary:
 	return out
 
 
-## The fight layout fits with the real hulls of the player's ship against every enemy.
+## The fight layout fits with the real hulls of every playable ship against every enemy,
+## with that ship's own systems and guns.
 static func hud(t: SceneTree, screens: Dictionary) -> void:
-	var player := _ship("tallow_wren")
 	for name: String in screens:
 		var scr: Dictionary = screens[name]
 		var probs: Array[String] = []
-		for id: String in ContentDB.ships:
-			if id == "tallow_wren":
-				continue
-			var enemy := _ship(id)
-			var l := HudLayout.build(
-				scr, player.frame, enemy.frame, HudLayout.SYSTEM_ORDER, 2, player.used, enemy.used
-			)
-			for p in l.problems():
-				probs.append("vs %s: %s" % [id, p])
+		for pid in ShipRoster.playable():
+			var player := _ship(pid)
+			var s := Ship.from_content(pid, 0)
+			var systems: Array[String] = []
+			for sys in HudLayout.SYSTEM_ORDER:
+				if s.system_room(sys):
+					systems.append(sys)
+			for id: String in ContentDB.ships:
+				if ContentDB.ships[id].get("playable", false):
+					continue
+				var enemy := _ship(id)
+				var l := HudLayout.build(
+					scr,
+					player.frame,
+					enemy.frame,
+					systems,
+					s.weapon_ids.size(),
+					player.used,
+					enemy.used
+				)
+				for p in l.problems():
+					probs.append("%s vs %s: %s" % [pid, id, p])
 		print(
 			(
 				"  %-52s %s  canvas %dx%d  %s"

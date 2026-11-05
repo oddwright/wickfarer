@@ -33,7 +33,7 @@ static func text_width(s: String, k := 1) -> int:
 	return maxi(0, w - 1) * k
 
 
-func _wrap(s: String, max_w: int, k: int) -> PackedStringArray:
+static func _wrap(s: String, max_w: int, k: int) -> PackedStringArray:
 	var lines := PackedStringArray()
 	var cur := ""
 	for word in s.split(" "):

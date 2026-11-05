@@ -1,8 +1,10 @@
 extends SceneTree
 ## Screenshot one screen at a given window size (needs a display; use xvfb-run).
 ## godot --path . -s tools/shot.gd -- <width> <height> <out.png> [ticks] [screen] [ui size]
-## screen is fight (default), chart, event, event:<event id>, store, refit, reach_done, won or lost,
-## or a menu over a fight: title, pause, options, confirm, depth or log. ui size is the
+## screen is fight (default), fight:<player ship id>, chart, event, event:<event id>, store,
+## refit, reach_done, won or lost, or a menu over a fight: title, pause, options, confirm,
+## depth or log, or ship select from the title: ship or ship:<ship id> (shown unlocked).
+## ui size is the
 ## options setting, a step from auto (-2 to 1); it is not saved.
 
 var frames := 0
@@ -46,7 +48,8 @@ func _process(_delta: float) -> bool:
 func _set_up() -> void:
 	main.settings.ui_size = ui_size
 	main._on_resize()
-	var run := Run.create(4242)
+	var hull := which.get_slice(":", 1) if which.begins_with("fight:") else "tallow_wren"
+	var run := Run.create(4242, hull)
 	for i in 2:  # two jumps in, whatever is at those beacons
 		run.jump(run.jump_targets()[0])
 		run.combat = null
@@ -69,8 +72,17 @@ func _set_up() -> void:
 			run.state = which
 		"fight":
 			run._start_fight("ashmarket_cutter")
+	if which.begins_with("fight:"):
+		run._start_fight("ashmarket_cutter")
 	if which in ["title", "pause", "options", "confirm", "depth", "log"]:
 		run._start_fight("ashmarket_cutter")
+	if which.begins_with("ship"):
+		var id := which.get_slice(":", 1) if ":" in which else ShipRoster.playable()[0]
+		main.ships.show(id)
+		if ":" in which:
+			main.ships.unlocked.append(str(ContentDB.ships[id].unlock))
+		main.open_menu("ship")
+		return
 	main._set_run(run)
 	if main.combat:
 		_play_fight(main.combat)

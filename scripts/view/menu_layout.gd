@@ -18,6 +18,12 @@ const CTRL_H := 16  ## options control height
 const STEP_W := 18  ## the - and + buttons
 const LABEL_W := 58  ## options label column
 const FOOT_W := 80  ## Defaults and Back
+const LAUNCH_W := 100
+const ARROW_W := 20
+const PREVIEW := Vector2i(240, 80)  ## room for the largest playable hull frame
+const SHIP_BAND_TOP := 18
+const SHIP_GROUP_MAX := 600  ## arrows, hull and words stay together on a big canvas
+const SHIP_SQUARE_H := 204  ## name, hull, then the button column
 const MARGIN := 8
 const COL_GAP := 12  ## between the two options columns in Wide
 ## The two options columns, top to bottom. Volumes are GameSettings bus names.
@@ -35,6 +41,10 @@ var buttons: Array[Dictionary] = []  ## {kind, id, rect}
 ## options only: {id, label_at, bar, value}; bar is a level's slider (empty for toggles
 ## and steppers), value is where a stepper writes its value.
 var rows: Array[Dictionary] = []
+## ship select only: the hull on show, its blurb and stats, and the page dots.
+var preview_rect: Rect2i
+var info_rect: Rect2i
+var pips_rect: Rect2i
 
 
 ## The menu button on the fight and run screens: top right, in the status bar,
@@ -43,8 +53,8 @@ static func menu_button(native_size: Vector2i) -> Rect2i:
 	return Rect2i(native_size.x - 30, 1, 26, 14)
 
 
-## mode is "title", "pause", "confirm" or "options". ids are the list buttons'
-## ids in order (for "options" they are ignored).
+## mode is "title", "pause", "confirm", "options" or "ship". ids are the list
+## buttons' ids in order (for "options" and "ship" they are ignored).
 static func build(screen: Dictionary, mode: String, ids: Array[String] = []) -> MenuLayout:
 	var l := MenuLayout.new()
 	l.kind = screen.layout
@@ -52,6 +62,8 @@ static func build(screen: Dictionary, mode: String, ids: Array[String] = []) -> 
 	l.hinge = screen.hinge
 	if mode == "options":
 		l._options()
+	elif mode == "ship":
+		l._ship()
 	else:
 		l._list(ids, TEXT_PAGES.get(mode, TITLE_H))
 	return l
@@ -121,6 +133,53 @@ func _options() -> void:
 	_add("back", 0, Rect2i(rx + rw - FOOT_W, foot_y, FOOT_W, BTN_H))
 
 
+## Ship select. Wide: arrows either side of the hull, its blurb and stats to
+## the right, Back and Launch in the thumb corners. Square: the hull spans the
+## fold (it is only a picture), the words sit on the left page and every
+## button on the right.
+func _ship() -> void:
+	if hinge.size.x == 0:
+		_ship_wide()
+	else:
+		_ship_square()
+
+
+func _ship_wide() -> void:
+	var w := native.x
+	var fy := native.y - BTN_H - MARGIN
+	var group_w := mini(w - MARGIN * 2, SHIP_GROUP_MAX)
+	var ox := (w - group_w) / 2
+	var cy := (SHIP_BAND_TOP + fy - 4) / 2
+	var py := cy - PREVIEW.y / 2
+	title_rect = Rect2i(ox + ARROW_W + 2, py - 18, PREVIEW.x, 12)
+	preview_rect = Rect2i(Vector2i(ox + ARROW_W + 2, py), PREVIEW)
+	var info_x := preview_rect.end.x + ARROW_W + 10
+	info_rect = Rect2i(info_x, py, ox + group_w - info_x, fy - 4 - py)
+	_add("prev", 0, Rect2i(ox, cy - 15, ARROW_W, 30))
+	_add("next", 0, Rect2i(preview_rect.end.x + 2, cy - 15, ARROW_W, 30))
+	_add("back", 0, Rect2i(MARGIN, fy, FOOT_W, BTN_H))
+	_add("launch", 0, Rect2i(w - MARGIN - LAUNCH_W, fy, LAUNCH_W, BTN_H))
+	pips_rect = Rect2i(MARGIN + FOOT_W + 4, fy, w - MARGIN * 2 - FOOT_W - LAUNCH_W - 8, BTN_H)
+
+
+func _ship_square() -> void:
+	var w := native.x
+	var top := maxi(MARGIN, (native.y - SHIP_SQUARE_H) / 2)
+	var left_w := hinge.position.x - MARGIN * 2
+	title_rect = Rect2i(MARGIN, top, left_w, 12)
+	preview_rect = Rect2i(Vector2i((w - PREVIEW.x) / 2, top + 18), PREVIEW)
+	var y0 := preview_rect.end.y + 8
+	info_rect = Rect2i(MARGIN, y0, left_w, native.y - MARGIN - y0)
+	var rx := hinge.end.x + MARGIN
+	var rw := w - MARGIN - rx
+	var bx := rx + (rw - BTN_W) / 2
+	_add("prev", 0, Rect2i(rx, y0, 36, BTN_H))
+	_add("next", 0, Rect2i(w - MARGIN - 36, y0, 36, BTN_H))
+	_add("launch", 0, Rect2i(bx, y0 + 34, BTN_W, BTN_H))
+	_add("back", 0, Rect2i(bx, y0 + 60, BTN_W, BTN_H))
+	pips_rect = Rect2i(rx + 40, y0, rw - 80, BTN_H)
+
+
 func _row(id: String, x: int, width: int, y: int) -> void:
 	var ctrl_x := x + LABEL_W
 	var ctrl_w := width - LABEL_W
@@ -178,6 +237,16 @@ func problems() -> Array[String]:
 		for o in buttons:
 			if o != b and r.grow(1).intersects(o.rect):
 				out.append("%s and %s %s overlap" % [name, o.kind, o.id])
+	if preview_rect.has_area():
+		if not canvas.encloses(preview_rect) or not canvas.encloses(info_rect):
+			out.append("the ship preview or its words leave the canvas")
+		for b in buttons:
+			if (b.rect as Rect2i).intersects(preview_rect):
+				out.append("%s covers the ship" % b.kind)
+			if (b.rect as Rect2i).intersects(info_rect):
+				out.append("%s covers the ship's words" % b.kind)
+		if hinge.size.x > 0 and info_rect.intersects(hinge):
+			out.append("the ship's words sit on the fold")
 	for row in rows:
 		var bar: Rect2i = row.bar
 		if bar.size.x != 0 and bar.size.x < 20:

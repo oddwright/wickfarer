@@ -42,11 +42,12 @@ var profile: Profile  ## records, unlocks and the Hush Depth ladder; outlives ru
 var fresh_unlocks: Array[String] = []  ## what this run opened, for its end screens
 var coach: CoachView
 var menu_layout: MenuLayout
-## The open menu page: "" (playing), "title", "pause", "options" or "confirm".
+## The open menu page: "" (playing), "title", "pause", "options", "confirm" or "ship".
 var menu := ""
 ## The page Back returns to: "title" hides the game, "pause" dims it.
 var menu_base := ""
 var confirm_action := ""  ## what the confirm page asks about: "abandon" or "new_run"
+var ships := ShipPicker.new()  ## the ship select page's hull and the open hulls
 
 var paused := false
 var pause_reason := ""
@@ -557,6 +558,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_press_time = Time.get_ticks_msec()
 			elif _pressing:
 				_pressing = false
+				if ShipPicker.swipe(self, _press_pos, mb.position):
+					return
 				var held := (Time.get_ticks_msec() - _press_time) / 1000.0
 				_tap(_press_pos, held >= LONG_PRESS)
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
@@ -694,7 +697,7 @@ func _tap_run(p: Vector2i) -> void:
 		"next":
 			if run.is_over() and run.outcome == "":
 				ui_cue("tap")
-				_new_run()
+				_new_run()  # the next run starts with a choice of hull
 				return
 			if run.state == "reach_done" and run.outcome == "":
 				run.next_reach()
@@ -782,7 +785,7 @@ func back() -> void:
 		"":
 			if run != null:
 				open_menu("pause")
-		"options", "confirm", "depth", "log":
+		"options", "confirm", "ship", "depth", "log":
 			open_menu(menu_base)
 		"pause":
 			_resume()
@@ -805,6 +808,9 @@ func _tap_menu(p: Vector2i) -> void:
 	ui_cue("tap")
 	if menu == "options":
 		_press_option(b)
+		return
+	if menu == "ship":
+		ShipPicker.press(self, str(b.kind))
 		return
 	if menu in ProfilePages.PAGES and ProfilePages.tap(self, str(b.id)):
 		return
@@ -835,10 +841,7 @@ func _tap_menu(p: Vector2i) -> void:
 			_confirm("abandon")
 		"to_title":
 			if run_over():
-				run = null  # its save is already gone; the title offers no Continue
-				combat = null
-				layout = null
-				run_layout = null
+				_clear_run()  # its save is already gone; the title offers no Continue
 			open_menu("title")
 		"yes":
 			match confirm_action:
@@ -847,7 +850,7 @@ func _tap_menu(p: Vector2i) -> void:
 				"training":
 					_start_training()
 				_:
-					_new_run()
+					_new_run()  # the saved run stays until a hull is launched
 		"no":
 			open_menu(menu_base)
 
@@ -866,26 +869,30 @@ func _continue() -> void:
 	_save()
 
 
-## A new player's first run is the training flight; it can be replayed from the title.
+## New run: a new player's first run is the training flight (it can be
+## replayed from the title); everyone else picks a hull first.
 func _new_run() -> void:
 	if tutorial and not tutorial.done:
 		_start_training()
 		return
-	if profile and profile.depth_open > 0 and menu != "depth":
-		# Once a Hush Depth is open, pick one first; from an end screen, over the title.
-		if menu == "":
-			if run_over():
-				_clear_run()
-			open_menu("title")
-		open_menu("depth")
-		return
-	start_run()
+	if menu == "":
+		# from an end screen: the finished run goes, and the pick sits over the title
+		if run_over():
+			_clear_run()
+		open_menu("title")
+	ships.unlocked.clear()
+	if profile:
+		ships.unlocked.assign(profile.unlocked)
+	open_menu("ship")
 
 
-## Starts a real run at the profile's chosen Hush Depth.
+## Starts a real run in the picked hull (or the first open one) at the
+## profile's chosen Hush Depth.
 func start_run() -> void:
 	close_menu()
-	var r := Run.create(_fresh_seed(), "tallow_wren", "reach_1", profile.depth if profile else 0)
+	var r := Run.create(
+		_fresh_seed(), ships.start_hull(), "reach_1", profile.depth if profile else 0
+	)
 	r.run_id = _new_run_id()
 	_set_run(r)
 
@@ -913,10 +920,7 @@ func _start_training() -> void:
 ## Ends the run for good: the save goes, and the title has no Continue.
 func _abandon() -> void:
 	_erase_save()
-	run = null
-	combat = null
-	layout = null
-	run_layout = null
+	_clear_run()
 	paused = false
 	pause_reason = ""
 	open_menu("title")

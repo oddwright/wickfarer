@@ -1,1 +1,14 @@
-{}
+{
+  "hull_brine_cathedral": {
+    "name": "UNLOCK_BRINE_CATHEDRAL",
+    "hint": "UNLOCK_HINT_BRINE_CATHEDRAL",
+    "stat": "best_gates",
+    "at_least": 1
+  },
+  "hull_porcelain_saint": {
+    "name": "UNLOCK_PORCELAIN_SAINT",
+    "hint": "UNLOCK_HINT_PORCELAIN_SAINT",
+    "stat": "best_gates",
+    "at_least": 3
+  }
+}
