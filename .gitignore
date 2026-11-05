@@ -1,0 +1,9 @@
+# Godot
+.godot/
+*.import.tmp
+/build/
+/android/
+export_credentials.cfg
+*.keystore
+# Python
+__pycache__/

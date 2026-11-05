@@ -1,0 +1,8 @@
+{
+  "ember":   {"name": "SYS_EMBER",   "powered": false},
+  "wards":   {"name": "SYS_WARDS",   "powered": true},
+  "weapons": {"name": "SYS_WEAPONS", "powered": true},
+  "helm":    {"name": "SYS_HELM",    "powered": true},
+  "engines": {"name": "SYS_ENGINES", "powered": true},
+  "mend":    {"name": "SYS_MEND",    "powered": true}
+}

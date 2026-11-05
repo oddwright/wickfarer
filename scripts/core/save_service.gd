@@ -1,0 +1,92 @@
+class_name SaveService
+extends RefCounted
+## Saves are plain JSON with a version number.
+## - Never load Godot Resources from the save folder: they can run code.
+## - Write to a temp file, then swap it in, so a phone killing the app
+##   mid-write can't leave a half-written save. The last good save is kept
+##   as a .bak and used if the main file is unreadable.
+## - Old saves are upgraded one version at a time by MIGRATIONS.
+## - A save from a newer game version is refused, not overwritten.
+
+const VERSION := 1
+const DIR := "user://"
+
+## MIGRATIONS[n] upgrades a version n save to version n + 1.
+static var MIGRATIONS := {
+	0: func(d: Dictionary) -> Dictionary:
+		# Version 0 kept the seed at the top level as "rng_seed".
+		var combat: Dictionary = d.get("combat", {})
+		if d.has("rng_seed") and not combat.has("rng"):
+			combat["rng"] = {"seed": str(d.rng_seed), "states": {}}
+		d.erase("rng_seed")
+		d["combat"] = combat
+		return d,
+}
+
+
+static func path_for(slot: String, dir := DIR) -> String:
+	return dir.path_join(slot + ".json")
+
+
+static func write(slot: String, payload: Dictionary, dir := DIR) -> bool:
+	var data := {"version": VERSION, "saved_at": Time.get_unix_time_from_system(), "data": payload}
+	var final_path := path_for(slot, dir)
+	var tmp_path := final_path + ".tmp"
+	var bak_path := final_path + ".bak"
+	var f := FileAccess.open(tmp_path, FileAccess.WRITE)
+	if f == null:
+		push_error("Save failed to open %s: %s" % [tmp_path, FileAccess.get_open_error()])
+		return false
+	f.store_string(JsonUtil.s(data))
+	f.flush()
+	f.close()
+	if FileAccess.file_exists(final_path):
+		if FileAccess.file_exists(bak_path):
+			DirAccess.remove_absolute(bak_path)
+		DirAccess.rename_absolute(final_path, bak_path)
+	var err := DirAccess.rename_absolute(tmp_path, final_path)
+	if err != OK:
+		push_error("Save failed to move into place: %s" % err)
+		return false
+	return true
+
+
+## Returns {} when there is no usable save.
+static func read(slot: String, dir := DIR) -> Dictionary:
+	var final_path := path_for(slot, dir)
+	for p in [final_path, final_path + ".bak"]:
+		if not FileAccess.file_exists(p):
+			continue
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(p))
+		if typeof(parsed) != TYPE_DICTIONARY:
+			push_warning("Unreadable save %s, trying the backup" % p)
+			continue
+		var upgraded := upgrade(parsed)
+		if upgraded.is_empty():
+			continue
+		return upgraded.get("data", {})
+	return {}
+
+
+static func upgrade(d: Dictionary) -> Dictionary:
+	var v := int(d.get("version", 0))  # JSON numbers are floats: always int() them
+	if v > VERSION:
+		push_warning("Save is from a newer version (%d > %d); leaving it alone" % [v, VERSION])
+		return {}
+	while v < VERSION:
+		if not MIGRATIONS.has(v):
+			push_error("No migration from save version %d" % v)
+			return {}
+		var inner: Dictionary = d.get("data", {})
+		inner = MIGRATIONS[v].call(inner)
+		d["data"] = inner
+		v += 1
+		d["version"] = v
+	return d
+
+
+static func erase(slot: String, dir := DIR) -> void:
+	var final_path := path_for(slot, dir)
+	for p in [final_path, final_path + ".bak", final_path + ".tmp"]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(p)
