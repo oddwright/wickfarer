@@ -1,0 +1,160 @@
+name: iOS
+
+# macOS minutes cost ten times Linux minutes, so iOS does not build on every push. It builds
+# once a night when main has changed since the last upload, when started by hand, and on PRs
+# that touch the iOS setup (those build unsigned and upload nothing).
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/ios.yml
+      - export_presets.cfg
+      - project.godot
+
+env:
+  GODOT_VERSION: 4.7.2
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testflight:
+    name: iOS build (TestFlight on main)
+    runs-on: macos-15
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      UPLOAD: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip if main has not changed since the last upload
+        id: changed
+        if: github.event_name == 'schedule'
+        run: |
+          last=$(gh run list --workflow ios.yml --branch main --status success --limit 1 \
+            --json headSha --jq '.[0].headSha // ""')
+          if [ "$last" = "$GITHUB_SHA" ]; then
+            echo "main is unchanged since the last TestFlight upload."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check the App Store Connect secrets
+        if: steps.changed.outputs.skip != 'true' && env.UPLOAD == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=""
+          for s in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 APPLE_TEAM_ID; do
+            [ -n "${!s}" ] || missing="$missing $s"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repo secrets:$missing. See docs/INSTALL.md, iOS."
+            exit 1
+          fi
+      - name: Cache Godot and its export templates
+        if: steps.changed.outputs.skip != 'true'
+        id: godot_cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot-bin
+            ~/Library/Application Support/Godot/export_templates
+          key: godot-macos-${{ env.GODOT_VERSION }}
+      - name: Install Godot and the export templates
+        if: steps.changed.outputs.skip != 'true' && steps.godot_cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot-bin
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -sSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_macos.universal.zip"
+          unzip -q godot.zip -d ~/godot-bin
+          curl -sSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q templates.tpz
+          dest="$HOME/Library/Application Support/Godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$(dirname "$dest")"
+          mv templates "$dest"
+          rm godot.zip templates.tpz
+      - name: Put Godot on the path
+        if: steps.changed.outputs.skip != 'true'
+        run: |
+          sudo ln -sf ~/godot-bin/Godot.app/Contents/MacOS/Godot /usr/local/bin/godot
+          godot --version
+      - name: Number this build
+        if: steps.changed.outputs.skip != 'true'
+        # The App Store wants a 1 to 3 part version and a build number that only goes up.
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          base=$(sed -n 's/^version\/name="\(.*\)"$/\1/p' export_presets.cfg)
+          if ! [[ "$base" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
+            echo "::error::Expected one Android version/name like \"0.0.1\" in export_presets.cfg, got: $base"
+            exit 1
+          fi
+          # Godot refuses to export without a team ID; an unsigned PR build gets a stand-in.
+          team="${APPLE_TEAM_ID:-AAAAAAAAAA}"
+          sed -i '' "s/^application\/short_version=.*/application\/short_version=\"$base\"/" export_presets.cfg
+          sed -i '' "s/^application\/version=.*/application\/version=\"${{ github.run_number }}\"/" export_presets.cfg
+          sed -i '' "s/^application\/app_store_team_id=.*/application\/app_store_team_id=\"$team\"/" export_presets.cfg
+          grep -E '^application/(short_version|version)=' export_presets.cfg
+      - name: Export the Xcode project
+        if: steps.changed.outputs.skip != 'true'
+        run: |
+          godot --headless --path . --import
+          mkdir -p build/ios
+          godot --headless --path . --export-release "iOS" build/ios/emberwake.xcodeproj
+          test -d build/ios/emberwake.xcodeproj
+          # The game uses no encryption beyond HTTPS, so TestFlight need not ask on every build.
+          plist=$(find build/ios -maxdepth 2 -name '*-Info.plist' | head -n 1)
+          test -n "$plist"
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$plist"
+      - name: Build unsigned (PR check)
+        if: steps.changed.outputs.skip != 'true' && env.UPLOAD != 'true'
+        run: |
+          xcodebuild -project build/ios/emberwake.xcodeproj -scheme emberwake -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath build/dd build CODE_SIGNING_ALLOWED=NO \
+            | tail -n 30
+      - name: Archive, sign and upload to TestFlight
+        if: steps.changed.outputs.skip != 'true' && env.UPLOAD == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        # Xcode signs through Apple's cloud with the API key, so no certificate or provisioning
+        # profile is kept in the repo or its secrets.
+        run: |
+          key="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$key"
+          auth=(-allowProvisioningUpdates -authenticationKeyPath "$key"
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          xcodebuild -project build/ios/emberwake.xcodeproj -scheme emberwake -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath build/emberwake.xcarchive archive \
+            CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM="$APPLE_TEAM_ID" "${auth[@]}" | tail -n 40
+          cat > build/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath build/emberwake.xcarchive \
+            -exportOptionsPlist build/ExportOptions.plist -exportPath build/export "${auth[@]}"
+          rm -f "$key"
+          echo "### Uploaded build ${{ github.run_number }} to TestFlight" >> "$GITHUB_STEP_SUMMARY"
