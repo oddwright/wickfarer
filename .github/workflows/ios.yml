@@ -77,7 +77,7 @@ jobs:
       - name: Cache Godot and its export templates
         if: steps.changed.outputs.skip != 'true'
         id: godot_cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/godot-bin

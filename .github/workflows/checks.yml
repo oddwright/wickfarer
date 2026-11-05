@@ -68,7 +68,7 @@ jobs:
           version: ${{ env.GODOT_VERSION }}
       - name: Cache export templates
         id: templates
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.local/share/godot/export_templates
           key: godot-templates-${{ env.GODOT_VERSION }}
@@ -110,7 +110,7 @@ jobs:
       - name: Restore the cached debug keystore
         if: steps.secret_key.outputs.found != 'true'
         id: keystore
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           # One keystore for every build, so a tester can install a new APK over
           # the old one and keep their saves.
