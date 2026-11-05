@@ -220,7 +220,7 @@ func _draw() -> void:
 		var ar := l.again_rect()
 		_text(
 			Vector2(ar.position.x, ar.position.y + 18),
-			tr("UI_AGAIN"),
+			tr("UI_CONTINUE"),
 			7.0,
 			Pixel.c("w"),
 			HORIZONTAL_ALIGNMENT_CENTER,

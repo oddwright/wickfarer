@@ -5,6 +5,8 @@ extends RefCounted
 ## Like Combat, it never touches the screen; the view reads `state` and calls
 ## the action methods, which return false when an action isn't allowed.
 
+const STORE_ITEMS: Array[String] = ["repair", "light"]  ## each needs a "<item>_scrap" price
+
 var reach_id: String
 var rng: RngStreams
 var chart: StarChart
@@ -20,7 +22,8 @@ var jumps: int = 0
 var event_id: String = ""
 var seen_events: Array[String] = []
 var fight_bonus_scrap: int = 0
-var messages: Array[String] = []  ## translation keys of what just happened, newest last
+var messages: Array[String] = []  ## translation keys of what the last jump did, newest last
+var outcome: String = ""  ## an event result the player hasn't read yet (a translation key)
 
 
 static func create(seed_value: int, ship_id := "tallow_wren", reach := "reach_1") -> Run:
@@ -125,6 +128,7 @@ func finish_fight() -> bool:
 	scrap += loot.randi_range(int(reward.scrap[0]), int(reward.scrap[1])) + fight_bonus_scrap
 	light += loot.randi_range(int(reward.light[0]), int(reward.light[1]))
 	fight_bonus_scrap = 0
+	messages.clear()
 	ship.recover_after_fight()
 	combat = null
 	state = "chart"
@@ -180,7 +184,7 @@ func choose(i: int) -> bool:
 		0, RngStreams.weighted_pick(weights, rng.stream("events"))
 	)]
 	messages.clear()
-	messages.append(str(picked.text))
+	outcome = str(picked.text)
 	event_id = ""
 	state = "chart"
 	_apply(picked.get("effects", {}))
@@ -205,34 +209,56 @@ func _apply(fx: Dictionary) -> void:
 		_start_fight(str(fx.fight))
 
 
+## The player has read the event's result; the run moves on.
+func read_outcome() -> bool:
+	if outcome == "":
+		return false
+	outcome = ""
+	return true
+
+
 # ---------------------------------------------------------------- store
 
 
-func buy(item: String) -> bool:
-	if state != "store":
-		return false
+## What this Reach's stores sell, in order. A Reach drops an item by leaving
+## out its "<item>_scrap" price.
+func store_items() -> Array[String]:
+	var out: Array[String] = []
+	for item in STORE_ITEMS:
+		if price(item) > 0:
+			out.append(item)
+	return out
+
+
+## The scrap price of a store item, or -1 if the store doesn't sell it.
+func price(item: String) -> int:
 	var prices: Dictionary = reach().store
+	return int(prices.get(item + "_scrap", -1)) if item in STORE_ITEMS else -1
+
+
+func can_buy(item: String) -> bool:
+	var p := price(item)
+	if state != "store" or p < 0 or scrap < p:
+		return false
+	return not (item == "repair" and ship.hull >= ship.max_hull)
+
+
+func buy(item: String) -> bool:
+	if not can_buy(item):
+		return false
+	scrap -= price(item)
 	match item:
 		"repair":
-			var price := int(prices.repair_scrap)
-			if scrap < price or ship.hull >= ship.max_hull:
-				return false
-			scrap -= price
 			ship.hull += 1
-			return true
 		"light":
-			var price := int(prices.light_scrap)
-			if scrap < price:
-				return false
-			scrap -= price
 			light += 1
-			return true
-	return false
+	return true
 
 
 func leave_store() -> bool:
 	if state != "store":
 		return false
+	messages.clear()
 	state = "chart"
 	return true
 
@@ -255,6 +281,7 @@ func to_dict() -> Dictionary:
 		"hush": hush,
 		"jumps": jumps,
 		"event": event_id,
+		"outcome": outcome,
 		"seen_events": Array(seen_events),
 		"fight_bonus_scrap": fight_bonus_scrap,
 		"messages": Array(messages),
@@ -281,6 +308,11 @@ static func from_dict(d: Dictionary) -> Run:
 	r.hush = float(d.hush)
 	r.jumps = int(d.jumps)
 	r.event_id = str(d.event)
+	r.outcome = str(d.get("outcome", ""))
+	if r.state == "event" and not ContentDB.events.has(r.event_id):
+		# The event was removed or renamed in an update; don't strand the save on it.
+		r.state = "chart"
+		r.event_id = ""
 	for e in d.seen_events:
 		r.seen_events.append(str(e))
 	r.fight_bonus_scrap = int(d.fight_bonus_scrap)

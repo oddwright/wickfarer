@@ -40,9 +40,10 @@ xvfb-run godot --path . -s tools/shot.gd -- 2400 1080 out.png   # screenshot at 
    `SaveService.VERSION`, adding a step to `SaveService.migrate()`, and adding a fixture under
    `tests/fixtures/`. Never delete a migration step or a fixture.
 8. **Read JSON numbers with `int()`/`float()`.** JSON makes every number a float.
-9. **Screens go through `ScreenManager` and `HudLayout`.** Pixel art is drawn at a whole-number
-   scale only. Nothing interactive sits on the fold line in the Square layout. Add new buttons to
-   `HudLayout` so `test_layouts_on_every_screen` checks them on every device size.
+9. **Screens go through `ScreenManager` and a layout class.** Pixel art is drawn at a whole-number
+   scale only. Nothing interactive sits on the fold line in the Square layout. Fight buttons go in
+   `HudLayout` (checked by `test_layouts_on_every_screen`); chart, event and store buttons go in
+   `RunLayout` (checked by `test_run_screens_on_every_screen`). Both run on every device size.
 10. **Touch first.** Hit targets are at least 48 dp (about 10 native pixels at 5x). No hover-only
     information. Long press is the secondary action; right click stands in for it on desktop.
 11. **Text is pixel text.** Use `TextLayer._text()` with the 3x5 font; no hi-res fonts.

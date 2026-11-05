@@ -141,6 +141,8 @@ static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -
 		if span.size() != 2 or int(span[0]) > int(span[1]):
 			errors.append("%s: fight_reward.%s must be [min, max]" % [where, f])
 	var store: Dictionary = r.get("store", {})
+	for item in Run.STORE_ITEMS:
+		_check_string("UI_STORE_" + item.to_upper(), "store item %s" % item, errors)
 	for f in ["repair_scrap", "light_scrap"]:
 		if int(store.get(f, 0)) <= 0:
 			errors.append("%s: store.%s must be a price above 0" % [where, f])

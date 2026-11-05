@@ -1,13 +1,18 @@
 extends Node
-## Phase 0 entry point: one fight, touch only.
-## Owns the fixed-step loop, input, saving and the screen setup.
+## Entry point: a whole run, touch only.
+## Owns the fixed-step loop, input, saving and the screen setup, and switches
+## between the fight screen (WorldView + TextLayer) and the run screens (RunView).
 
-const SAVE_SLOT := "combat"
+const SAVE_SLOT := "run"
+const OLD_FIGHT_SLOT := "combat"  ## Phase 0 saved a lone fight here
 const LONG_PRESS := 0.4
 const AUTOSAVE_EVERY := 10.0
 const MAX_STEPS_PER_FRAME := 5
 
-var combat: Combat
+var run: Run
+var combat: Combat  ## the run's current fight, kept after it ends until Continue
+var run_layout: RunLayout
+var run_view: RunView
 var screen: Dictionary = {}
 var layout: HudLayout
 var container: SubViewportContainer
@@ -50,19 +55,66 @@ func _ready() -> void:
 	viewport.add_child(world)
 	text = TextLayer.new()
 	viewport.add_child(text)  # text lives in the pixel world, above the art
-	_start(_load_or_new())
+	run_view = RunView.new()
+	viewport.add_child(run_view)
+	run_view.setup(self)
 	get_viewport().size_changed.connect(_on_resize)
 	_on_resize()
+	_set_run(_load_or_new())
+	if run.state == "fight" and run.outcome == "" and run.combat.state == "fighting":
+		_pause("UI_TAP_TO_RESUME")  # never drop a player straight back into a live fight
 
 
-func _load_or_new() -> Combat:
+func _load_or_new() -> Run:
+	SaveService.erase(OLD_FIGHT_SLOT)
 	var data := SaveService.read(SAVE_SLOT)
-	if data.has("combat") and str(data.combat.get("state", "")) == "fighting":
-		var c := Combat.from_dict(data.combat)
-		paused = true
-		pause_reason = "UI_TAP_TO_RESUME"
-		return c
-	return Combat.create(_fresh_seed())
+	if data.has("run"):
+		var r := Run.from_dict(data.run)
+		if not r.state in ["lost", "reach_done"]:
+			return r
+	return Run.create(_fresh_seed())
+
+
+## Which run screen is showing: a Run state, or "outcome" for an event's result.
+func run_screen() -> String:
+	return "outcome" if run.outcome != "" else run.state
+
+
+func _set_run(r: Run) -> void:
+	run = r
+	_enter_screen()
+
+
+## Call after every run action: shows the right screen and saves.
+func _enter_screen() -> void:
+	var fighting := run_screen() == "fight"
+	world.visible = fighting
+	text.visible = fighting
+	run_view.visible = not fighting
+	if fighting and combat != run.combat:
+		_start(run.combat)
+	if not fighting:
+		combat = null
+		layout = null
+	_build_run_layout()
+	_save()
+
+
+func _build_run_layout() -> void:
+	if screen.is_empty() or run == null:
+		return
+	var mode := "next"
+	var count := 0
+	match run_screen():
+		"chart":
+			mode = "chart"
+		"event":
+			mode = "event"
+			count = (run.event().get("choices", []) as Array).size()
+		"store":
+			mode = "store"
+			count = run.store_items().size() + 1  # and Leave
+	run_layout = RunLayout.build(screen, run.chart, mode, count)
 
 
 func _fresh_seed() -> int:
@@ -71,27 +123,32 @@ func _fresh_seed() -> int:
 
 func _start(c: Combat) -> void:
 	combat = c
+	paused = false
+	pause_reason = ""
 	selected_weapon = -1
 	selected_crew = -1
 	floaters.clear()
 	flashes.clear()
 	world.setup(self)
 	text.setup(self)
-	if layout:
+	if not screen.is_empty():
 		_rebuild_layout()
 
 
 func _on_resize() -> void:
 	var size := Vector2i(get_viewport().get_visible_rect().size)
 	var next := ScreenManager.compute(size)
-	if not screen.is_empty() and next.layout != screen.layout and combat.state == "fighting":
+	var mid_fight := combat != null and combat.state == "fighting"
+	if not screen.is_empty() and next.layout != screen.layout and mid_fight:
 		_pause("UI_FOLD_PAUSE")  # folding or unfolding mid-fight pauses it
 	screen = next
 	container.stretch_shrink = screen.scale
 	container.position = Vector2.ZERO
 	container.size = Vector2(screen.native * screen.scale)
 	world.make_stars(screen.native)
-	_rebuild_layout()
+	if combat:
+		_rebuild_layout()
+	_build_run_layout()
 
 
 func _rebuild_layout() -> void:
@@ -115,8 +172,12 @@ func _pause(reason := "") -> void:
 
 
 func _save() -> void:
-	if combat and combat.state == "fighting":
-		SaveService.write(SAVE_SLOT, {"combat": combat.to_dict()})
+	if run == null:
+		return
+	if run.state in ["lost", "reach_done"]:
+		SaveService.erase(SAVE_SLOT)
+	else:
+		SaveService.write(SAVE_SLOT, {"run": run.to_dict()})
 
 
 func _notification(what: int) -> void:
@@ -133,15 +194,17 @@ func _notification(what: int) -> void:
 func _on_leave() -> void:
 	if combat and combat.state == "fighting":
 		_pause("UI_TAP_TO_RESUME")
+	else:
+		_save()
 
 
 # ------------------------------------------------------------------ loop
 
 
 func _process(delta: float) -> void:
-	if combat == null or layout == null:
+	if run == null or screen.is_empty():
 		return
-	if not paused and combat.state == "fighting":
+	if combat and layout and not paused and combat.state == "fighting":
 		_acc += minf(delta, 0.25)
 		var steps := 0
 		while _acc >= Combat.TICK and steps < MAX_STEPS_PER_FRAME:
@@ -163,6 +226,7 @@ func _process(delta: float) -> void:
 			flashes.erase(k)
 	world.queue_redraw()
 	text.queue_redraw()
+	run_view.queue_redraw()
 
 
 func flash_amount(side: int, room_id: String) -> float:
@@ -183,7 +247,7 @@ func _on_events(events: Array) -> void:
 				if e.side == 0 and selected_crew == e.uid:
 					selected_crew = -1
 			"won", "lost":
-				SaveService.erase(SAVE_SLOT)
+				_save()
 
 
 func _float(side: int, room_id: String, s: String, col: Color) -> void:
@@ -224,8 +288,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
 			_tap(mb.position, true)  # right click stands in for a long press on desktop
 	elif event is InputEventKey and event.pressed and not event.echo:
-		if (event as InputEventKey).keycode == KEY_SPACE:
-			_toggle_pause()
+		if (event as InputEventKey).keycode == KEY_SPACE and combat:
+			_toggle_pause()  # pause only means something in a fight
 
 
 func _toggle_pause() -> void:
@@ -238,11 +302,15 @@ func _toggle_pause() -> void:
 
 func _tap(window_pos: Vector2, long: bool) -> void:
 	var p := Vector2i((window_pos / float(screen.scale)).floor())
+	if combat == null:
+		_tap_run(p)
+		return
 	if combat.state != "fighting":
 		if layout.again_rect().grow(4).has_point(p):
 			paused = false
 			pause_reason = ""
-			_start(Combat.create(_fresh_seed()))
+			run.finish_fight()
+			_enter_screen()
 		return
 	var b := layout.button_at(p)
 	if not b.is_empty():
@@ -286,3 +354,31 @@ func _press_button(b: Dictionary, long: bool) -> void:
 			combat.apply({"type": "ward_deck", "deck": 1 - combat.player().ward_deck})
 		"pause":
 			_toggle_pause()
+
+
+func _tap_run(p: Vector2i) -> void:
+	if run_layout == null:
+		return
+	var b := run_layout.button_at(p)
+	if b.is_empty():
+		return
+	match b.kind:
+		"beacon":
+			if not run.jump(str(b.id)):
+				return
+		"choice":
+			if not run.choose(int(b.id)):
+				return
+		"store":
+			var items := run.store_items()
+			var i := int(b.id)
+			var done := run.buy(items[i]) if i < items.size() else run.leave_store()
+			if not done:
+				return
+		"next":
+			if run.state in ["lost", "reach_done"] and run.outcome == "":
+				_set_run(Run.create(_fresh_seed()))
+				return
+			if not run.read_outcome():
+				return
+	_enter_screen()

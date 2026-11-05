@@ -3,6 +3,18 @@ extends SceneTree
 ## Exits with code 1 if anything fails, so CI goes red.
 
 const J = preload("res://scripts/core/json_util.gd")
+const SCREENS := {
+	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
+	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
+	"Galaxy Z Fold7 cover (2520x1080)": Vector2i(2520, 1080),
+	"Galaxy Z Fold7 open (2184x1968)": Vector2i(2184, 1968),
+	"Galaxy Z Fold7 open, portrait (1968x2184)": Vector2i(1968, 2184),
+	"iPhone 16 (2556x1179)": Vector2i(2556, 1179),
+	"iPhone 16 Pro Max (2868x1320)": Vector2i(2868, 1320),
+	"iPad mini (2266x1488)": Vector2i(2266, 1488),
+	"small 16:9 (1280x720)": Vector2i(1280, 720),
+	"desktop window (1200x540)": Vector2i(1200, 540),
+}
 
 var failures: Array[String] = []
 var passed := 0
@@ -24,6 +36,7 @@ func _init() -> void:
 		"test_events_apply_and_respect_requirements",
 		"test_store_and_fight_rewards",
 		"test_both_ships_dying_together_is_a_loss",
+		"test_event_results_and_messages_survive_saves",
 		"test_run_saves_and_resumes_at_every_step",
 		"test_autopilot_runs_always_end",
 		"test_power_rules",
@@ -32,6 +45,8 @@ func _init() -> void:
 		"test_warmth_needs_the_ember",
 		"test_fire_spreads_and_crew_put_it_out",
 		"test_layouts_on_every_screen",
+		"test_run_screens_on_every_screen",
+		"test_view_screens_follow_the_run",
 	]:
 		current = t
 		call(t)
@@ -306,18 +321,7 @@ func test_fire_spreads_and_crew_put_it_out() -> void:
 
 
 func test_layouts_on_every_screen() -> void:
-	var screens := {
-		"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
-		"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
-		"Galaxy Z Fold7 cover (2520x1080)": Vector2i(2520, 1080),
-		"Galaxy Z Fold7 open (2184x1968)": Vector2i(2184, 1968),
-		"Galaxy Z Fold7 open, portrait (1968x2184)": Vector2i(1968, 2184),
-		"iPhone 16 (2556x1179)": Vector2i(2556, 1179),
-		"iPhone 16 Pro Max (2868x1320)": Vector2i(2868, 1320),
-		"iPad mini (2266x1488)": Vector2i(2266, 1488),
-		"small 16:9 (1280x720)": Vector2i(1280, 720),
-		"desktop window (1200x540)": Vector2i(1200, 540),
-	}
+	var screens := SCREENS
 	var pf := Vector2i(236, 76)
 	var ef := Vector2i(196, 66)
 	for name: String in screens:
@@ -373,6 +377,28 @@ func test_every_save_fixture_still_loads() -> void:
 		run(c, 200)
 		check(c.tick_count == before + 200, "%s resumes and plays on" % name)
 	check(found >= 1, "at least one save fixture")
+	var runs := 0
+	for name in dir.get_files():
+		if not name.begins_with("run_save_v") or not name.ends_with(".json"):
+			continue
+		runs += 1
+		var raw: Variant = JSON.parse_string(
+			FileAccess.get_file_as_string("res://tests/fixtures/" + name)
+		)
+		if not raw is Dictionary:
+			check(false, "%s is not a JSON object" % name)
+			continue
+		var up := SaveService.upgrade(raw)
+		check(
+			int(up.get("version", -1)) == SaveService.VERSION,
+			"%s upgrades to the current version" % name
+		)
+		if up.is_empty():
+			continue
+		var r := Run.from_dict(up.get("data", {}).get("run", {}))
+		var end := Autopilot.new().play(r)
+		check(end in ["lost", "reach_done"], "%s resumes and plays to the end (%s)" % [name, end])
+	check(runs >= 1, "at least one whole-run save fixture")
 
 
 # ------------------------------------------------------------------ runs
@@ -441,6 +467,30 @@ func test_events_apply_and_respect_requirements() -> void:
 	check(not r2.can_choose(1), "a dead Sable can't answer the Choir")
 
 
+func test_event_results_and_messages_survive_saves() -> void:
+	var r := Run.create(30)
+	r.state = "event"
+	r.event_id = "debris_field"
+	check(r.choose(1) and r.outcome != "", "a choice leaves a result to read")
+	var back := Run.from_dict(JSON.parse_string(J.s(r.to_dict())))
+	check(back.outcome == r.outcome, "an unread result survives a save")
+	check(back.read_outcome() and back.outcome == "", "reading it clears it")
+	check(not back.read_outcome(), "there is nothing left to read")
+	var gone := r.to_dict()
+	gone.state = "event"
+	gone.event = "an_event_removed_in_an_update"
+	var loaded := Run.from_dict(JSON.parse_string(J.s(gone)))
+	check(loaded.state == "chart", "a save on a removed event goes back to the chart")
+	var f := Run.create(31)
+	f.messages.append("UI_HUSH_HIT")
+	f._start_fight("ashmarket_skiff")
+	f.combat.enemy().hull = 0
+	f.combat.tick()
+	f.finish_fight()
+	check(f.messages.is_empty(), "old jump news doesn't come back after a fight")
+	check(f.store_items() == ["repair", "light"], "the Reach lists what its stores sell")
+
+
 func test_both_ships_dying_together_is_a_loss() -> void:
 	var r := Run.create(21)
 	r._start_fight("ashmarket_skiff")
@@ -466,6 +516,12 @@ func test_store_and_fight_rewards() -> void:
 	check(r.buy("repair") and r.ship.hull == 16 and r.scrap == 7, "repair costs 3 scrap")
 	check(r.buy("light") and r.scrap == 2, "Light costs 5 scrap")
 	check(not r.buy("light"), "can't buy without scrap")
+	check(not r.can_buy("light") and r.can_buy("repair") == false, "the store greys out")
+	r.scrap = 50
+	r.ship.hull = r.ship.max_hull
+	check(not r.can_buy("repair"), "no repairs on a whole hull")
+	check(r.can_buy("light") and r.price("light") == 5, "the view reads prices from the sim")
+	check(not r.can_buy("scrap"), "the store only sells what the Reach lists")
 	check(r.leave_store() and r.state == "chart", "leave the store")
 	r._start_fight("ashmarket_cutter")
 	r.combat.enemy().hull = 0
@@ -503,3 +559,42 @@ func test_autopilot_runs_always_end() -> void:
 		ends[end] = int(ends.get(end, 0)) + 1
 		check(end in ["reach_done", "lost"], "run %d ended properly (got %s)" % [i, end])
 	print("  autopilot run endings: ", ends)
+
+
+func test_run_screens_on_every_screen() -> void:
+	for name: String in SCREENS:
+		var scr := ScreenManager.compute(SCREENS[name])
+		var probs: Array[String] = []
+		for seed_value in 30:
+			var chart := Run.create(seed_value).chart
+			probs.append_array(RunLayout.build(scr, chart, "chart").problems())
+			var l := RunLayout.build(scr, chart, "chart")
+			for n in chart.nodes:
+				if (l.button("beacon", n.id).rect as Rect2i).get_center() != l.beacon_pos(n):
+					probs.append("beacon %s is off its hit box" % n.id)
+		var chart0 := Run.create(1).chart
+		for mode in ["event", "store", "next"]:
+			var l := RunLayout.build(scr, chart0, mode, 3)
+			probs.append_array(l.problems())
+			if l.buttons.is_empty():
+				probs.append("%s has no buttons" % mode)
+			for b in l.buttons:
+				if (b.rect as Rect2i).end.y > scr.native.y - 4:
+					probs.append("%s button falls off the bottom" % mode)
+				if mode != "next" and (b.rect as Rect2i).intersects(l.text_rect):
+					probs.append("%s button covers the text" % mode)
+		check(probs.is_empty(), "%s run screens: %s" % [name, probs.slice(0, 4)])
+
+
+func test_view_screens_follow_the_run() -> void:
+	var main: Node = load("res://scripts/view/main.gd").new()
+	main.screen = ScreenManager.compute(Vector2i(2400, 1080))
+	var r := Run.create(77)
+	main.run = r
+	check(main.run_screen() == "chart", "a new run opens on the chart")
+	r.outcome = "EV_ASH_TOLL_C1_O1"
+	r._start_fight("ashmarket_skiff")  # results can start fights
+	check(main.run_screen() == "outcome", "an event result is shown before the fight it starts")
+	r.read_outcome()
+	check(main.run_screen() == "fight", "then the fight")
+	main.free()
