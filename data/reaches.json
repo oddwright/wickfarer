@@ -14,5 +14,22 @@
     "start": {"scrap": 20, "light": 4},
     "fight_reward": {"scrap": [12, 24], "light": [1, 2]},
     "store": {"repair_scrap": 3, "light_scrap": 5}
+  },
+  "training": {
+    "name": "REACH_TRAINING_NAME",
+    "training": true,
+    "columns": 4,
+    "rows": [2, 3],
+    "enemies": ["ashmarket_skiff"],
+    "kinds": {"fight": 100},
+    "jump_light": 1,
+    "dark_jump_hull": 2,
+    "hush_start": -2.0,
+    "hush_per_jump": 0.5,
+    "hush_per_light": 0.0,
+    "hush_hull": 3,
+    "start": {"scrap": 20, "light": 4},
+    "fight_reward": {"scrap": [12, 18], "light": [1, 2]},
+    "store": {"repair_scrap": 3, "light_scrap": 5}
   }
 }

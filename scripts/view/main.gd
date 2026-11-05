@@ -37,6 +37,8 @@ var music_director := MusicDirector.new()
 var audio: AudioService
 var haptics: Haptics
 var menu_view: MenuView
+var tutorial: Tutorial  ## the training flight's coach and the one-time tips
+var coach: CoachView
 var menu_layout: MenuLayout
 ## The open menu page: "" (playing), "title", "pause", "options" or "confirm".
 var menu := ""
@@ -86,6 +88,9 @@ func _ready() -> void:
 	run_view = RunView.new()
 	viewport.add_child(run_view)
 	run_view.setup(self)
+	coach = CoachView.new()
+	viewport.add_child(coach)  # over the fight and run screens, under the menus
+	coach.setup(self)
 	menu_view = MenuView.new()
 	viewport.add_child(menu_view)  # last, so the menus draw over the game
 	menu_view.setup(self)
@@ -99,6 +104,7 @@ func _ready() -> void:
 
 func _setup_feedback() -> void:
 	settings = GameSettings.load_or_default(save_dir)
+	tutorial = Tutorial.load_or_default(save_dir)
 	feedback = FeedbackDirector.new(ContentDB.feedback.get("cues", {}), settings)
 	audio = AudioService.new()
 	add_child(audio)
@@ -341,6 +347,8 @@ func _on_leave() -> void:
 	if audio:
 		audio.suspend(true)
 		haptics.stop()
+	if tutorial:
+		tutorial.save(save_dir)
 	if combat and combat.state == "fighting":
 		_pause("UI_TAP_TO_RESUME")
 	else:
@@ -356,11 +364,13 @@ func _process(delta: float) -> void:
 	feedback.update(delta)
 	haptics.update(delta)
 	if run != null and menu == "":
+		_coach()
 		_tick_game(delta)
 	_play_feedback()
 	world.queue_redraw()
 	text.queue_redraw()
 	run_view.queue_redraw()
+	coach.queue_redraw()
 	menu_view.queue_redraw()
 
 
@@ -387,6 +397,40 @@ func _tick_game(delta: float) -> void:
 		flashes[k] -= delta
 		if flashes[k] <= 0.0:
 			flashes.erase(k)
+
+
+## Lets the coach look at the screen, and holds the fight's clock while a step waits.
+func _coach() -> void:
+	if tutorial == null:
+		return
+	var on := run_screen()
+	if combat and combat.state != "fighting":
+		on = "fight_over"
+	var ctx := {
+		"screen": on,
+		"paused": paused,
+		"weapon": selected_weapon,
+		"crew": selected_crew,
+		"run": run,
+		"combat": combat,
+	}
+	var fresh := tutorial.update(ctx)
+	var live := combat != null and combat.state == "fighting"
+	if live and not paused and (fresh or tutorial.holds()):
+		paused = true
+		pause_reason = ""
+	if tutorial.dirty:
+		tutorial.save(save_dir)
+
+
+## The coach has words on screen, so the screen's own hint line stays quiet.
+func coach_speaking() -> bool:
+	return tutorial != null and menu == "" and not tutorial.display.is_empty()
+
+
+func _order(what: String, detail := "") -> void:
+	if tutorial:
+		tutorial.on_order(what, detail)
 
 
 func _play_feedback() -> void:
@@ -438,6 +482,8 @@ func flash_amount(side: int, room_id: String) -> float:
 func _on_events(events: Array) -> void:
 	if feedback:
 		feedback.on_sim_events(events, combat)
+	if tutorial:
+		tutorial.on_events(events)
 	for e: Dictionary in events:
 		match e.type:
 			"hit":
@@ -499,12 +545,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			_toggle_pause()  # pause only means something in a fight
 
 
-func _toggle_pause() -> void:
+## Returns false when the coach is holding the clock for a step.
+func _toggle_pause() -> bool:
 	if paused:
+		if tutorial and tutorial.holds():
+			return false
 		paused = false
 		pause_reason = ""
 	else:
 		_pause()
+	return true
 
 
 func _tap(window_pos: Vector2, long: bool) -> void:
@@ -542,6 +592,8 @@ func _tap_fight(p: Vector2i, long: bool) -> void:
 	if selected_weapon >= 0 and enemy_room:
 		var aimed := combat.apply({"type": "aim", "weapon": selected_weapon, "room": enemy_room.id})
 		ui_cue("aim" if aimed else "refused")
+		if aimed:
+			_order("aim")
 		selected_weapon = -1
 		return
 	var c := world.crew_at(0, p)
@@ -554,6 +606,8 @@ func _tap_fight(p: Vector2i, long: bool) -> void:
 	if selected_crew >= 0 and my_room:
 		var moved := combat.apply({"type": "move", "crew": selected_crew, "room": my_room.id})
 		ui_cue("tap" if moved else "refused")
+		if moved:
+			_order("move")
 		selected_crew = -1
 		return
 	selected_weapon = -1
@@ -566,6 +620,8 @@ func _press_button(b: Dictionary, long: bool) -> void:
 			var cmd := "power_down" if long else "power_up"
 			var ok := combat.apply({"type": cmd, "system": b.id})
 			ui_cue(cmd if ok else "refused")
+			if ok:
+				_order(cmd, str(b.id))
 		"weapon":
 			var i := int(b.id)
 			if long:
@@ -579,9 +635,9 @@ func _press_button(b: Dictionary, long: bool) -> void:
 		"ward":
 			combat.apply({"type": "ward_deck", "deck": 1 - combat.player().ward_deck})
 			ui_cue("tap")
+			_order("ward")
 		"pause":
-			_toggle_pause()
-			ui_cue("tap")
+			ui_cue("tap" if _toggle_pause() else "refused")
 
 
 func _tap_run(p: Vector2i) -> void:
@@ -630,11 +686,16 @@ func menu_items(page: String) -> Array[String]:
 		"title":
 			if run != null:
 				out.append("continue")
-			out.append_array(["new_run", "options"])
+			out.append("new_run")
+			if tutorial and tutorial.done:
+				out.append("training")  # until then, New Run is the training flight
+			out.append("options")
 			if can_quit():
 				out.append("quit")
 		"pause":
 			out.assign(["resume", "options"])
+			if tutorial and tutorial.active(run):
+				out.append("skip_training")
 			if not run_over():
 				out.append("abandon")
 			out.append("to_title")
@@ -719,6 +780,15 @@ func _tap_menu(p: Vector2i) -> void:
 				_confirm("new_run")
 		"options":
 			open_menu("options")
+		"training":
+			if run == null:
+				_start_training()
+			else:
+				_confirm("training")
+		"skip_training":
+			tutorial.skip()
+			tutorial.save(save_dir)
+			_resume()
 		"quit":
 			_quit()
 		"resume":
@@ -733,10 +803,13 @@ func _tap_menu(p: Vector2i) -> void:
 				run_layout = null
 			open_menu("title")
 		"yes":
-			if confirm_action == "abandon":
-				_abandon()
-			else:
-				_new_run()
+			match confirm_action:
+				"abandon":
+					_abandon()
+				"training":
+					_start_training()
+				_:
+					_new_run()
 		"no":
 			open_menu(menu_base)
 
@@ -755,9 +828,20 @@ func _continue() -> void:
 	_save()
 
 
+## A new player's first run is the training flight; it can be replayed from the title.
 func _new_run() -> void:
+	if tutorial and not tutorial.done:
+		_start_training()
+		return
 	close_menu()
 	_set_run(Run.create(_fresh_seed()))
+
+
+func _start_training() -> void:
+	close_menu()
+	tutorial.start_training()
+	tutorial.save(save_dir)
+	_set_run(Run.create(_fresh_seed(), "tallow_wren", Tutorial.TRAINING_REACH))
 
 
 ## Ends the run for good: the save goes, and the title has no Continue.

@@ -27,6 +27,12 @@ func _draw() -> void:
 			_draw_list(l)
 
 
+## A phone held upright plays in a cramped stacked layout; an unfolded foldable,
+## nearly square, doesn't, so it gets no nudge.
+static func held_upright(window: Vector2i) -> bool:
+	return window.y * 10 > window.x * 13
+
+
 func _draw_list(l: MenuLayout) -> void:
 	var r := l.title_rect
 	var y := r.position.y + r.size.y / 2 + 7
@@ -40,6 +46,15 @@ func _draw_list(l: MenuLayout) -> void:
 			r.size.x
 		)
 		_draw_ember(Vector2i(r.position.x + r.size.x / 2, y + 6))
+		if MenuView.held_upright(main.window_size()):
+			_text(
+				Vector2(0, l.native.y - 6),
+				tr("UI_ROTATE"),
+				5.0,
+				Pixel.c("g"),
+				HORIZONTAL_ALIGNMENT_CENTER,
+				l.native.x
+			)
 	else:
 		_text(
 			Vector2(r.position.x, y),

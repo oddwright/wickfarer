@@ -189,7 +189,7 @@ func _draw() -> void:
 		msg = tr(main.pause_reason) if main.pause_reason != "" else tr("UI_PAUSED")
 	elif combat.time() < 15.0:
 		msg = tr("UI_HINT")
-	if msg != "" and combat.state == "fighting":
+	if msg != "" and combat.state == "fighting" and not main.coach_speaking():
 		var mr := l.message_rect
 		_text(
 			Vector2(mr.position.x, mr.position.y + mr.size.y / 2 + 3),
@@ -199,7 +199,9 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_CENTER,
 			mr.size.x
 		)
-	if main.paused and combat.state == "fighting" and main.menu == "":  # the menu says it
+	# The menu says it, and so does a coach step that holds the clock ("time is stopped").
+	var held: bool = main.tutorial != null and main.tutorial.holds()
+	if main.paused and combat.state == "fighting" and main.menu == "" and not held:
 		_text(
 			Vector2(0, l.native.y / 2 - 26),
 			tr("UI_PAUSED"),

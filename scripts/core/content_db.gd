@@ -12,6 +12,7 @@ const FILES := {
 	"events": "res://data/events.json",
 	"reaches": "res://data/reaches.json",
 	"feedback": "res://data/feedback.json",
+	"tutorial": "res://data/tutorial.json",
 }
 
 const EVENT_EFFECTS := [
@@ -34,6 +35,7 @@ static var strings: Dictionary = {}
 static var events: Dictionary = {}
 static var reaches: Dictionary = {}
 static var feedback: Dictionary = {}  ## sounds, haptics, cues and music layers
+static var tutorial: Dictionary = {}  ## the training flight's lessons and the one-time tips
 static var loaded := false
 
 
@@ -48,6 +50,7 @@ static func load_all() -> void:
 	events = _read(FILES.events)
 	reaches = _read(FILES.reaches)
 	feedback = _read(FILES.feedback)
+	tutorial = _read(FILES.tutorial)
 	_install_translation()
 	loaded = true
 
@@ -110,6 +113,7 @@ static func validate() -> Array[String]:
 	for rid: String in reaches:
 		_validate_reach(rid, reaches[rid], errors)
 	_validate_feedback(feedback, errors)
+	_validate_tutorial(tutorial, errors)
 	return errors
 
 
@@ -118,6 +122,8 @@ static func validate() -> Array[String]:
 static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -> void:
 	var where := "reach %s" % rid
 	_check_string(r.get("name", ""), where, errors)
+	if r.has("training") and not r.training is bool:
+		errors.append("%s: training must be true or false" % where)
 	var enemies: Array = r.get("enemies", [])
 	if enemies.is_empty():
 		errors.append("%s: needs at least one enemy" % where)
@@ -487,3 +493,80 @@ static func _num_in(v: Variant, lo: float, hi: float) -> bool:
 
 static func _int_in(v: Variant, lo: int, hi: int) -> bool:
 	return _num_in(v, lo, hi) and float(v) == floorf(float(v))
+
+
+## Lessons and tips may only use the conditions, targets and moments the coach knows,
+## so a typo fails here instead of leaving a step that can never finish.
+static func _validate_tutorial(t: Dictionary, errors: Array[String]) -> void:
+	var ids: Array[String] = []
+	for l: Variant in _array(t.get("lessons")):
+		if not l is Dictionary:
+			errors.append("tutorial: every lesson must be an object")
+			continue
+		var where := "lesson %s" % l.get("id", "?")
+		if str(l.get("id", "")) == "" or ids.has(str(l.id)):
+			errors.append("%s: needs a unique id" % where)
+		if not str(l.get("screen", "")) in Tutorial.SCREENS:
+			errors.append("%s: unknown screen %s" % [where, l.get("screen", "")])
+		var after := str(l.get("after", ""))
+		if after != "" and not ids.has(after):  # checked before this id joins the list
+			errors.append("%s: after must name an earlier lesson" % where)
+		ids.append(str(l.get("id", "")))
+		var steps := _array(l.get("steps"))
+		if steps.is_empty():
+			errors.append("%s: needs steps" % where)
+		for s: Variant in steps:
+			if not s is Dictionary:
+				errors.append("%s: every step must be an object" % where)
+				continue
+			_validate_step("%s step %s" % [where, s.get("id", "?")], s, errors)
+	var tip_ids: Array[String] = []
+	for tip: Variant in _array(t.get("tips")):
+		if not tip is Dictionary:
+			errors.append("tutorial: every tip must be an object")
+			continue
+		var where := "tip %s" % tip.get("id", "?")
+		if str(tip.get("id", "")) == "" or tip_ids.has(str(tip.id)):
+			errors.append("%s: needs a unique id" % where)
+		tip_ids.append(str(tip.get("id", "")))
+		if not str(tip.get("on", "")) in Tutorial.TIP_MOMENTS:
+			errors.append("%s: unknown moment %s" % [where, tip.get("on", "")])
+		_check_string(str(tip.get("text", "")), where, errors)
+
+
+static func _validate_step(where: String, s: Dictionary, errors: Array[String]) -> void:
+	_check_string(str(s.get("text", "")), where, errors)
+	var done := str(s.get("done", ""))
+	var cond := done.get_slice(":", 0)
+	if not cond in Tutorial.CONDITIONS:
+		errors.append("%s: unknown done condition %s" % [where, done])
+	elif cond == "did" and not done.get_slice(":", 1) in Tutorial.ORDERS:
+		errors.append("%s: did needs one of %s" % [where, Tutorial.ORDERS])
+	elif cond == "aimed" and not done.get_slice(":", 1).is_valid_int():
+		errors.append("%s: aimed needs a weapon slot" % where)
+	if s.has("hold") and not s.hold is bool:
+		errors.append("%s: hold must be true or false" % where)
+	_validate_target(where, str(s.get("target", "")), errors)
+	if s.has("then") and not s.then is Dictionary:
+		errors.append("%s: then must be an object" % where)
+		return
+	var then: Dictionary = s.get("then", {})
+	if not then.is_empty():
+		if not str(then.get("when", "")).get_slice(":", 0) in Tutorial.WHENS:
+			errors.append("%s: unknown then.when %s" % [where, then.get("when", "")])
+		_check_string(str(then.get("text", "")), where + " then", errors)
+		_validate_target(where + " then", str(then.get("target", "")), errors)
+
+
+static func _validate_target(where: String, target: String, errors: Array[String]) -> void:
+	var kind := target.get_slice(":", 0)
+	if not kind in Tutorial.TARGETS:
+		errors.append("%s: unknown target %s" % [where, target])
+	elif kind in ["system", "enemy_room"] and not systems.has(target.get_slice(":", 1)):
+		errors.append("%s: unknown system in %s" % [where, target])
+	elif kind == "weapon" and not target.get_slice(":", 1).is_valid_int():
+		errors.append("%s: weapon target needs a slot" % where)
+
+
+static func _array(v: Variant) -> Array:
+	return v if v is Array else []
