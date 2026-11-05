@@ -68,13 +68,10 @@ func setup() -> void:
 
 ## Runs on a worker thread: only reads the tables and makes new streams.
 func _build_all() -> void:
-	var out := {"sounds": {}, "layers": [], "names": []}
+	var out := {"sounds": {}}
 	for id: String in sounds:
-		out.sounds[id] = _load_or_synth(sounds[id], false)
-	var layers: Dictionary = music.get("layers", {})
-	for name: String in layers:
-		out.names.append(name)
-		out.layers.append(_load_or_synth(layers[name], true))
+		if str(sounds[id].get("file", "")) == "":
+			out.sounds[id] = SfxSynth.one_shot(sounds[id].synth)
 	_built = out
 
 
@@ -87,7 +84,10 @@ func finish_build(wait := false) -> void:
 	WorkerThreadPool.wait_for_task_completion(_build_task)
 	_build_task = -1
 	_streams = _built.sounds
-	_make_music(_built.names, _built.layers)
+	for id: String in sounds:
+		if not _streams.has(id):
+			_streams[id] = _load_or_synth(sounds[id])  # files load on this thread (see _make_music)
+	_make_music()
 	_built = {}
 	_ready_to_play = true
 
@@ -167,26 +167,31 @@ static func pick_voice(voices: Array[Dictionary], priority: int) -> int:
 	return best
 
 
-static func _load_or_synth(entry: Dictionary, looped: bool) -> AudioStream:
+static func _load_or_synth(entry: Dictionary) -> AudioStream:
 	var file := str(entry.get("file", ""))
 	if file != "" and ResourceLoader.exists(file):
 		return load(file)
 	if entry.has("synth"):
-		return SfxSynth.loop(entry.synth) if looped else SfxSynth.one_shot(entry.synth)
+		return SfxSynth.one_shot(entry.synth)
 	return null
 
 
 # ------------------------------------------------------------------ music
 
 
-func _make_music(names: Array, streams: Array) -> void:
+## Stems load here on the main thread: loading resources from the worker
+## leaves Godot's load tokens behind. Ogg stems only read their packets, so it's quick.
+func _make_music() -> void:
+	var layers: Dictionary = music.get("layers", {})
 	_music_stream = AudioStreamSynchronized.new()
-	_music_stream.stream_count = streams.size()
-	for i in streams.size():
-		_music_stream.set_sync_stream(i, streams[i])
+	_music_stream.stream_count = layers.size()
+	var i := 0
+	for name: String in layers:
+		_music_stream.set_sync_stream(i, load(str(layers[name].file)))  # validated: loops
 		_music_stream.set_sync_stream_volume(i, SILENT_DB)
-		_layer_names.append(str(names[i]))
+		_layer_names.append(name)
 		_layer_db.append(SILENT_DB)
+		i += 1
 	_music_player.stream = _music_stream
 
 
@@ -241,9 +246,20 @@ func _process(delta: float) -> void:
 		_layer_db[i] = move_toward(_layer_db[i], goal, step)
 		_music_stream.set_sync_stream_volume(i, _layer_db[i] + duck_db)
 	_start_music()
+	_stop_when_silent(targets)
 	if _lowpass:
 		var goal_hz := lerpf(OPEN_CUTOFF, HUSH_CUTOFF, hush)
 		_lowpass.cutoff_hz = lerpf(_lowpass.cutoff_hz, goal_hz, clampf(delta * 2.0, 0.0, 1.0))
+
+
+## Six Ogg decoders cost battery even at -60 dB: stop once every layer has faded out.
+func _stop_when_silent(targets: Dictionary) -> void:
+	if not targets.is_empty() or not _music_player.playing:
+		return
+	for db in _layer_db:
+		if db > SILENT_DB:
+			return
+	_music_player.stop()
 
 
 ## Phones can pause the app at any time: silence everything until it's back.

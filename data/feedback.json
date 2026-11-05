@@ -1,688 +1,89 @@
 {
   "haptics": {
-    "tick": [
-      [
-        12,
-        0.35
-      ]
-    ],
-    "double_tick": [
-      [
-        12,
-        0.35
-      ],
-      [
-        60,
-        0.0
-      ],
-      [
-        12,
-        0.35
-      ]
-    ],
-    "tap": [
-      [
-        20,
-        0.6
-      ]
-    ],
-    "thud": [
-      [
-        45,
-        1.0
-      ],
-      [
-        30,
-        0.4
-      ]
-    ],
-    "rumble": [
-      [
-        30,
-        0.5
-      ],
-      [
-        30,
-        0.0
-      ],
-      [
-        30,
-        0.5
-      ],
-      [
-        30,
-        0.0
-      ],
-      [
-        30,
-        0.5
-      ],
-      [
-        30,
-        0.0
-      ],
-      [
-        30,
-        0.4
-      ]
-    ],
-    "heartbeat": [
-      [
-        30,
-        0.8
-      ],
-      [
-        120,
-        0.0
-      ],
-      [
-        25,
-        0.5
-      ]
-    ],
-    "big_rumble": [
-      [
-        80,
-        1.0
-      ],
-      [
-        60,
-        0.7
-      ],
-      [
-        120,
-        0.4
-      ]
-    ]
+    "tick": [[12, 0.35]],
+    "double_tick": [[12, 0.35], [60, 0.0], [12, 0.35]],
+    "tap": [[20, 0.6]],
+    "thud": [[45, 1.0], [30, 0.4]],
+    "rumble": [[30, 0.5], [30, 0.0], [30, 0.5], [30, 0.0], [30, 0.5], [30, 0.0], [30, 0.4]],
+    "heartbeat": [[30, 0.8], [120, 0.0], [25, 0.5]],
+    "big_rumble": [[80, 1.0], [60, 0.7], [120, 0.4]]
   },
   "sounds": {
-    "ui_tick": {
-      "bus": "UI",
-      "volume_db": -8,
-      "pitch_jitter": 0.03,
-      "synth": {
-        "wave": "square",
-        "freq": 1800,
-        "freq_end": 1500,
-        "ms": 18,
-        "decay": 6
-      }
-    },
-    "ui_nope": {
-      "bus": "UI",
-      "volume_db": -8,
-      "pitch_jitter": 0.0,
-      "synth": {
-        "wave": "square",
-        "freq": 220,
-        "freq_end": 180,
-        "ms": 90,
-        "decay": 3
-      }
-    },
-    "ui_select": {
-      "bus": "UI",
-      "volume_db": -9,
-      "pitch_jitter": 0.03,
-      "synth": {
-        "wave": "tri",
-        "freq": 900,
-        "freq_end": 1300,
-        "ms": 40,
-        "decay": 4
-      }
-    },
-    "ui_power_up": {
-      "bus": "UI",
-      "volume_db": -8,
-      "pitch_jitter": 0.02,
-      "synth": {
-        "wave": "tri",
-        "freq": 600,
-        "freq_end": 1200,
-        "ms": 60,
-        "decay": 3
-      }
-    },
-    "ui_power_down": {
-      "bus": "UI",
-      "volume_db": -8,
-      "pitch_jitter": 0.02,
-      "synth": {
-        "wave": "tri",
-        "freq": 1000,
-        "freq_end": 450,
-        "ms": 70,
-        "decay": 3
-      }
-    },
-    "ui_lock": {
-      "bus": "UI",
-      "volume_db": -8,
-      "pitch_jitter": 0.02,
-      "synth": {
-        "wave": "square",
-        "freq": 1200,
-        "freq_end": 1200,
-        "ms": 35,
-        "decay": 5
-      }
-    },
-    "ui_jump": {
-      "bus": "SFX",
-      "volume_db": -4,
-      "pitch_jitter": 0.0,
-      "synth": {
-        "wave": "saw",
-        "freq": 80,
-        "freq_end": 900,
-        "ms": 600,
-        "decay": 1.5,
-        "noise": 0.3
-      }
-    },
-    "ui_buy": {
-      "bus": "UI",
-      "volume_db": -7,
-      "pitch_jitter": 0.02,
-      "synth": {
-        "wave": "sine",
-        "freq": 1400,
-        "freq_end": 2100,
-        "ms": 120,
-        "decay": 3
-      }
-    },
-    "rivet_fire": {
-      "bus": "SFX",
-      "volume_db": -5,
-      "pitch_jitter": 0.05,
-      "synth": {
-        "wave": "square",
-        "freq": 260,
-        "freq_end": 90,
-        "ms": 110,
-        "decay": 5,
-        "noise": 0.5
-      }
-    },
-    "torch_fire": {
-      "bus": "SFX",
-      "volume_db": -5,
-      "pitch_jitter": 0.04,
-      "synth": {
-        "wave": "saw",
-        "freq": 140,
-        "freq_end": 60,
-        "ms": 320,
-        "decay": 2.5,
-        "noise": 0.7
-      }
-    },
-    "enemy_fire": {
-      "bus": "SFX",
-      "volume_db": -9,
-      "pitch_jitter": 0.05,
-      "synth": {
-        "wave": "square",
-        "freq": 200,
-        "freq_end": 70,
-        "ms": 120,
-        "decay": 5,
-        "noise": 0.5
-      }
-    },
-    "ready_ping": {
-      "bus": "UI",
-      "volume_db": -12,
-      "pitch_jitter": 0.0,
-      "synth": {
-        "wave": "sine",
-        "freq": 1760,
-        "freq_end": 1760,
-        "ms": 140,
-        "decay": 4
-      }
-    },
-    "hull_hit_heavy": {
-      "bus": "SFX",
-      "volume_db": -2,
-      "pitch_jitter": 0.04,
-      "synth": {
-        "wave": "noise",
-        "freq": 90,
-        "freq_end": 40,
-        "ms": 380,
-        "decay": 3,
-        "noise": 1.0
-      }
-    },
-    "hull_hit_light": {
-      "bus": "SFX",
-      "volume_db": -7,
-      "pitch_jitter": 0.06,
-      "synth": {
-        "wave": "noise",
-        "freq": 160,
-        "freq_end": 80,
-        "ms": 200,
-        "decay": 4,
-        "noise": 0.8
-      }
-    },
-    "miss_whoosh": {
-      "bus": "SFX",
-      "volume_db": -12,
-      "pitch_jitter": 0.08,
-      "synth": {
-        "wave": "noise",
-        "freq": 400,
-        "freq_end": 400,
-        "ms": 220,
-        "decay": 2,
-        "noise": 1.0
-      }
-    },
-    "ward_chime": {
-      "bus": "SFX",
-      "volume_db": -8,
-      "pitch_jitter": 0.03,
-      "synth": {
-        "wave": "sine",
-        "freq": 2093,
-        "freq_end": 2093,
-        "ms": 450,
-        "decay": 3
-      }
-    },
-    "ward_crack": {
-      "bus": "SFX",
-      "volume_db": -6,
-      "pitch_jitter": 0.05,
-      "synth": {
-        "wave": "tri",
-        "freq": 2400,
-        "freq_end": 700,
-        "ms": 180,
-        "decay": 4,
-        "noise": 0.4
-      }
-    },
-    "blaze": {
-      "bus": "SFX",
-      "volume_db": -8,
-      "pitch_jitter": 0.05,
-      "synth": {
-        "wave": "noise",
-        "freq": 300,
-        "freq_end": 300,
-        "ms": 500,
-        "decay": 1.5,
-        "noise": 1.0
-      }
-    },
-    "crew_bell": {
-      "bus": "SFX",
-      "volume_db": -6,
-      "pitch_jitter": 0.0,
-      "synth": {
-        "wave": "sine",
-        "freq": 196,
-        "freq_end": 194,
-        "ms": 1400,
-        "decay": 2.5
-      }
-    },
-    "enemy_break": {
-      "bus": "SFX",
-      "volume_db": -3,
-      "pitch_jitter": 0.0,
-      "synth": {
-        "wave": "noise",
-        "freq": 70,
-        "freq_end": 30,
-        "ms": 1100,
-        "decay": 2,
-        "noise": 1.0
-      }
-    },
-    "victory_sting": {
-      "bus": "Music",
-      "volume_db": -6,
-      "pitch_jitter": 0.0,
-      "synth": {
-        "wave": "tri",
-        "freq": 523,
-        "freq_end": 784,
-        "ms": 900,
-        "decay": 1.5
-      }
-    },
-    "defeat_swell": {
-      "bus": "Music",
-      "volume_db": -6,
-      "pitch_jitter": 0.0,
-      "synth": {
-        "wave": "sine",
-        "freq": 55,
-        "freq_end": 41,
-        "ms": 2500,
-        "decay": 1.2
-      }
-    },
-    "heartbeat": {
-      "bus": "SFX",
-      "volume_db": -6,
-      "pitch_jitter": 0.0,
-      "synth": {
-        "wave": "sine",
-        "freq": 60,
-        "freq_end": 40,
-        "ms": 180,
-        "decay": 6
-      }
-    }
+    "ui_tick": {"bus": "UI", "volume_db": -8, "pitch_jitter": 0.03, "synth": {"wave": "square", "freq": 1800, "freq_end": 1500, "ms": 18, "decay": 6}},
+    "ui_nope": {"bus": "UI", "volume_db": -8, "pitch_jitter": 0.0, "synth": {"wave": "square", "freq": 220, "freq_end": 180, "ms": 90, "decay": 3}},
+    "ui_select": {"bus": "UI", "volume_db": -9, "pitch_jitter": 0.03, "synth": {"wave": "tri", "freq": 900, "freq_end": 1300, "ms": 40, "decay": 4}},
+    "ui_power_up": {"bus": "UI", "volume_db": -8, "pitch_jitter": 0.02, "synth": {"wave": "tri", "freq": 600, "freq_end": 1200, "ms": 60, "decay": 3}},
+    "ui_power_down": {"bus": "UI", "volume_db": -8, "pitch_jitter": 0.02, "synth": {"wave": "tri", "freq": 1000, "freq_end": 450, "ms": 70, "decay": 3}},
+    "ui_lock": {"bus": "UI", "volume_db": -8, "pitch_jitter": 0.02, "synth": {"wave": "square", "freq": 1200, "freq_end": 1200, "ms": 35, "decay": 5}},
+    "ui_jump": {"bus": "SFX", "volume_db": -4, "pitch_jitter": 0.0, "synth": {"wave": "saw", "freq": 80, "freq_end": 900, "ms": 600, "decay": 1.5, "noise": 0.3}},
+    "ui_buy": {"bus": "UI", "volume_db": -7, "pitch_jitter": 0.02, "synth": {"wave": "sine", "freq": 1400, "freq_end": 2100, "ms": 120, "decay": 3}},
+    "rivet_fire": {"bus": "SFX", "volume_db": -5, "pitch_jitter": 0.05, "synth": {"wave": "square", "freq": 260, "freq_end": 90, "ms": 110, "decay": 5, "noise": 0.5}},
+    "torch_fire": {"bus": "SFX", "volume_db": -5, "pitch_jitter": 0.04, "synth": {"wave": "saw", "freq": 140, "freq_end": 60, "ms": 320, "decay": 2.5, "noise": 0.7}},
+    "enemy_fire": {"bus": "SFX", "volume_db": -9, "pitch_jitter": 0.05, "synth": {"wave": "square", "freq": 200, "freq_end": 70, "ms": 120, "decay": 5, "noise": 0.5}},
+    "ready_ping": {"bus": "UI", "volume_db": -12, "pitch_jitter": 0.0, "synth": {"wave": "sine", "freq": 1760, "freq_end": 1760, "ms": 140, "decay": 4}},
+    "hull_hit_heavy": {"bus": "SFX", "volume_db": -2, "pitch_jitter": 0.04, "synth": {"wave": "noise", "freq": 90, "freq_end": 40, "ms": 380, "decay": 3, "noise": 1.0}},
+    "hull_hit_light": {"bus": "SFX", "volume_db": -7, "pitch_jitter": 0.06, "synth": {"wave": "noise", "freq": 160, "freq_end": 80, "ms": 200, "decay": 4, "noise": 0.8}},
+    "miss_whoosh": {"bus": "SFX", "volume_db": -12, "pitch_jitter": 0.08, "synth": {"wave": "noise", "freq": 400, "freq_end": 400, "ms": 220, "decay": 2, "noise": 1.0}},
+    "ward_chime": {"bus": "SFX", "volume_db": -8, "pitch_jitter": 0.03, "synth": {"wave": "sine", "freq": 2093, "freq_end": 2093, "ms": 450, "decay": 3}},
+    "ward_crack": {"bus": "SFX", "volume_db": -6, "pitch_jitter": 0.05, "synth": {"wave": "tri", "freq": 2400, "freq_end": 700, "ms": 180, "decay": 4, "noise": 0.4}},
+    "blaze": {"bus": "SFX", "volume_db": -8, "pitch_jitter": 0.05, "synth": {"wave": "noise", "freq": 300, "freq_end": 300, "ms": 500, "decay": 1.5, "noise": 1.0}},
+    "crew_bell": {"bus": "SFX", "volume_db": -6, "pitch_jitter": 0.0, "synth": {"wave": "sine", "freq": 196, "freq_end": 194, "ms": 1400, "decay": 2.5}},
+    "enemy_break": {"bus": "SFX", "volume_db": -3, "pitch_jitter": 0.0, "synth": {"wave": "noise", "freq": 70, "freq_end": 30, "ms": 1100, "decay": 2, "noise": 1.0}},
+    "victory_sting": {"bus": "Music", "volume_db": -6, "pitch_jitter": 0.0, "synth": {"wave": "tri", "freq": 523, "freq_end": 784, "ms": 900, "decay": 1.5}},
+    "defeat_swell": {"bus": "Music", "volume_db": -6, "pitch_jitter": 0.0, "synth": {"wave": "sine", "freq": 55, "freq_end": 41, "ms": 2500, "decay": 1.2}},
+    "heartbeat": {"bus": "SFX", "volume_db": -6, "pitch_jitter": 0.0, "synth": {"wave": "sine", "freq": 60, "freq_end": 40, "ms": 180, "decay": 6}}
   },
   "cues": {
-    "ui.tap": {
-      "sound": "ui_tick",
-      "haptic": "tick",
-      "priority": 0,
-      "cooldown": 0.04
-    },
-    "ui.refused": {
-      "sound": "ui_nope",
-      "haptic": "double_tick",
-      "priority": 1,
-      "cooldown": 0.15
-    },
-    "ui.select": {
-      "sound": "ui_select",
-      "haptic": "tick",
-      "priority": 0,
-      "cooldown": 0.04
-    },
-    "ui.power_up": {
-      "sound": "ui_power_up",
-      "haptic": "tick",
-      "priority": 0,
-      "cooldown": 0.04
-    },
-    "ui.power_down": {
-      "sound": "ui_power_down",
-      "haptic": "tick",
-      "priority": 0,
-      "cooldown": 0.04
-    },
-    "ui.aim": {
-      "sound": "ui_lock",
-      "haptic": "tick",
-      "priority": 0,
-      "cooldown": 0.04
-    },
-    "ui.jump": {
-      "sound": "ui_jump",
-      "haptic": "rumble",
-      "priority": 1,
-      "cooldown": 0.5
-    },
-    "ui.choose": {
-      "sound": "ui_select",
-      "haptic": "tick",
-      "priority": 0,
-      "cooldown": 0.1
-    },
-    "ui.buy": {
-      "sound": "ui_buy",
-      "haptic": "tap",
-      "priority": 1,
-      "cooldown": 0.1
-    },
-    "weapon_ready.us": {
-      "sound": "ready_ping",
-      "priority": 0,
-      "cooldown": 0.3
-    },
-    "fire.us.kinetic": {
-      "sound": "rivet_fire",
-      "haptic": "tap",
-      "priority": 1,
-      "cooldown": 0.06
-    },
-    "fire.us.torch": {
-      "sound": "torch_fire",
-      "haptic": "tap",
-      "priority": 1,
-      "cooldown": 0.06
-    },
-    "fire.them": {
-      "sound": "enemy_fire",
-      "priority": 1,
-      "cooldown": 0.06
-    },
-    "hit.them": {
-      "sound": "hull_hit_light",
-      "haptic": "tap",
-      "shake": 0.18,
-      "priority": 2,
-      "cooldown": 0.05
-    },
-    "hit.us": {
-      "sound": "hull_hit_heavy",
-      "haptic": "thud",
-      "shake": 0.5,
-      "kick": 2.0,
-      "hitstop": 0.06,
-      "duck": true,
-      "priority": 3,
-      "cooldown": 0.05
-    },
-    "miss.us": {
-      "sound": "miss_whoosh",
-      "priority": 1,
-      "cooldown": 0.1
-    },
-    "miss.them": {
-      "sound": "miss_whoosh",
-      "priority": 1,
-      "cooldown": 0.1
-    },
-    "ward_block.us": {
-      "sound": "ward_chime",
-      "haptic": "tick",
-      "shake": 0.08,
-      "priority": 2,
-      "cooldown": 0.08
-    },
-    "ward_block.them": {
-      "sound": "ward_chime",
-      "priority": 1,
-      "cooldown": 0.08
-    },
-    "ward_hit.us": {
-      "sound": "ward_crack",
-      "haptic": "tap",
-      "shake": 0.15,
-      "priority": 2,
-      "cooldown": 0.08
-    },
-    "ward_hit.them": {
-      "sound": "ward_crack",
-      "haptic": "tick",
-      "priority": 1,
-      "cooldown": 0.08
-    },
-    "fire_start.us": {
-      "sound": "blaze",
-      "haptic": "rumble",
-      "shake": 0.15,
-      "priority": 2,
-      "cooldown": 0.3
-    },
-    "fire_start.them": {
-      "sound": "blaze",
-      "priority": 1,
-      "cooldown": 0.3
-    },
-    "fire_spread.us": {
-      "sound": "blaze",
-      "priority": 1,
-      "cooldown": 0.5
-    },
-    "crew_died.us": {
-      "sound": "crew_bell",
-      "haptic": "heartbeat",
-      "hitstop": 0.09,
-      "duck": true,
-      "priority": 3,
-      "cooldown": 0.3
-    },
-    "crew_died.them": {
-      "sound": "crew_bell",
-      "haptic": "tap",
-      "priority": 2,
-      "cooldown": 0.3
-    },
-    "danger": {
-      "sound": "heartbeat",
-      "haptic": "heartbeat",
-      "priority": 3,
-      "cooldown": 5.0
-    },
-    "won": {
-      "sound": "enemy_break",
-      "haptic": "big_rumble",
-      "shake": 0.8,
-      "hitstop": 0.09,
-      "duck": true,
-      "priority": 4,
-      "cooldown": 1.0
-    },
-    "lost": {
-      "sound": "defeat_swell",
-      "haptic": "big_rumble",
-      "shake": 0.9,
-      "hitstop": 0.12,
-      "duck": true,
-      "priority": 4,
-      "cooldown": 1.0
-    },
-    "ui.preview_haptics": {
-      "haptic": "thud",
-      "priority": 9,
-      "cooldown": 0.1
-    },
-    "ui.preview_sfx": {
-      "sound": "hull_hit_light",
-      "priority": 9,
-      "cooldown": 0.1
-    }
+    "ui.tap": {"sound": "ui_tick", "haptic": "tick", "priority": 0, "cooldown": 0.04},
+    "ui.refused": {"sound": "ui_nope", "haptic": "double_tick", "priority": 1, "cooldown": 0.15},
+    "ui.select": {"sound": "ui_select", "haptic": "tick", "priority": 0, "cooldown": 0.04},
+    "ui.power_up": {"sound": "ui_power_up", "haptic": "tick", "priority": 0, "cooldown": 0.04},
+    "ui.power_down": {"sound": "ui_power_down", "haptic": "tick", "priority": 0, "cooldown": 0.04},
+    "ui.aim": {"sound": "ui_lock", "haptic": "tick", "priority": 0, "cooldown": 0.04},
+    "ui.jump": {"sound": "ui_jump", "haptic": "rumble", "priority": 1, "cooldown": 0.5},
+    "ui.choose": {"sound": "ui_select", "haptic": "tick", "priority": 0, "cooldown": 0.1},
+    "ui.buy": {"sound": "ui_buy", "haptic": "tap", "priority": 1, "cooldown": 0.1},
+    "ui.preview_haptics": {"haptic": "thud", "priority": 9, "cooldown": 0.1},
+    "ui.preview_sfx": {"sound": "hull_hit_light", "priority": 9, "cooldown": 0.1},
+    "weapon_ready.us": {"sound": "ready_ping", "priority": 0, "cooldown": 0.3},
+    "fire.us.kinetic": {"sound": "rivet_fire", "haptic": "tap", "priority": 1, "cooldown": 0.06},
+    "fire.us.torch": {"sound": "torch_fire", "haptic": "tap", "priority": 1, "cooldown": 0.06},
+    "fire.them": {"sound": "enemy_fire", "priority": 1, "cooldown": 0.06},
+    "hit.them": {"sound": "hull_hit_light", "haptic": "tap", "shake": 0.18, "priority": 2, "cooldown": 0.05},
+    "hit.us": {"sound": "hull_hit_heavy", "haptic": "thud", "shake": 0.5, "kick": 2.0, "hitstop": 0.06, "duck": true, "priority": 3, "cooldown": 0.05},
+    "miss.us": {"sound": "miss_whoosh", "priority": 1, "cooldown": 0.1},
+    "miss.them": {"sound": "miss_whoosh", "priority": 1, "cooldown": 0.1},
+    "ward_block.us": {"sound": "ward_chime", "haptic": "tick", "shake": 0.08, "priority": 2, "cooldown": 0.08},
+    "ward_block.them": {"sound": "ward_chime", "priority": 1, "cooldown": 0.08},
+    "ward_hit.us": {"sound": "ward_crack", "haptic": "tap", "shake": 0.15, "priority": 2, "cooldown": 0.08},
+    "ward_hit.them": {"sound": "ward_crack", "haptic": "tick", "priority": 1, "cooldown": 0.08},
+    "fire_start.us": {"sound": "blaze", "haptic": "rumble", "shake": 0.15, "priority": 2, "cooldown": 0.3},
+    "fire_start.them": {"sound": "blaze", "priority": 1, "cooldown": 0.3},
+    "fire_spread.us": {"sound": "blaze", "priority": 1, "cooldown": 0.5},
+    "crew_died.us": {"sound": "crew_bell", "haptic": "heartbeat", "hitstop": 0.09, "duck": true, "priority": 3, "cooldown": 0.3},
+    "crew_died.them": {"sound": "crew_bell", "haptic": "tap", "priority": 2, "cooldown": 0.3},
+    "danger": {"sound": "heartbeat", "haptic": "heartbeat", "priority": 3, "cooldown": 5.0},
+    "won": {"sound": "enemy_break", "haptic": "big_rumble", "shake": 0.8, "hitstop": 0.09, "duck": true, "priority": 4, "cooldown": 1.0},
+    "lost": {"sound": "defeat_swell", "haptic": "big_rumble", "shake": 0.9, "hitstop": 0.12, "duck": true, "priority": 4, "cooldown": 1.0}
   },
   "music": {
     "fade": 1.5,
-    "hush_layers": [
-      "warm"
-    ],
+    "hush_layers": ["warm", "pluck"],
     "layers": {
-      "pad": {
-        "file": "",
-        "volume_db": -20,
-        "synth": {
-          "wave": "sine",
-          "notes": [
-            110,
-            164.8,
-            220,
-            277.2
-          ],
-          "ms": 5000,
-          "beats": 0,
-          "decay": 0
-        }
-      },
-      "warm": {
-        "file": "",
-        "volume_db": -24,
-        "synth": {
-          "wave": "tri",
-          "notes": [
-            329.6,
-            440
-          ],
-          "ms": 5000,
-          "beats": 0,
-          "decay": 0
-        }
-      },
-      "pulse": {
-        "file": "",
-        "volume_db": -18,
-        "synth": {
-          "wave": "sine",
-          "notes": [
-            55
-          ],
-          "ms": 2500,
-          "beats": 4,
-          "decay": 8
-        }
-      },
-      "drum": {
-        "file": "",
-        "volume_db": -16,
-        "synth": {
-          "wave": "noise",
-          "notes": [
-            80
-          ],
-          "ms": 2500,
-          "beats": 2,
-          "decay": 14
-        }
-      },
-      "heart": {
-        "file": "",
-        "volume_db": -12,
-        "synth": {
-          "wave": "sine",
-          "notes": [
-            50
-          ],
-          "ms": 1250,
-          "beats": 1,
-          "decay": 10
-        }
-      }
+      "pad": {"file": "res://audio/music/hearth_pad.ogg", "volume_db": -3},
+      "warm": {"file": "res://audio/music/hearth_warm.ogg", "volume_db": -3},
+      "pluck": {"file": "res://audio/music/hearth_pluck.ogg", "volume_db": -4},
+      "pulse": {"file": "res://audio/music/hearth_pulse.ogg", "volume_db": -3},
+      "drum": {"file": "res://audio/music/hearth_drum.ogg", "volume_db": -3},
+      "heart": {"file": "res://audio/music/hearth_heart.ogg", "volume_db": -3}
     },
     "states": {
-      "chart": [
-        "pad",
-        "warm"
-      ],
-      "event": [
-        "pad"
-      ],
-      "store": [
-        "pad",
-        "warm",
-        "pulse"
-      ],
-      "combat": [
-        "pad",
-        "warm",
-        "pulse",
-        "drum"
-      ],
-      "danger": [
-        "pad",
-        "pulse",
-        "drum",
-        "heart"
-      ],
-      "victory": [
-        "pad",
-        "warm"
-      ],
+      "chart": ["pad", "warm", "pluck"],
+      "event": ["pad", "pluck"],
+      "store": ["pad", "pluck", "warm"],
+      "combat": ["pad", "warm", "pluck", "pulse", "drum"],
+      "danger": ["pad", "pluck", "pulse", "drum", "heart"],
+      "victory": ["pad", "warm", "pluck"],
       "defeat": [],
       "silent": []
     }

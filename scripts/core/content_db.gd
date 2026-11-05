@@ -297,7 +297,7 @@ static func _validate_feedback(f: Dictionary, errors: Array[String]) -> void:
 	if layers.size() > 32:
 		errors.append("music: at most 32 layers")
 	for id: String in layers:
-		_validate_sound("music layer %s" % id, layers[id], errors)
+		_validate_layer("music layer %s" % id, layers[id], errors)
 	for state: String in music.get("states", {}):
 		for layer: Variant in music.states[state]:
 			if not layers.has(layer):
@@ -307,10 +307,32 @@ static func _validate_feedback(f: Dictionary, errors: Array[String]) -> void:
 			errors.append("music: unknown hush layer %s" % layer)
 
 
+## A music layer is a stem file that loops (set loop=true in its .import).
+static func _validate_layer(where: String, s: Dictionary, errors: Array[String]) -> void:
+	var file := str(s.get("file", ""))
+	if not ResourceLoader.exists(file):
+		errors.append("%s: stem not found %s" % [where, file])
+	elif not _loops(load(file)):
+		errors.append("%s: %s must be imported with loop on" % [where, file])
+	if not _num_in(s.get("volume_db", 0), -60.0, 12.0):
+		errors.append("%s: volume_db is -60..12" % where)
+
+
+static func _loops(stream: Resource) -> bool:
+	if stream is AudioStreamOggVorbis:
+		return (stream as AudioStreamOggVorbis).loop
+	if stream is AudioStreamWAV:
+		return (stream as AudioStreamWAV).loop_mode != AudioStreamWAV.LOOP_DISABLED
+	return false
+
+
+## A sound is a one-shot: a file that doesn't loop, or a synth recipe.
 static func _validate_sound(where: String, s: Dictionary, errors: Array[String]) -> void:
 	var file := str(s.get("file", ""))
 	if file != "" and not ResourceLoader.exists(file):
 		errors.append("%s: file not found %s" % [where, file])
+	elif file != "" and _loops(load(file)):
+		errors.append("%s: %s loops, but sounds play once" % [where, file])
 	if file == "" and not s.has("synth"):
 		errors.append("%s: needs a file or a synth recipe" % where)
 	if not _num_in(s.get("volume_db", 0), -60.0, 12.0):
@@ -333,15 +355,6 @@ static func _validate_synth(where: String, r: Dictionary, errors: Array[String])
 		errors.append("%s: decay is 0..100" % where)
 	if not _num_in(r.get("noise", 0), 0.0, 1.0):
 		errors.append("%s: noise is 0..1" % where)
-	if not _int_in(r.get("beats", 0), 0, 32):
-		errors.append("%s: beats is a whole number 0..32" % where)
-	var notes: Variant = r.get("notes", [220])
-	if not notes is Array or (notes as Array).is_empty():
-		errors.append("%s: notes must be a list of frequencies" % where)
-	else:
-		for n: Variant in notes:
-			if not _num_in(n, 1.0, 11000.0):
-				errors.append("%s: note %s is not 1..11000 Hz" % [where, n])
 
 
 static func _num_in(v: Variant, lo: float, hi: float) -> bool:
