@@ -56,6 +56,23 @@ static func reaches_chain(t: SceneTree) -> void:
 	_check(t, not r.next_reach() and r.jump_targets().is_empty(), "a won run goes nowhere")
 
 
+## A run across four Reaches sees more event beacons than there are stories;
+## every one still opens with a story.
+static func stories_last_the_run(t: SceneTree) -> void:
+	var r := Run.create(2)
+	var plain := 0
+	for eid: String in ContentDB.events:
+		if str(ContentDB.events[eid].get("beacon", "event")) == "event":
+			plain += 1
+	var last := ""
+	for i in plain * 2 + 1:
+		r.state = "chart"
+		r.event_id = ""
+		var eid := r._pick_event("event")
+		_check(t, eid != "" and eid != last, "event beacon %d has a fresh story" % i)
+		last = eid
+
+
 static func refit_and_stoke(t: SceneTree) -> void:
 	var r := _in_store(5)
 	r.scrap = 500
@@ -86,14 +103,24 @@ static func refit_and_stoke(t: SceneTree) -> void:
 	r.light = light_price
 	_check(t, r.stoke_price() == light_price and r.stoke(), "stoking costs Light")
 	_check(t, r.ship.reactor == reactor + 1 and r.light == 0, "and adds one reactor power")
-	_check(t, r.ship.stokes() == 1, "the ship counts its stokes")
+	_check(t, r.ship.stokes == 1, "the ship counts its stokes")
 	_check(t, not r.stoke(), "no stoking without the Light")
 	r.light = 999
 	while r.stoke():
 		pass
 	var cap: int = (ContentDB.systems.ember.stoke_light as Array).size()
-	_check(t, r.ship.stokes() == cap and r.stoke_price() == -1, "stoking stops at its cap")
+	_check(t, r.ship.stokes == cap and r.stoke_price() == -1, "stoking stops at its cap")
+	# A stoke counts itself; reactor power from elsewhere doesn't move its price.
+	r.ship.reactor += 3
+	_check(t, r.ship.stokes == cap and r.stoke_price() == -1, "the stoke cap ignores other power")
 	_check(t, r.close_refit() and r.state == "store", "Back returns to the store")
+	# The buttons and what they do come from one list.
+	_check(t, r.store_options().back() == "leave", "the store ends with Leave")
+	r.scrap = 100
+	_check(t, r.store_action("refit") and r.state == "refit", "a store option opens the refit page")
+	_check(t, r.refit_options().back() == "back", "the refit page ends with Back")
+	_check(t, r.store_action("engines"), "a refit option buys its level")
+	_check(t, r.store_action("back") and r.state == "store", "and back")
 	_check(t, not r.stoke() and not r.close_refit(), "nothing refits from the store itself")
 
 
@@ -104,11 +131,18 @@ static func enemies_grow(t: SceneTree) -> void:
 	var foe := r.combat.enemy()
 	var boost: Dictionary = r.reach().enemy_boost
 	_check(t, foe.max_hull == base.max_hull + int(boost.hull), "deep Reaches add enemy hull")
-	_check(t, foe.reactor == base.reactor + int(boost.get("reactor", 0)), "and reactor")
 	var raised := 0
 	for sys: String in boost.systems:
 		raised += foe.system_room(sys).level - base.system_room(sys).level
 	_check(t, raised > 0, "and system levels, through the same upgrade as refits")
+	var want_reactor := base.reactor + int(boost.get("reactor", 0)) + raised
+	_check(t, foe.reactor == want_reactor, "and the reactor to run every new level")
+	for sys: String in boost.systems:
+		_check(
+			t,
+			foe.system_room(sys).power > base.system_room(sys).power,
+			"a boosted %s comes powered, so the boost shows in the fight" % sys
+		)
 	_check(t, foe.used_power() <= foe.available_power(), "a boosted enemy stays within its reactor")
 	var r1 := Run.create(8)
 	r1._start_fight("ashmarket_cutter")
@@ -185,6 +219,9 @@ static func content_checked(t: SceneTree) -> void:
 	ContentDB.reaches = keep.duplicate(true)
 	ContentDB.reaches.reach_3.enemy_boost = {"systems": ["lasers"]}
 	_check(t, _has(ContentDB.validate(), "unknown system lasers"), "a bad enemy boost is caught")
+	ContentDB.reaches = keep.duplicate(true)
+	ContentDB.reaches.reach_3.enemy_boost = {"systems": ["weapons"]}
+	_check(t, _has(ContentDB.validate(), "no levels to buy"), "a boost that can't rise is caught")
 	ContentDB.reaches = keep
 	ContentDB.systems.helm.upgrade_scrap = [10, 0]
 	_check(t, _has(ContentDB.validate(), "whole numbers above 0"), "a bad refit price is caught")

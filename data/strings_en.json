@@ -114,6 +114,7 @@
   "UI_REFIT_LEVEL": "%s to %d",
   "UI_REFIT_MAXED": "%s at most",
   "UI_STOKE": "Stoke the Ember",
+  "UI_REFIT_NONE": "No %s aboard",
   "UI_REFIT_REACTOR": "Your reactor gives %d power.",
   "UI_STOKE_MAXED": "Ember burns full",
   "UI_GATES": "Gates",

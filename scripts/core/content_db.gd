@@ -103,6 +103,8 @@ static func validate() -> Array[String]:
 		_check_string(s.get("name", ""), "species %s" % sid, errors)
 	for sys_id: String in systems:
 		_validate_system(sys_id, systems[sys_id], errors)
+	if not systems.has("ember") or not systems.ember.get("stoke_light", []) is Array:
+		errors.append("system ember: needs a stoke_light price list")
 	for sys_id in Run.REFIT_SYSTEMS:
 		if not systems.has(sys_id):
 			errors.append("refit offers unknown system %s" % sys_id)
@@ -204,6 +206,8 @@ static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -
 	for sys: Variant in boost.get("systems", []):
 		if not systems.has(str(sys)):
 			errors.append("%s: enemy_boost raises unknown system %s" % [where, sys])
+		elif Ship.max_level(str(sys)) <= 1:
+			errors.append("%s: enemy_boost raises %s, which has no levels to buy" % [where, sys])
 	var store: Dictionary = r.get("store", {})
 	for item in Run.STORE_ITEMS:
 		_check_string("UI_STORE_" + item.to_upper(), "store item %s" % item, errors)

@@ -158,10 +158,10 @@ func _build_run_layout() -> void:
 			count = (run.event().get("choices", []) as Array).size()
 		"store":
 			mode = "store"
-			count = run.store_items().size() + 2  # and Refit, and Leave
+			count = run.store_options().size()
 		"refit":
 			mode = "refit"
-			count = Run.REFIT_SYSTEMS.size() + 2  # and Stoke, and Back
+			count = run.refit_options().size()
 	run_layout = RunLayout.build(screen, run.chart, mode, count)
 
 
@@ -332,6 +332,8 @@ func music_state() -> String:
 			return "store"
 		"lost":
 			return "defeat"
+		"won":
+			return "victory"
 	return "chart"
 
 
@@ -511,34 +513,16 @@ func _tap_run(p: Vector2i) -> void:
 				ui_cue("refused")
 				return
 			ui_cue("choose")
-		"store":
-			var items := run.store_items()
-			var i := int(b.id)
-			var done := false
-			if i < items.size():
-				done = run.buy(items[i])
-			elif i == items.size():
-				done = run.open_refit()
-			else:
-				done = run.leave_store()
-			if not done:
+		"store", "refit":
+			var opts := run.store_options() if b.kind == "store" else run.refit_options()
+			var option := opts[int(b.id)]
+			if not run.store_action(option):
 				ui_cue("refused")
 				return
-			ui_cue("buy" if i < items.size() else "tap")
-		"refit":
-			var i := int(b.id)
-			var systems := Run.REFIT_SYSTEMS
-			var done := false
-			if i < systems.size():
-				done = run.refit(systems[i])
-			elif i == systems.size():
-				done = run.stoke()
-			else:
-				done = run.close_refit()
-			if not done:
-				ui_cue("refused")
-				return
-			ui_cue("buy" if i <= systems.size() else "tap")
+			var paid := (
+				option in Run.STORE_ITEMS or option in Run.REFIT_SYSTEMS or option == "stoke"
+			)
+			ui_cue("buy" if paid else "tap")
 		"next":
 			if run.is_over() and run.outcome == "":
 				ui_cue("tap")

@@ -191,16 +191,16 @@ func finish_fight() -> bool:
 
 
 ## A story for a beacon of this kind, one the run hasn't seen if it can.
-## Plain events are never repeated. The openers for fights, stores and empty
-## beacons start a new cycle once all are seen, since the beacon still needs
-## one, but never show the same one twice in a row.
+## Once every story of a kind is seen, a new cycle starts, since a run across
+## four Reaches outlasts them and a beacon still needs one, but the same story
+## never shows twice in a row.
 func _pick_event(kind: String) -> String:
 	var ids: Array[String] = []
 	var seen: Array[String] = []
 	for eid: String in ContentDB.events:
 		if str(ContentDB.events[eid].get("beacon", "event")) == kind:
 			(seen if seen_events.has(eid) else ids).append(eid)
-	if ids.is_empty() and kind != "event" and not seen.is_empty():
+	if ids.is_empty() and not seen.is_empty():
 		var last := ""
 		for eid in seen_events:
 			if seen.has(eid):
@@ -342,6 +342,36 @@ func _gain_scrap(n: int) -> void:
 
 ## The store's refit page, and back. It is a run state so a save made on it
 ## reopens on it.
+## What the store's buttons do, top to bottom: its items, then Refit, then Leave.
+func store_options() -> Array[String]:
+	var out := store_items()
+	out.append_array(["refit", "leave"])
+	return out
+
+
+## What the refit page's buttons do: one per system, then Stoke, then Back.
+func refit_options() -> Array[String]:
+	var out: Array[String] = REFIT_SYSTEMS.duplicate()
+	out.append_array(["stoke", "back"])
+	return out
+
+
+## Does what a store or refit button says. Returns false if it can't.
+func store_action(option: String) -> bool:
+	match option:
+		"refit":
+			return open_refit()
+		"leave":
+			return leave_store()
+		"stoke":
+			return stoke()
+		"back":
+			return close_refit()
+	if option in REFIT_SYSTEMS:
+		return refit(option)
+	return buy(option)
+
+
 func open_refit() -> bool:
 	if state != "store":
 		return false
@@ -381,8 +411,7 @@ func refit(sys: String) -> bool:
 ## Light to stoke the Ember once more (one more reactor power), or -1 at the cap.
 func stoke_price() -> int:
 	var prices: Array = ContentDB.systems.ember.get("stoke_light", [])
-	var done := ship.stokes()
-	return int(prices[done]) if done < prices.size() else -1
+	return int(prices[ship.stokes]) if ship.stokes < prices.size() else -1
 
 
 func can_stoke() -> bool:
@@ -396,7 +425,7 @@ func stoke() -> bool:
 	if not can_stoke():
 		return false
 	light -= stoke_price()
-	ship.reactor += 1
+	ship.stoke()
 	return true
 
 

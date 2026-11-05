@@ -625,6 +625,7 @@ func test_run_screens_on_every_screen() -> void:
 func test_progression() -> void:
 	PROGRESS_TESTS.reaches_chain(self)
 	PROGRESS_TESTS.refit_and_stoke(self)
+	PROGRESS_TESTS.stories_last_the_run(self)
 	PROGRESS_TESTS.enemies_grow(self)
 	PROGRESS_TESTS.saves_keep_refits(self)
 	PROGRESS_TESTS.content_checked(self)

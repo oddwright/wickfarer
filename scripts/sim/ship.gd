@@ -23,6 +23,7 @@ var ward_deck: int = 1
 var ward_layers: int = 0
 var ward_regen: float = 0.0
 var next_uid: int = 1
+var stokes: int = 0  ## times the Ember has been stoked this run
 var ladders: Array[Dictionary] = []
 
 var _room_by_id: Dictionary = {}
@@ -493,19 +494,23 @@ func upgrade(sys: String) -> bool:
 	return true
 
 
-## Times the Ember has been stoked: reactor power above the hull's own.
-func stokes() -> int:
-	return maxi(0, reactor - int(ContentDB.ships[content_id].reactor))
+## Burns Light's worth into the Ember: one more reactor power, counted so
+## the next stoke's price and the cap don't depend on where the power came from.
+func stoke() -> void:
+	reactor += 1
+	stokes += 1
 
 
 ## A deeper Reach's enemy: more hull and reactor, and system levels bought
-## through upgrade() like the player's refits, each powered if it can be.
+## through upgrade() like the player's refits. Each level brings the reactor
+## power to run it, since enemy captains don't reshuffle power.
 func boost(b: Dictionary) -> void:
 	max_hull += int(b.get("hull", 0))
 	hull += int(b.get("hull", 0))
 	reactor += int(b.get("reactor", 0))
 	for sys: String in b.get("systems", []):
 		if upgrade(sys):
+			reactor += 1
 			power_up(sys)
 
 
@@ -533,6 +538,7 @@ func to_dict() -> Dictionary:
 		"hull": hull,
 		"max_hull": max_hull,
 		"reactor": reactor,
+		"stokes": stokes,
 		"rooms": rd,
 		"crew": cd,
 		"weapon_charge": Array(weapon_charge),
@@ -549,6 +555,7 @@ static func from_dict(d: Dictionary) -> Ship:
 	# Refits change these; saves from before refits keep the hull's own numbers.
 	s.max_hull = int(d.get("max_hull", s.max_hull))
 	s.reactor = int(d.get("reactor", s.reactor))
+	s.stokes = int(d.get("stokes", 0))
 	s.hull = int(d.hull)
 	for rd: Dictionary in d.rooms:
 		var r := s.room(rd.id)

@@ -71,6 +71,6 @@
     "start": {"scrap": 20, "light": 4},
     "fight_reward": {"scrap": [24, 38], "light": [1, 3]},
     "store": {"repair_scrap": 4, "light_scrap": 6},
-    "enemy_boost": {"hull": 4, "reactor": 1, "systems": ["helm", "wards"]}
+    "enemy_boost": {"hull": 3, "systems": ["helm"]}
   }
 }
