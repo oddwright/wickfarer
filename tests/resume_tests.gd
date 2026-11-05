@@ -19,9 +19,17 @@ static func _open(t: SceneTree) -> Node:
 	return main
 
 
-## Removes the app without any leaving notification: only what it already saved survives.
+## Drops the app without any leaving notification: only what it already saved
+## survives. It is freed at the end of the frame, so it is pointed at a scratch
+## folder first, and can't write over the save the next launch reads.
 static func _kill(main: Node) -> void:
+	main.save_dir = DIR + "/dead"
+	main.process_mode = Node.PROCESS_MODE_DISABLED
 	main.queue_free()
+
+
+static func _tap_at(main: Node, native: Vector2, long := false) -> void:
+	main._tap(native * main.screen.scale, long)
 
 
 static func _state(main: Node) -> String:
@@ -70,21 +78,34 @@ static func flow(t: SceneTree) -> void:
 	_check(t, lost >= 0.0 and lost <= MAIN.AUTOSAVE_EVERY + 0.001, "losing at most %.1fs" % lost)
 	var room: Room = c.combat.player().system_room("weapons")
 	var power: int = room.power
-	_check(t, c._order({"type": "power_down", "system": "weapons"}), "an order is taken")
+	c.paused = false
+	c.selected_weapon = -1  # still picked from before the last kill
+	var button: Dictionary = c.layout.button("system", "weapons")
+	_tap_at(c, Vector2((button.rect as Rect2i).get_center()), true)  # long press: power down
+	_tap_at(c, Vector2((c.layout.button("weapon", 0).rect as Rect2i).get_center()))
+	var target: Room = c.combat.enemy().rooms[0]
+	_tap_at(c, c.world.room_rect(1, target).get_center())
+	_check(t, c.selected_weapon == -1, "aiming clears the pick")
 	_kill(c)
 
 	var d := _open(t)
 	var room_d: Room = d.combat.player().system_room("weapons")
 	_check(t, room_d.power == power - 1, "an order is saved the moment it is given")
+	_check(t, d.combat.player().weapon_target[0] == target.id, "an aim too")
+	_check(t, d.selected_weapon == -1, "with the pick it left, not the one before")
 	SaveService.erase("run", DIR)
 	d._save()
 	_check(t, not FileAccess.file_exists(SaveService.path_for("run", DIR)), "unchanged: no write")
 	d._last_save = ""
 	d.open_menu("title")
+	d.open_menu("options")
 	_kill(d)
 
 	var e := _open(t)
-	_check(t, e.menu == "title" and e.run != null, "left on the title, reopens on it with Continue")
+	_check(t, e.menu == "options" and e.menu_base == "title", "Options over the title reopens")
+	_check(t, not e.world.visible and not e.run_view.visible, "with the game still hidden")
+	e.back()
+	_check(t, e.menu == "title" and e.run != null, "and Back lands on the title with Continue")
 	var old := {"run": e.run.to_dict()}
 	_kill(e)
 	SaveService.write("run", old, DIR)
@@ -93,4 +114,41 @@ static func flow(t: SceneTree) -> void:
 		t, f.menu == "title" and f.run != null, "a save from before the ui block opens the title"
 	)
 	_kill(f)
+	_bad_ui_falls_back(t)
+	_fixture_reopens(t)
 	SaveService.erase("run", DIR)
+
+
+## A damaged ui block never strands the player or breaks the launch.
+static func _bad_ui_falls_back(t: SceneTree) -> void:
+	var r := Run.create(3)
+	r._start_fight("ashmarket_skiff")
+	var bad := [
+		{"menu": "options", "menu_base": "options"},
+		{"menu": "pause", "menu_base": "title"},
+		{"menu": "ship_of_theseus", "menu_base": "pause"},
+	]
+	for ui: Dictionary in bad:
+		SaveService.write("run", {"run": r.to_dict(), "ui": ui}, DIR)
+		var m := _open(t)
+		_check(t, m.menu == "title", "%s falls back to the title" % ui)
+		_kill(m)
+	var junk := {"menu": "confirm", "menu_base": "pause", "confirm": 5, "weapon": null}
+	junk["music"] = null
+	junk["crew"] = "x"
+	SaveService.write("run", {"run": r.to_dict(), "ui": junk}, DIR)
+	var m := _open(t)
+	_check(t, m.menu == "pause" and m.selected_weapon == -1, "junk values are ignored")
+	_kill(m)
+
+
+## A real save with the ui block, kept as a fixture: paused mid-fight on the pause menu.
+static func _fixture_reopens(t: SceneTree) -> void:
+	var text := FileAccess.get_file_as_string("res://tests/fixtures/run_save_v2_ui.json")
+	var f := FileAccess.open(SaveService.path_for("run", DIR), FileAccess.WRITE)
+	f.store_string(text)
+	f.close()
+	var m := _open(t)
+	_check(t, m.menu == "pause" and m.combat != null, "the ui fixture reopens on the pause menu")
+	_check(t, m.combat.state == "fighting" and m.paused, "in its fight, paused")
+	_kill(m)

@@ -32,7 +32,7 @@ Writes are atomic: temp file, then swap, keeping the last good save as `.bak`
 |---|---|---|---|
 | `run.json` | `main.gd` | `{"run": Run.to_dict(), "ui": {...}}` | `SaveService.VERSION` + `migrate()` |
 | `settings.json` | `GameSettings` | comfort settings | `GameSettings.SETTINGS_VERSION` in `from_dict()` |
-| `tutorial.json` | tutorial | tutorial progress | its own version, like settings |
+| `tutorial.json` | tutorial (in progress) | tutorial progress | its own version, like settings |
 | `profile.json` | progression (planned) | unlocks, stats, anything that outlives a run | its own version, like settings |
 
 Anything that outlives a run gets its own slot. The run slot is erased when a run
@@ -49,7 +49,6 @@ title. Read with `.get()` and defaults everywhere; an empty or missing block mea
   "menu": "",            // "", "title", "pause", "options", "confirm", or a new page id
   "menu_base": "",       // the page Back returns to
   "confirm": "",         // what the confirm page asks about
-  "paused": false,       // the fight was paused (it always comes back paused anyway)
   "paused_before_menu": false,
   "weapon": -1,          // selected weapon slot
   "crew": -1,            // selected crew uid
@@ -58,8 +57,10 @@ title. Read with `.get()` and defaults everywhere; an empty or missing block mea
 ```
 
 A new menu page adds its own keys here (for example the ship picker's highlighted
-ship), saved in `main._ui_state()` and restored in `main._restore_ui()`. Unknown
-pages fall back to the title.
+ship), saved in `main._ui_state()` and restored in `main._restore_ui()`, and adds
+itself to `main.RESUMABLE_PAGES` under the page Back returns to. Pages over the title
+(Options, the New run confirm) reopen over the title. Unknown pages, or a page over
+the wrong base, fall back to the title.
 
 A live fight always comes back paused with "tap to resume", never running.
 
@@ -77,7 +78,10 @@ A live fight always comes back paused with "tap to resume", never running.
 4. **View-only state** (selection, the open menu, music stage) goes in the `ui` block.
    Purely cosmetic, short-lived state (floating numbers, flashes, shake) is not saved.
 5. **Meta state** that outlives a run (unlocks, currencies, tutorial flags) goes in its
-   own slot. Award it idempotently: record the run's id (`run.rng.run_seed`) in the profile when awarding, so a kill between "write the profile" and
-   "erase the run" can't award the same run twice when the run's last save replays.
+   own slot. Award it idempotently: the run save is erased when a run ends, and a kill
+   between "write the profile" and "erase the run" replays the run's last save on the
+   next launch. Give the run a unique id when it is created (not the seed: seeds come
+   from the clock and repeat), save it in `Run.to_dict()`, and record awarded ids in
+   the profile so the same run is never paid twice.
 6. Add a resume test: build the state, save, load into a fresh object, and check
    `J.canonical(a.to_dict()) == J.canonical(b.to_dict())`, then tick both and compare.

@@ -67,13 +67,15 @@ func to_dict(combat: Combat) -> Dictionary:
 ## Follows `combat` from a saved to_dict(); an empty one starts it fresh.
 func restore(d: Dictionary, combat: Combat) -> void:
 	_begin(combat)
-	if d.is_empty():
-		return
-	_theme = bool(d.get("theme", _theme))
-	_full = bool(d.get("full", _full))
-	var hulls: Array = d.get("start_hull", [])
-	if hulls.size() == 2:
+	_theme = _theme or d.get("theme") == true
+	_full = _full or d.get("full") == true
+	var hulls: Variant = d.get("start_hull")
+	if hulls is Array and hulls.size() == 2 and hulls.all(_is_number):
 		_start_hull = [int(hulls[0]), int(hulls[1])]
+
+
+static func _is_number(v: Variant) -> bool:
+	return v is float or v is int
 
 
 static func _burning(ship: Ship) -> bool:

@@ -1,3 +1,5 @@
+# gdlint: disable=max-public-methods
+# (every test_ method is public by design: the runner calls them by name)
 extends SceneTree
 ## Headless test runner: godot --headless --path . -s tests/run_tests.gd
 ## Exits with code 1 if anything fails, so CI goes red.

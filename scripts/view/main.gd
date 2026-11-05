@@ -10,8 +10,14 @@ const LONG_PRESS := 0.4
 ## A live fight saves this often as well as on every order, because iOS kills a
 ## swiped-away app without a callback and a crash sends none either.
 const AUTOSAVE_EVERY := 2.0
-## Menu pages a cold start can reopen; anything else falls back to the title.
-const RESUMABLE_PAGES: Array[String] = ["title", "pause", "options", "confirm"]
+## Menu pages a cold start can reopen, by the page Back returns to. Anything
+## else falls back to the title.
+const RESUMABLE_PAGES := {
+	"": [""],
+	"title": ["title", "options", "confirm"],
+	"pause": ["pause", "options", "confirm"],
+}
+const CONFIRMS: Array[String] = ["abandon", "new_run"]
 const MAX_STEPS_PER_FRAME := 5
 
 var save_dir := SaveService.DIR  ## tests point this at a scratch folder
@@ -132,7 +138,7 @@ func _set_run(r: Run) -> void:
 
 
 ## Call after every run action: shows the right screen and saves.
-func _enter_screen() -> void:
+func _enter_screen(save := true) -> void:
 	var fighting := run_screen() == "fight"
 	_show_game(menu_base != "title")
 	if fighting and combat != run.combat:
@@ -141,7 +147,8 @@ func _enter_screen() -> void:
 		combat = null
 		layout = null
 	_build_run_layout()
-	_save()
+	if save:
+		_save()
 
 
 ## The fight and run screens are hidden under the title menu, and dimmed
@@ -257,7 +264,6 @@ func _ui_state() -> Dictionary:
 		"menu": menu,
 		"menu_base": menu_base,
 		"confirm": confirm_action,
-		"paused": paused,
 		"paused_before_menu": _paused_before_menu,
 		"weapon": selected_weapon,
 		"crew": selected_crew,
@@ -265,38 +271,39 @@ func _ui_state() -> Dictionary:
 	}
 
 
-## Puts the screen back the way a save left it. Returns false when there is
-## nothing to go back to, and the app opens on the title instead.
+## Puts the screen back the way a save left it, with one write at the end.
+## Returns false when there is nothing to go back to, and the app opens on the
+## title instead. The data came off disk, so every value is checked.
 func _restore_ui(d: Dictionary) -> bool:
 	var page := str(d.get("menu", ""))
 	var base := str(d.get("menu_base", ""))
-	if (
-		run == null
-		or d.is_empty()
-		or base == "title"
-		or not (page == "" or page in RESUMABLE_PAGES)
-	):
+	if run == null or d.is_empty() or not page in RESUMABLE_PAGES.get(base, []):
 		return false
-	_enter_screen()
+	menu_base = base  # set first, so the title keeps the game hidden
+	_enter_screen(false)
 	if combat:
-		music_director.restore(d.get("music", {}), combat)
-		if combat.state == "fighting":
-			# never drop a player straight back into a live fight
-			paused = true
-			pause_reason = "UI_TAP_TO_RESUME"
-		var w := int(d.get("weapon", -1))
+		var music: Variant = d.get("music", {})
+		music_director.restore(music if music is Dictionary else {}, combat)
+		_hold_live_fight()
+		var w := _int_or(d.get("weapon"), -1)
 		selected_weapon = w if w >= 0 and w < combat.player().weapon_ids.size() else -1
-		var uid := int(d.get("crew", -1))
+		var uid := _int_or(d.get("crew"), -1)
 		selected_crew = uid if _player_has_crew(uid) else -1
 	if page != "":
 		confirm_action = str(d.get("confirm", ""))
-		_paused_before_menu = bool(d.get("paused_before_menu", false))
-		menu_base = base if base in RESUMABLE_PAGES else "pause"
+		if page == "confirm" and not confirm_action in CONFIRMS:
+			page = base  # a confirm page that asks nothing: back to its menu
+		_paused_before_menu = d.get("paused_before_menu") == true
 		menu = page
 		_build_menu_layout()
-		_show_game(true)
+		_show_game(base != "title")
 	_save()
 	return true
+
+
+## A JSON number as an int, or `fallback` for anything else (null, a string).
+static func _int_or(v: Variant, fallback: int) -> int:
+	return int(v) if v is float or v is int else fallback
 
 
 func _player_has_crew(uid: int) -> bool:
@@ -306,12 +313,11 @@ func _player_has_crew(uid: int) -> bool:
 	return false
 
 
-## Sends an order to the fight and saves it at once if it was taken.
-func _order(cmd: Dictionary) -> bool:
-	var ok := combat.apply(cmd)
-	if ok:
-		_save()
-	return ok
+## Never drop a player straight back into a live fight: it waits for a tap.
+func _hold_live_fight() -> void:
+	if combat and combat.state == "fighting":
+		paused = true
+		pause_reason = "UI_TAP_TO_RESUME"
 
 
 func _notification(what: int) -> void:
@@ -515,6 +521,11 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 	if combat == null:
 		_tap_run(p)
 		return
+	_tap_fight(p, long)
+	_save()  # an order saves the moment it's given, with the selection it leaves
+
+
+func _tap_fight(p: Vector2i, long: bool) -> void:
 	if combat.state != "fighting":
 		if layout.again_rect().grow(4).has_point(p):
 			ui_cue("tap")
@@ -529,7 +540,7 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 		return
 	var enemy_room := world.room_at(1, p)
 	if selected_weapon >= 0 and enemy_room:
-		var aimed := _order({"type": "aim", "weapon": selected_weapon, "room": enemy_room.id})
+		var aimed := combat.apply({"type": "aim", "weapon": selected_weapon, "room": enemy_room.id})
 		ui_cue("aim" if aimed else "refused")
 		selected_weapon = -1
 		return
@@ -541,7 +552,7 @@ func _tap(window_pos: Vector2, long: bool) -> void:
 		return
 	var my_room := world.room_at(0, p)
 	if selected_crew >= 0 and my_room:
-		var moved := _order({"type": "move", "crew": selected_crew, "room": my_room.id})
+		var moved := combat.apply({"type": "move", "crew": selected_crew, "room": my_room.id})
 		ui_cue("tap" if moved else "refused")
 		selected_crew = -1
 		return
@@ -553,12 +564,12 @@ func _press_button(b: Dictionary, long: bool) -> void:
 	match b.kind:
 		"system":
 			var cmd := "power_down" if long else "power_up"
-			var ok := _order({"type": cmd, "system": b.id})
+			var ok := combat.apply({"type": cmd, "system": b.id})
 			ui_cue(cmd if ok else "refused")
 		"weapon":
 			var i := int(b.id)
 			if long:
-				_order({"type": "aim", "weapon": i, "room": ""})
+				combat.apply({"type": "aim", "weapon": i, "room": ""})
 				selected_weapon = -1
 				ui_cue("power_down")
 			else:
@@ -566,7 +577,7 @@ func _press_button(b: Dictionary, long: bool) -> void:
 				selected_crew = -1
 				ui_cue("select")
 		"ward":
-			_order({"type": "ward_deck", "deck": 1 - combat.player().ward_deck})
+			combat.apply({"type": "ward_deck", "deck": 1 - combat.player().ward_deck})
 			ui_cue("tap")
 		"pause":
 			_toggle_pause()
@@ -737,12 +748,11 @@ func _confirm(what: String) -> void:
 
 func _continue() -> void:
 	close_menu()
-	_enter_screen()
-	if combat and combat.state == "fighting":
-		_pause("UI_TAP_TO_RESUME")  # never drop a player straight back into a live fight
-	else:
-		paused = false
-		pause_reason = ""
+	paused = false
+	pause_reason = ""
+	_enter_screen(false)
+	_hold_live_fight()
+	_save()
 
 
 func _new_run() -> void:
