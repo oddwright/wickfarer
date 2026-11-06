@@ -7,6 +7,9 @@ extends TextLayer
 const SEGMENTS := 10  ## one per options step
 
 var _shadow_tex: Dictionary = {}  ## ship id -> a locked hull's silhouette
+## ship id -> its sprite. Held here because a texture loaded and dropped inside
+## _draw() is freed before the frame renders, which draws a plain white box.
+var _ship_tex: Dictionary[String, Texture2D] = {}
 var _info_cache: Dictionary = {}  ## "id:open:width" -> the info column's wrapped lines
 
 
@@ -162,6 +165,8 @@ func _draw_hull_preview(box: Rect2i, id: String, open: bool) -> void:
 	var c: Dictionary = ContentDB.ships[id]
 	var fs := Vector2i(int(c.frame_size[0]), int(c.frame_size[1]))
 	var tex := _ship_texture(id)
+	if tex == null:
+		return  # a sprite that failed to load draws nothing rather than erroring each frame
 	var used := Pixel.used_rect(tex, fs)
 	var at := box.get_center() - used.get_center()
 	if open:
@@ -172,7 +177,12 @@ func _draw_hull_preview(box: Rect2i, id: String, open: bool) -> void:
 
 
 func _ship_texture(id: String) -> Texture2D:
-	return load(ContentDB.ships[id].sprite)
+	if not _ship_tex.has(id):
+		var tex: Texture2D = load(ContentDB.ships[id].sprite)
+		if tex == null:
+			return null  # not cached, so the next frame tries again
+		_ship_tex[id] = tex
+	return _ship_tex[id]
 
 
 func _shadow(id: String, fs: Vector2i) -> Texture2D:
