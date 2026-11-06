@@ -7,6 +7,37 @@ static func _check(t: SceneTree, cond: bool, what: String) -> void:
 	t.call("check", cond, what)
 
 
+## The outline strip is the glyph strip grown a pixel each way, glyph for glyph, so no letter
+## loses its outline; and the letters with diagonals stay wide enough to show them.
+static func font(t: SceneTree) -> void:
+	var index: Dictionary = JSON.parse_string(
+		FileAccess.get_file_as_string("res://art/font_3x5.json")
+	)
+	var glyphs := (load("res://art/font_3x5.png") as Texture2D).get_image()
+	var outline := (load("res://art/font_3x5_outline.png") as Texture2D).get_image()
+	_check(t, outline.get_height() == TextLayer.GLYPH_H + 2, "outline strip is 7 pixels tall")
+	_check(
+		t,
+		outline.get_width() == index.size() * TextLayer.OUTLINE_CELL,
+		"outline strip has a slot for every glyph"
+	)
+	var bad: Array[String] = []
+	for ch: String in index:
+		var slot := int(index[ch][0])
+		var w := int(index[ch][1])
+		for j in TextLayer.GLYPH_H:
+			for i in w:
+				if glyphs.get_pixel(slot * TextLayer.CELL + i, j).a == 0.0:
+					continue
+				for d in 9:
+					var o := Vector2i(slot * TextLayer.OUTLINE_CELL + i + d % 3, j + d / 3)
+					if outline.get_pixelv(o).a == 0.0 and ch not in bad:
+						bad.append(ch)
+	_check(t, bad.is_empty(), "every glyph pixel is outlined (%s)" % ", ".join(bad))
+	for ch in ["M", "N", "V", "W"]:
+		_check(t, int(index[ch][1]) == 5, "%s is five pixels wide" % ch)
+
+
 ## Every screen at every UI size the setting can reach on it, keyed "name at Nx",
 ## so layout checks cover the scales players can actually pick.
 static func variants(screens: Dictionary) -> Dictionary:
