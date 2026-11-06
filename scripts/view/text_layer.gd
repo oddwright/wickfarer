@@ -6,10 +6,10 @@ extends Node2D
 ## title as 3x3.
 
 const CELL := 5  ## glyph slot width in the font strip
-const OUTLINE_CELL := 7  ## slot width in the outline strip: the glyph grown by a pixel each side
+const OUTLINE_CELL := CELL + 2  ## outline strip slot: the glyph grown a pixel each side
 const GLYPH_H := 5
-const LINE := 8  ## two clear pixels between lines once the outline takes one
-const SPACE := 4  ## a word gap a pixel wider than a letter, so words don't run together
+const LINE := 8  ## leaves one clear pixel between one line's outline and the next
+const SPACE := 5  ## a word gap two pixels wider than a letter gap, so words don't run together
 
 static var glyph_index: Dictionary = {}  ## char -> [slot, width]
 
@@ -75,8 +75,11 @@ func _text(
 				x += (int(width) - w) / 2
 			elif align == HORIZONTAL_ALIGNMENT_RIGHT:
 				x += int(width) - w
-		# a one-pixel ink outline keeps text readable over stars, fire and panels
-		_line(line, Vector2i(x, y), k, Pixel.c("a", col.a), true)
+		# A one-pixel ink outline keeps text readable over stars, fire and panels. Neighbouring
+		# letters' outlines overlap in the gap between them, so fading text (alpha < 1) would
+		# show dark seams there; it goes without, which is only the last moments of a floater.
+		if col.a >= 1.0:
+			_line(line, Vector2i(x, y), k, Pixel.c("a"), true)
 		_line(line, Vector2i(x, y), k, col)
 		y += LINE * k
 
@@ -275,4 +278,4 @@ func _draw_promotions(me: Ship, at: Vector2i, width: int) -> void:
 			% [tr(c.name), tr(Skills.rank_name(int(p.rank))), tr(Skills.spec(p.skill).name)]
 		)
 		_text(Vector2(at.x, y), line, 5.0, Pixel.c("v"), HORIZONTAL_ALIGNMENT_CENTER, width)
-		y += 8
+		y += LINE

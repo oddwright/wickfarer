@@ -7,8 +7,8 @@ static func _check(t: SceneTree, cond: bool, what: String) -> void:
 	t.call("check", cond, what)
 
 
-## The outline strip is the glyph strip grown a pixel each way, glyph for glyph, so no letter
-## loses its outline; and the letters with diagonals stay wide enough to show them.
+## The outline strip is exactly the glyph strip grown a pixel each way, glyph for glyph; the
+## letters with diagonals stay wide enough to show them; and words have a wider gap than letters.
 static func font(t: SceneTree) -> void:
 	var index: Dictionary = JSON.parse_string(
 		FileAccess.get_file_as_string("res://art/font_3x5.json")
@@ -23,19 +23,31 @@ static func font(t: SceneTree) -> void:
 	)
 	var bad: Array[String] = []
 	for ch: String in index:
-		var slot := int(index[ch][0])
-		var w := int(index[ch][1])
-		for j in TextLayer.GLYPH_H:
-			for i in w:
-				if glyphs.get_pixel(slot * TextLayer.CELL + i, j).a == 0.0:
-					continue
-				for d in 9:
-					var o := Vector2i(slot * TextLayer.OUTLINE_CELL + i + d % 3, j + d / 3)
-					if outline.get_pixelv(o).a == 0.0 and ch not in bad:
-						bad.append(ch)
-	_check(t, bad.is_empty(), "every glyph pixel is outlined (%s)" % ", ".join(bad))
+		if not _outline_matches(glyphs, outline, int(index[ch][0]), int(index[ch][1])):
+			bad.append(ch)
+	_check(t, bad.is_empty(), "every outline is its glyph grown by a pixel (%s)" % ", ".join(bad))
 	for ch in ["M", "N", "V", "W"]:
 		_check(t, int(index[ch][1]) == 5, "%s is five pixels wide" % ch)
+	# K's arms leave the stem in the middle row, so it doesn't read as R
+	var k := int(index["K"][0]) * TextLayer.CELL
+	_check(t, glyphs.get_pixel(k + 1, 2).a == 0.0, "K has a gap beside its stem")
+	_check(t, TextLayer._adv(" ") > TextLayer._adv("A"), "a word gap is wider than a letter")
+
+
+## True when every pixel of the outline slot is set exactly where a glyph pixel is within one.
+static func _outline_matches(glyphs: Image, outline: Image, slot: int, w: int) -> bool:
+	for y in TextLayer.GLYPH_H + 2:
+		for x in TextLayer.OUTLINE_CELL:
+			var near := false
+			for d in 9:
+				var gx := x - 1 + d % 3 - 1
+				var gy := y - 1 + d / 3 - 1
+				if gx >= 0 and gx < w and gy >= 0 and gy < TextLayer.GLYPH_H:
+					near = near or glyphs.get_pixel(slot * TextLayer.CELL + gx, gy).a > 0.0
+			var lit := outline.get_pixel(slot * TextLayer.OUTLINE_CELL + x, y).a > 0.0
+			if lit != near:
+				return false
+	return true
 
 
 ## Every screen at every UI size the setting can reach on it, keyed "name at Nx",

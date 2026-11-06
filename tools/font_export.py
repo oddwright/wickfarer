@@ -28,12 +28,13 @@ for k, g in F.items():
 rows.update(WIDE)
 chars = sorted(rows.keys())
 CELL = 5
-im = Image.new('RGBA', (len(chars) * CELL, 5), (0, 0, 0, 0))
+GLYPH_H = 5
+im = Image.new('RGBA', (len(chars) * CELL, GLYPH_H), (0, 0, 0, 0))
 meta = {}
 for n, ch in enumerate(chars):
     r = rows[ch]
     meta[ch] = [n, len(r[0])]
-    for j in range(5):
+    for j in range(GLYPH_H):
         for i, v in enumerate(r[j]):
             if v == '#':
                 im.putpixel((n * CELL + i, j), (255, 255, 255, 255))
@@ -41,10 +42,10 @@ for n, ch in enumerate(chars):
 # stays readable over fire, stars and panels. Baked here so the game draws one extra quad per
 # letter, as it did for the old drop shadow, instead of eight.
 OCELL = CELL + 2
-ol = Image.new('RGBA', (len(chars) * OCELL, 7), (0, 0, 0, 0))
+ol = Image.new('RGBA', (len(chars) * OCELL, GLYPH_H + 2), (0, 0, 0, 0))
 for n, ch in enumerate(chars):
     r = rows[ch]
-    for j in range(5):
+    for j in range(GLYPH_H):
         for i, v in enumerate(r[j]):
             if v == '#':
                 for dx in (0, 1, 2):
