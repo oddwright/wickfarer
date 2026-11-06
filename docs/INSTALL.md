@@ -58,9 +58,9 @@ gh secret set ANDROID_KEY_ALIAS -b wickfarer
 
 The iOS workflow (`.github/workflows/ios.yml`) exports the Xcode project on a macOS runner,
 signs it through Apple's cloud with an App Store Connect API key, and uploads it to TestFlight.
-macOS minutes cost ten times Linux minutes, so it runs once a night when `main` has changed,
-and whenever it is started by hand (Actions, iOS, Run workflow). PRs that touch the iOS setup
-build it unsigned and upload nothing.
+macOS minutes cost ten times Linux minutes, so it runs only when started by hand: Actions,
+iOS, Run workflow, on `main`. That uploads the newest `main` build, once its checks have passed.
+PRs that change `ios.yml` build it unsigned and upload nothing.
 
 Once: in App Store Connect, Wickfarer, TestFlight, make an Internal Testing group with yourself
 in it and turn on automatic distribution. On the phone, install TestFlight and accept the
