@@ -47,6 +47,7 @@ static func roster(t: SceneTree) -> void:
 	ContentDB._validate_playable("bad", s, bad)
 	_check(t, bad.any(func(e: String) -> bool: return "unlock" in e), "a missing unlock is caught")
 	_torch_captain(t)
+	_preview_texture_lives(t)
 	for id in ids:
 		var run := Run.create(7, id)
 		_check(t, run.ship.content_id == id and not run.ship.is_dead(), "a run starts in %s" % id)
@@ -198,3 +199,17 @@ static func _torch_captain(t: SceneTree) -> void:
 	for target in me.weapon_target:
 		decks.append(foe.room(target).deck)
 	_check(t, decks == [1, 1], "and re-aims when the ward moves over its shot: %s" % [decks])
+
+
+## The select page draws each hull from a texture it holds. One loaded and let go
+## inside _draw() is freed before the frame renders: a white box on the phone.
+static func _preview_texture_lives(t: SceneTree) -> void:
+	for id in ShipRoster.playable():
+		var view := MenuView.new()
+		var held: WeakRef = weakref(_drawn_texture(view, id))
+		_check(t, held.get_ref() != null, "ship select keeps %s's sprite alive to render" % id)
+		view.free()
+
+
+static func _drawn_texture(view: MenuView, id: String) -> Texture2D:
+	return view._ship_texture(id)

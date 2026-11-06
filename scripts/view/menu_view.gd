@@ -7,6 +7,9 @@ extends TextLayer
 const SEGMENTS := 10  ## one per options step
 
 var _shadow_tex: Dictionary = {}  ## ship id -> a locked hull's silhouette
+## ship id -> its sprite. Held here because a texture loaded and dropped inside
+## _draw() is freed before the frame renders, which draws a plain white box.
+var _ship_tex: Dictionary = {}
 var _info_cache: Dictionary = {}  ## "id:open:width" -> the info column's wrapped lines
 
 
@@ -187,7 +190,9 @@ func _draw_hull_preview(box: Rect2i, id: String, open: bool) -> void:
 
 
 func _ship_texture(id: String) -> Texture2D:
-	return load(ContentDB.ships[id].sprite)
+	if not _ship_tex.has(id):
+		_ship_tex[id] = load(ContentDB.ships[id].sprite)
+	return _ship_tex[id]
 
 
 func _shadow(id: String, fs: Vector2i) -> Texture2D:
