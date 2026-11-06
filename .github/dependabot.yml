@@ -2,5 +2,10 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
+    # Each update PR runs the full checks, so bump monthly and in one PR, not one per action.
     schedule:
-      interval: weekly
+      interval: monthly
+    groups:
+      actions:
+        patterns:
+          - "*"

@@ -1,17 +1,15 @@
 name: iOS
 
-# macOS minutes cost ten times Linux minutes, so iOS does not build on every push. It builds
-# once a night when main has changed since the last upload, when started by hand, and on PRs
-# that touch the iOS setup (those build unsigned and upload nothing).
+# macOS minutes cost ten times Linux minutes (a 3 minute build bills 30), so iOS builds only
+# when started by hand (Actions, iOS, Run workflow) and on PRs that change this file or the
+# export presets (those build unsigned and upload nothing). A nightly build used to cost about
+# 30 minutes a day.
 on:
-  schedule:
-    - cron: "0 6 * * *"
   workflow_dispatch:
   pull_request:
     paths:
       - .github/workflows/ios.yml
       - export_presets.cfg
-      - project.godot
 
 env:
   GODOT_VERSION: 4.7.2
@@ -25,7 +23,7 @@ jobs:
   testflight:
     name: iOS build (TestFlight on main)
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 40
     permissions:
       contents: read
       actions: read
@@ -38,19 +36,9 @@ jobs:
       UPLOAD: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Skip if main has not changed since the last upload
-        id: changed
-        if: github.event_name == 'schedule'
-        run: |
-          last=$(gh run list --workflow ios.yml --branch main --status success --limit 1 \
-            --json headSha --jq '.[0].headSha // ""')
-          if [ "$last" = "$GITHUB_SHA" ]; then
-            echo "main is unchanged since the last TestFlight upload."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          fi
       - name: Only upload a commit that passed the checks
-        if: steps.changed.outputs.skip != 'true' && env.UPLOAD == 'true'
-        # The same gate the Android release has: lint, tests, APK and screenshots all green.
+        if: env.UPLOAD == 'true'
+        # The same gate the Android release has: the Checks run on this commit is green.
         run: |
           ok=$(gh run list --workflow checks.yml --commit "$GITHUB_SHA" --status success \
             --limit 1 --json databaseId --jq 'length')
@@ -59,7 +47,7 @@ jobs:
             exit 1
           fi
       - name: Check the App Store Connect secrets
-        if: steps.changed.outputs.skip != 'true' && env.UPLOAD == 'true'
+        if: env.UPLOAD == 'true'
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -75,7 +63,6 @@ jobs:
             exit 1
           fi
       - name: Check the Xcode version
-        if: steps.changed.outputs.skip != 'true'
         # Godot 4.7's iOS templates link against iOS 26 APIs, so Xcode 16 fails at the link step,
         # and the App Store only takes builds made with the current SDK. The macos-26 image's
         # default Xcode is a released 26.x with the iOS platform installed, so use that as is.
@@ -87,16 +74,17 @@ jobs:
             exit 1
           fi
       - name: Cache Godot and its export templates
-        if: steps.changed.outputs.skip != 'true'
         id: godot_cache
         uses: actions/cache@v4
         with:
           path: |
             ~/godot-bin
             ~/Library/Application Support/Godot/export_templates
-          key: godot-macos-${{ env.GODOT_VERSION }}
+          # Only the iOS templates are kept: the full set is over 1 GB, and restoring it on a
+          # runner billed at 10x cost minutes on every build.
+          key: godot-macos-ios-${{ env.GODOT_VERSION }}
       - name: Install Godot and the export templates
-        if: steps.changed.outputs.skip != 'true' && steps.godot_cache.outputs.cache-hit != 'true'
+        if: steps.godot_cache.outputs.cache-hit != 'true'
         # A stalled download once held this step for 45 minutes; fail fast and retry instead.
         timeout-minutes: 15
         run: |
@@ -105,13 +93,13 @@ jobs:
           curl -fsSL --retry 3 --connect-timeout 30 --max-time 300 -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_macos.universal.zip"
           unzip -oq godot.zip -d ~/godot-bin
           curl -fsSL --retry 3 --connect-timeout 30 --max-time 600 -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
-          unzip -oq templates.tpz
+          unzip -oq templates.tpz 'templates/ios*' templates/version.txt
+          ls templates
           dest="$HOME/Library/Application Support/Godot/export_templates/${GODOT_VERSION}.stable"
           mkdir -p "$(dirname "$dest")"
           mv templates "$dest"
           rm godot.zip templates.tpz
       - name: Put Godot on the path
-        if: steps.changed.outputs.skip != 'true'
         run: |
           sudo ln -sf ~/godot-bin/Godot.app/Contents/MacOS/Godot /usr/local/bin/godot
           godot --version
@@ -121,7 +109,6 @@ jobs:
             sudo ln -sf "$(brew --prefix)/bin/gtimeout" /usr/local/bin/timeout
           fi
       - name: Number this build
-        if: steps.changed.outputs.skip != 'true'
         # The App Store wants a 1 to 3 part version and a build number that only goes up.
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -140,7 +127,6 @@ jobs:
           sed -i '' "s/^application\/app_store_team_id=.*/application\/app_store_team_id=\"$team\"/" export_presets.cfg
           grep -E '^application/(short_version|version)=' export_presets.cfg
       - name: Export the Xcode project
-        if: steps.changed.outputs.skip != 'true'
         run: |
           tools/ci_godot.sh --headless --path . --import
           mkdir -p build/ios
@@ -152,13 +138,13 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" "$plist" 2> /dev/null \
             || /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$plist"
       - name: Build unsigned (PR check)
-        if: steps.changed.outputs.skip != 'true' && env.UPLOAD != 'true'
+        if: env.UPLOAD != 'true'
         run: |
           xcodebuild -project build/ios/wickfarer.xcodeproj -scheme wickfarer -configuration Release \
             -destination 'generic/platform=iOS' -derivedDataPath build/dd build CODE_SIGNING_ALLOWED=NO \
             | tail -n 30
       - name: Archive, sign and upload to TestFlight
-        if: steps.changed.outputs.skip != 'true' && env.UPLOAD == 'true'
+        if: env.UPLOAD == 'true'
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}

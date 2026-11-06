@@ -32,7 +32,8 @@ Godot 4.7.2, GDScript, Compatibility renderer.
 
 ## Working on the game
 - Read `CLAUDE.md` first: it has the architecture rules every change follows.
-- Every PR runs format and lint, the headless tests, a balance report, layout screenshots on
-  five phone and foldable sizes, and an Android debug APK build. Claude reviews every PR in the
-  project session at high effort before it is merged.
+- Every PR runs format and lint, the headless tests and an Android debug APK build, plus a
+  balance report when it touches the rules or content and layout screenshots on seven phone and
+  foldable sizes when it touches what is drawn (see the top of `.github/workflows/checks.yml`).
+  Claude reviews every PR in the project session at high effort before it is merged.
 - Bugs: use the issue template and include the fight's seed and your device.

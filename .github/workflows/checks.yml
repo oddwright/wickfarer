@@ -1,19 +1,90 @@
 name: Checks
 
+# Actions minutes are limited, so each run does only what its change needs:
+# - PRs that touch only docs skip CI. A new push to a PR cancels the run it replaces.
+# - The balance reports (most of a run's minutes) run on PRs that touch the rules or content.
+# - Layout screenshots run on PRs that touch what is drawn.
+# - A merge to main already passed all of this as a PR, so it runs lint and tests, builds the
+#   APK and publishes it, and skips the reports and screenshots.
+# - "Run workflow" by hand runs everything.
 on:
   push:
     branches: [main]
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - docs/**
+      - .github/ISSUE_TEMPLATE/**
+      - .github/CODEOWNERS
+      - .github/dependabot.yml
+      - .github/pull_request_template.md
+  workflow_dispatch:
+
+concurrency:
+  # A PR's runs share a group, so a new push cancels the old run. Every other run gets a group of
+  # its own: a shared group would also drop a queued merge to main, which must publish its build.
+  group: ${{ github.event_name == 'pull_request' && format('checks-pr-{0}', github.event.pull_request.number) || format('checks-run-{0}', github.run_id) }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 env:
   GODOT_VERSION: 4.7.2
 
 jobs:
-  lint:
-    name: Format and lint
+  checks:
+    name: Lint and tests
     runs-on: ubuntu-latest
+    # A stalled step must not bill for hours (one apt-get once held a runner for six).
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      screens: ${{ steps.scope.outputs.screens }}
     steps:
       - uses: actions/checkout@v4
+      - name: Pick the slow checks this change needs
+        id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          balance=true
+          screens=true
+          if [ "$EVENT" = push ]; then
+            balance=false
+            screens=false
+          elif [ "$EVENT" = pull_request ]; then
+            # grep exits 2 on a bad pattern; that must fail the run, not quietly skip a check.
+            touches() {
+              local rc=0
+              grep -qE "$1" <<< "$files" || rc=$?
+              if [ "$rc" -gt 1 ]; then
+                echo "::error::Bad file pattern: $1"
+                exit 1
+              fi
+              return "$rc"
+            }
+            if files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)'); then
+              printf 'Changed files:\n%s\n' "$files"
+              if ! touches '^(scripts/(sim|core)/|data/|tools/auto[a-z]*\.gd$|tools/ci_godot\.sh$|\.github/(actions|workflows/checks\.yml))'; then
+                balance=false
+              fi
+              if ! touches '^(scripts/|data/|art/|scenes/|tools/(shot\.gd|ci_godot\.sh)$|project\.godot$|\.github/(actions|workflows/checks\.yml))'; then
+                screens=false
+              fi
+            else
+              echo "::warning::Could not list the PR's files, so every check runs."
+            fi
+          fi
+          echo "balance=$balance screens=$screens"
+          {
+            echo "balance=$balance"
+            echo "screens=$screens"
+          } >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -22,27 +93,23 @@ jobs:
         run: gdformat --check -l 100 scripts tests tools
       - name: Lint
         run: gdlint scripts tests tools
-
-  test:
-    name: Headless tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-godot
         with:
           version: ${{ env.GODOT_VERSION }}
       - name: Run tests
         run: tools/ci_godot.sh --headless --path . -s tests/run_tests.gd
       - name: Balance report (40 seeded fights per policy)
+        if: steps.scope.outputs.balance == 'true'
         run: |
           tools/ci_godot.sh --headless --path . -s tools/autobattle.gd -- 40
           cp godot.log balance.txt
       - name: Run report (40 seeded Reach runs by the autopilot)
+        if: steps.scope.outputs.balance == 'true'
         run: |
           tools/ci_godot.sh --headless --path . -s tools/autorun.gd -- 40
           cat godot.log >> balance.txt
       - name: Add balance to the run summary
-        if: always()
+        if: always() && steps.scope.outputs.balance == 'true'
         run: |
           {
             echo '### Auto-battle balance'
@@ -51,10 +118,12 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  android:
-    name: Android debug APK
-    needs: test
+  build:
+    # The APK and the screenshots share one runner, so Godot is set up once, not twice.
+    name: Android APK and layout screenshots
+    needs: checks
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     outputs:
       version: ${{ steps.version.outputs.name }}
     steps:
@@ -71,12 +140,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.local/share/godot/export_templates
-          key: godot-templates-${{ env.GODOT_VERSION }}
+          # Only the Android templates are kept: the full set is over 1 GB and took half a
+          # minute to restore on every build.
+          key: godot-templates-android-${{ env.GODOT_VERSION }}
       - name: Install export templates
         if: steps.templates.outputs.cache-hit != 'true'
+        timeout-minutes: 10
         run: |
-          curl -sSL -o templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
-          unzip -q templates.tpz
+          curl -fsSL --retry 3 --connect-timeout 30 --max-time 480 -o templates.tpz "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q templates.tpz 'templates/android_*' templates/version.txt
+          rm templates.tpz
+          ls templates
           mkdir -p ~/.local/share/godot/export_templates
           mv templates ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
       - name: Point Godot at the Android SDK and Java
@@ -170,19 +244,13 @@ jobs:
           name: wickfarer-android-debug
           path: build/wickfarer-debug.apk
           retention-days: 14
-
-  screens:
-    name: Layout screenshots
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - name: Install a virtual display
+        if: needs.checks.outputs.screens == 'true'
+        timeout-minutes: 5
         run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1 > /dev/null
-      - uses: ./.github/actions/setup-godot
-        with:
-          version: ${{ env.GODOT_VERSION }}
       - name: Capture phone and foldable layouts
+        if: needs.checks.outputs.screens == 'true'
+        timeout-minutes: 10
         run: |
           mkdir -p screens
           while read -r w h name; do
@@ -201,6 +269,7 @@ jobs:
           1080 2340 phone-portrait
           LIST
       - uses: actions/upload-artifact@v4
+        if: needs.checks.outputs.screens == 'true'
         with:
           name: layout-screenshots
           path: screens/
@@ -212,8 +281,9 @@ jobs:
     # releases/latest/download/wickfarer.apk and updaters like Obtainium can follow it.
     # It is a debug export on purpose: it is for our own test phones, not a store.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [lint, test, android, screens]
+    needs: [checks, build]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     defaults:
@@ -222,7 +292,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      VERSION: ${{ needs.android.outputs.version }}
+      VERSION: ${{ needs.build.outputs.version }}
       # CI releases are recognised by this title suffix; hand-made releases never carry it.
       CI_MARK: "(CI build)"
       KEEP_BUILDS: 20
