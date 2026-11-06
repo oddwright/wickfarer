@@ -123,13 +123,11 @@ func _options() -> void:
 	var rx: int
 	var rw: int
 	var feel_top := TOP
-	var deepest := maxi(AUDIO_ROWS.size(), FEEL_ROWS.size())
 	if kind == "tall":
 		lw = w - MARGIN * 2
 		rx = lx
 		rw = lw
 		feel_top = TOP + AUDIO_ROWS.size() * ROW + 6
-		deepest = AUDIO_ROWS.size() + FEEL_ROWS.size()
 	elif hinge.size.x == 0:
 		lw = (w - MARGIN * 2 - COL_GAP) / 2
 		rx = lx + lw + COL_GAP
@@ -139,7 +137,9 @@ func _options() -> void:
 		rx = hinge.end.x + 4
 		rw = w - MARGIN - rx
 	title_rect = Rect2i(lx, 6, w - MARGIN * 2, 10)
-	# A short canvas closes the rows up rather than pushing the footer off the bottom.
+	# A short Wide or Square canvas closes the rows up rather than pushing the footer
+	# off the bottom. Tall has height to spare (ScreenManager.MIN_TALL_H).
+	var deepest := maxi(AUDIO_ROWS.size(), FEEL_ROWS.size())
 	var pitch := clampi((native.y - BTN_H - MARGIN - 4 - TOP) / deepest, ROW_MIN, ROW)
 	if kind == "tall":
 		pitch = ROW

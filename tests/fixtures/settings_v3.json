@@ -1,1 +1,1 @@
-{"version": 2, "saved_at": 1762444800, "data": {"settings_version": 3, "volume": {"Master": 0.6, "Music": 0.0, "SFX": 1.0, "UI": 0.5}, "haptics": 0.5, "shake": 0.25, "hitstop": false, "reduce_flashing": true, "ui_size": -1, "force_landscape": true}}
+{"version": 5, "saved_at": 1762444800, "data": {"settings_version": 3, "volume": {"Master": 0.6, "Music": 0.0, "SFX": 1.0, "UI": 0.5}, "haptics": 0.5, "shake": 0.25, "hitstop": false, "reduce_flashing": true, "ui_size": -1, "force_landscape": true}}

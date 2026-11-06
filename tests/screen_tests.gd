@@ -92,6 +92,7 @@ static func ui_size(t: SceneTree) -> void:
 		(
 			ScreenManager.change_reason("wide", "tall") == "UI_TURN_PAUSE"
 			and ScreenManager.change_reason("wide", "square") == "UI_FOLD_PAUSE"
+			and ScreenManager.change_reason("tall", "square") == "UI_FOLD_PAUSE"
 		),
 		"turning the phone says why the fight paused"
 	)

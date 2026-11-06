@@ -59,8 +59,8 @@ static func build(
 	elif l.kind == "wide":
 		# Centre the ships in the band between the top bar and the buttons,
 		# leaving a line underneath for prompts.
-		var band := row_y - 40 - 14
-		var py := 40 + maxi(0, (band - player_frame.y) / 2)
+		var band := row_y - BAR_H - 14
+		var py := BAR_H + maxi(0, (band - player_frame.y) / 2)
 		l.player_origin = Vector2i(2 - pu.position.x, py)
 		l.enemy_origin = Vector2i(w - 2 - eu.end.x, py + (player_frame.y - enemy_frame.y) / 2)
 		var x := 4
@@ -83,9 +83,9 @@ static func build(
 	else:
 		# Spread the two ships evenly down the space above the buttons.
 		var row2_top := row_y - ROW_H - 4
-		var free := row2_top - 40 - 14 - enemy_frame.y - player_frame.y
+		var free := row2_top - BAR_H - 14 - enemy_frame.y - player_frame.y
 		var gap := maxi(8, free / 3)
-		l.enemy_origin = Vector2i(w - 4 - eu.end.x, 40 + gap)
+		l.enemy_origin = Vector2i(w - 4 - eu.end.x, BAR_H + gap)
 		l.player_origin = Vector2i(4 - pu.position.x, l.enemy_origin.y + enemy_frame.y + gap)
 		# Left cluster: systems. Right cluster: weapons. The fold line stays empty.
 		var x := 4
@@ -166,11 +166,11 @@ func button(kind_name: String, id: Variant = 0) -> Dictionary:
 	return {}
 
 
-## Where the big PAUSED is written: mid-screen, or in Tall the gap over the player's
-## status lines, which the middle of a tall canvas runs into.
+## Where the big PAUSED is written: mid-screen, over the ships. In Tall the middle of
+## the canvas is the player's status lines, so it goes over the player's hull instead.
 func paused_y() -> int:
 	if kind == "tall":
-		return player_bar_y - 4
+		return player_body.get_center().y + 7
 	return native.y / 2 - 26
 
 

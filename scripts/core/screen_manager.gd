@@ -75,9 +75,11 @@ static func fit(window: Vector2i, layout: String, tight: bool) -> int:
 	return maxi(1, mini(mini(short / MIN_SHORT_SQUARE, long / MIN_LONG_SQUARE), across))
 
 
-## Why a fight pauses when the layout changes under it: a fold, or the phone turning.
+## Why a fight pauses when the layout changes under it. Only Wide and Tall swap by
+## turning the phone; Square comes and goes with a fold (a Fold's inner screen).
 static func change_reason(before: String, after: String) -> String:
-	return "UI_TURN_PAUSE" if "tall" in [before, after] else "UI_FOLD_PAUSE"
+	var turned := before != after and before in ["wide", "tall"] and after in ["wide", "tall"]
+	return "UI_TURN_PAUSE" if turned else "UI_FOLD_PAUSE"
 
 
 ## Lets the phone turn the game upright, or holds it sideways when the player asks.
