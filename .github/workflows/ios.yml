@@ -35,7 +35,7 @@ jobs:
       GH_REPO: ${{ github.repository }}
       UPLOAD: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Only upload a commit that passed the checks
         if: env.UPLOAD == 'true'
         # The same gate the Android release has: the Checks run on this commit is green.
@@ -75,7 +75,7 @@ jobs:
           fi
       - name: Cache Godot and its export templates
         id: godot_cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/godot-bin

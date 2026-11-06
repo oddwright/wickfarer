@@ -44,7 +44,7 @@ jobs:
     outputs:
       screens: ${{ steps.scope.outputs.screens }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Pick the slow checks this change needs
         id: scope
         env:
@@ -85,7 +85,7 @@ jobs:
             echo "balance=$balance"
             echo "screens=$screens"
           } >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: pip install "gdtoolkit==4.5.0"  # pinned: formatter output must not drift
@@ -127,8 +127,8 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.name }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
@@ -137,7 +137,7 @@ jobs:
           version: ${{ env.GODOT_VERSION }}
       - name: Cache export templates
         id: templates
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.local/share/godot/export_templates
           # Only the Android templates are kept: the full set is over 1 GB and took half a
@@ -184,7 +184,7 @@ jobs:
       - name: Restore the cached debug keystore
         if: steps.secret_key.outputs.found != 'true'
         id: keystore
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           # One keystore for every build, so a tester can install a new APK over
           # the old one and keep their saves.
@@ -239,7 +239,7 @@ jobs:
           godot --headless --path . --export-debug "Android" build/wickfarer-debug.apk
           ls -la build
           test -s build/wickfarer-debug.apk
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wickfarer-android-debug
           path: build/wickfarer-debug.apk
@@ -268,7 +268,7 @@ jobs:
           1080 2520 fold7-cover-portrait
           1080 2340 phone-portrait
           LIST
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: needs.checks.outputs.screens == 'true'
         with:
           name: layout-screenshots
@@ -297,7 +297,7 @@ jobs:
       CI_MARK: "(CI build)"
       KEEP_BUILDS: 20
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: wickfarer-android-debug
           path: build
