@@ -58,12 +58,22 @@ jobs:
             balance=false
             screens=false
           elif [ "$EVENT" = pull_request ]; then
+            # grep exits 2 on a bad pattern; that must fail the run, not quietly skip a check.
+            touches() {
+              local rc=0
+              grep -qE "$1" <<< "$files" || rc=$?
+              if [ "$rc" -gt 1 ]; then
+                echo "::error::Bad file pattern: $1"
+                exit 1
+              fi
+              return "$rc"
+            }
             if files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)'); then
               printf 'Changed files:\n%s\n' "$files"
-              if ! grep -qE '^(scripts/(sim|core)/|data/|tools/auto[a-z]*\.gd$|tools/ci_godot\.sh$|\.github/(actions|workflows/checks\.yml)' <<< "$files"; then
+              if ! touches '^(scripts/(sim|core)/|data/|tools/auto[a-z]*\.gd$|tools/ci_godot\.sh$|\.github/(actions|workflows/checks\.yml))'; then
                 balance=false
               fi
-              if ! grep -qE '^(scripts/|data/|art/|scenes/|tools/(shot\.gd|ci_godot\.sh)$|project\.godot$|\.github/(actions|workflows/checks\.yml))' <<< "$files"; then
+              if ! touches '^(scripts/|data/|art/|scenes/|tools/(shot\.gd|ci_godot\.sh)$|project\.godot$|\.github/(actions|workflows/checks\.yml))'; then
                 screens=false
               fi
             else
