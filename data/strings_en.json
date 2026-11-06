@@ -49,6 +49,7 @@
   "UI_MISS": "miss",
   "UI_WARDED": "warded",
   "UI_FOLD_PAUSE": "Paused for the fold",
+  "UI_TURN_PAUSE": "Paused while the screen turned",
   "UI_COLD": "cold",
   "UI_HINT": "Tap a weapon, then an enemy room. Tap crew, then a room. Tap a system to add power, hold to remove.",
   "EV_LANTERN_BUOY": "A drift-lantern still burns at the edge of the lane, a little Light caught in its glass. Nobody has tended it in years.",
@@ -211,6 +212,7 @@
   "UI_OPT_HITSTOP": "Hit pause",
   "UI_OPT_REDUCE_FLASHING": "Less flash",
   "UI_OPT_UI_SIZE": "UI size",
+  "UI_OPT_FORCE_LANDSCAPE": "Lock sideways",
   "UI_SIZE_AUTO": "auto",
   "UI_SIZE_SCALE": "%dx",
   "UI_ON": "On",
@@ -422,6 +424,5 @@
   "SHIP_BRINE_CATHEDRAL_BLURB": "A walled pilgrim hauler. Its guns and a heavy ward sit low behind thick plate, but the Ember is out on the top deck. Slow to dodge, slow to kill. Outlast them.",
   "SHIP_PORCELAIN_SAINT_BLURB": "Fast, armoured, crewed by Sable who carry their own heat. Torches only, and torches can't break a ward: burn the deck they leave open. No mend bay.",
   "TUT_MUSTER": "Crew work better at their post. Tap Muster to send everyone back.",
-  "TIP_POST": "Hold a crew member to make that room their post.",
-  "UI_ROTATE": "Hold it sideways for a bigger view"
+  "TIP_POST": "Hold a crew member to make that room their post."
 }

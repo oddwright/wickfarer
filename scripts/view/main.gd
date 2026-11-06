@@ -117,6 +117,7 @@ func _setup_feedback() -> void:
 	audio.apply_settings(settings)
 	haptics = Haptics.new(ContentDB.feedback.get("haptics", {}))
 	haptics.strength = settings.haptics
+	ScreenManager.orient(settings.force_landscape)
 
 
 ## Plays a UI cue (a tap, a refused order). Safe before _ready, for tests.
@@ -220,7 +221,7 @@ func _on_resize() -> void:
 	var next := ScreenManager.compute(size, settings.ui_size if settings else 0)
 	var mid_fight := combat != null and combat.state == "fighting"
 	if not screen.is_empty() and next.layout != screen.layout and mid_fight:
-		_pause("UI_FOLD_PAUSE")  # folding or unfolding mid-fight pauses it
+		_pause(ScreenManager.change_reason(screen.layout, next.layout))  # a fold or a turn
 	screen = next
 	container.stretch_shrink = screen.scale
 	container.position = Vector2.ZERO
@@ -953,6 +954,7 @@ func _press_option(b: Dictionary) -> void:
 		_on_resize()  # rescales the canvas and rebuilds every layout, this page too
 	audio.apply_settings(settings)
 	haptics.strength = settings.haptics
+	ScreenManager.orient(settings.force_landscape)
 	settings.save(save_dir)
 
 

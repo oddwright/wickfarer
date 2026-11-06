@@ -101,7 +101,7 @@ func _draw() -> void:
 	var ink := Pixel.c("h")
 	var quiet := Pixel.c("g")
 	_text(
-		Vector2(4, 11),
+		Vector2(4, l.player_bar_y + 11),
 		(
 			"%s   %s %d/%d"
 			% [tr(ContentDB.ships[me.content_id].name), tr("UI_HULL"), me.hull, me.max_hull]
@@ -110,7 +110,7 @@ func _draw() -> void:
 		ink
 	)
 	_text(
-		Vector2(4, 37),
+		Vector2(4, l.player_bar_y + 37),
 		(
 			"%s %d/%d    %s %d%%"
 			% [
@@ -214,7 +214,7 @@ func _draw() -> void:
 	var said: bool = main.menu != "" or held or main.roster.open
 	if main.paused and combat.state == "fighting" and not said:
 		_text(
-			Vector2(0, l.native.y / 2 - 26),
+			Vector2(0, l.paused_y()),
 			tr("UI_PAUSED"),
 			14.0,
 			Pixel.c("w"),

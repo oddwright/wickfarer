@@ -187,7 +187,7 @@ jobs:
           mkdir -p screens
           while read -r w h name; do
             for screen in fight chart event store title pause options; do
-              xvfb-run -a -s "-screen 0 2600x2300x24" godot --path . --rendering-driver opengl3 \
+              xvfb-run -a -s "-screen 0 2600x2600x24" godot --path . --rendering-driver opengl3 \
                 -s tools/shot.gd -- "$w" "$h" "screens/$name-$screen.png" 300 "$screen" < /dev/null
               test -s "screens/$name-$screen.png"
             done
@@ -197,6 +197,8 @@ jobs:
           2184 1968 fold7-open
           1968 2184 fold7-open-portrait
           2556 1179 iphone-16
+          1080 2520 fold7-cover-portrait
+          1080 2340 phone-portrait
           LIST
       - uses: actions/upload-artifact@v4
         with:

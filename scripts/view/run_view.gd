@@ -29,8 +29,8 @@ func _draw() -> void:
 
 
 func _draw_status(run: Run, l: RunLayout) -> void:
-	draw_rect(Rect2(0, 0, l.native.x, RunLayout.TOP - 4), Pixel.c("b"))
-	draw_rect(Rect2(0, RunLayout.TOP - 4, l.native.x, 1), Pixel.c("d"))
+	draw_rect(Rect2(0, 0, l.native.x, l.top - 4), Pixel.c("b"))
+	draw_rect(Rect2(0, l.top - 4, l.native.x, 1), Pixel.c("d"))
 	var me := run.ship
 	var hull_col := Pixel.c("U") if me.hull <= me.max_hull / 3 else Pixel.c("h")
 	_text(Vector2(4, 11), "%s %d/%d" % [tr("UI_HULL"), me.hull, me.max_hull], 5.0, hull_col)
@@ -40,14 +40,11 @@ func _draw_status(run: Run, l: RunLayout) -> void:
 		5.0,
 		Pixel.c("w")
 	)
-	_text(
-		Vector2(l.native.x - 238, 11),
-		tr(str(run.reach().name)),
-		5.0,
-		Pixel.c("g"),
-		HORIZONTAL_ALIGNMENT_RIGHT,
-		200
-	)
+	var reach := tr(str(run.reach().name))
+	if l.kind == "tall":  # too narrow for one line: the Reach's name goes under
+		_text(Vector2(4, 20), reach, 5.0, Pixel.c("g"))
+		return
+	_text(Vector2(l.native.x - 238, 11), reach, 5.0, Pixel.c("g"), HORIZONTAL_ALIGNMENT_RIGHT, 200)
 
 
 # ------------------------------------------------------------------ chart
@@ -80,15 +77,17 @@ func _draw_chart(run: Run, l: RunLayout) -> void:
 	)
 
 
-## The Hush swallows the chart from the left, a column at a time.
+## The Hush swallows the chart from the start, a column at a time.
 func _draw_hush(run: Run, l: RunLayout) -> void:
 	if run.hush < 0.0:
 		return
 	var edge := float(run.hush + 0.3) / float(run.chart.columns - 1)
-	var x := l.beacon_pos({"x": minf(edge, 1.0), "y": 0.0}).x
-	var area := Rect2(0, RunLayout.TOP - 3, x, l.native.y - RunLayout.TOP + 3)
+	var area := Rect2(l.hush_rect(edge))
 	draw_texture_rect(Pixel.dither("m", 2), area, true)
-	draw_rect(Rect2(x, area.position.y, 1, area.size.y), Pixel.c("n"))
+	if l.kind == "tall":
+		draw_rect(Rect2(0, area.position.y, area.size.x, 1), Pixel.c("n"))
+	else:
+		draw_rect(Rect2(area.end.x, area.position.y, 1, area.size.y), Pixel.c("n"))
 
 
 func _draw_beacon(run: Run, l: RunLayout, n: Dictionary, target: bool, blink: bool) -> void:

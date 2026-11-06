@@ -81,6 +81,21 @@ static func ui_size(t: SceneTree) -> void:
 	_check(t, tall.scale == 5, "a portrait Fold is too narrow to go larger")
 	var narrow := ScreenManager.compute(Vector2i(1000, 2000), 1)
 	_check(t, narrow.scale == narrow.auto_scale, "larger is never smaller than auto")
+	var upright := ScreenManager.compute(Vector2i(1080, 2520))
+	_check(t, upright.layout == "tall", "a phone held upright uses the Tall layout")
+	_check(t, upright.native == Vector2i(216, 504), "at 5x, the pixel size it has sideways")
+	_check(t, upright.hinge.size.x == 0, "with no fold to keep clear")
+	_check(t, ScreenManager.compute(Vector2i(1080, 2520), 1).scale == 5, "and no larger step")
+	_check(t, ScreenManager.compute(Vector2i(1968, 2184)).layout == "square", "a Fold stays Square")
+	_check(
+		t,
+		(
+			ScreenManager.change_reason("wide", "tall") == "UI_TURN_PAUSE"
+			and ScreenManager.change_reason("wide", "square") == "UI_FOLD_PAUSE"
+			and ScreenManager.change_reason("tall", "square") == "UI_FOLD_PAUSE"
+		),
+		"turning the phone says why the fight paused"
+	)
 	var tiny := ScreenManager.compute(Vector2i(300, 200))
 	_check(t, tiny.scale == 1 and tiny.native == Vector2i(300, 200), "a tiny window is 1x")
 	# the setting itself
@@ -95,7 +110,7 @@ static func ui_size(t: SceneTree) -> void:
 	_check(t, back.ui_size == GameSettings.UI_SIZE_MIN, "UI size saves")
 	_check(t, GameSettings.from_dict({"ui_size": 9}).ui_size == 1, "a bad UI size clamps")
 	_check(t, GameSettings.from_dict({"ui_size": "big"}).ui_size == 0, "or falls back to auto")
-	for f in ["settings_v1.json", "settings_v2.json"]:
+	for f in ["settings_v1.json", "settings_v2.json", "settings_v3.json"]:
 		var raw: Variant = JSON.parse_string(
 			FileAccess.get_file_as_string("res://tests/fixtures/" + f)
 		)
@@ -103,8 +118,17 @@ static func ui_size(t: SceneTree) -> void:
 		var got := GameSettings.from_dict(up.get("data", {}))
 		var want := 0 if f == "settings_v1.json" else -1
 		_check(t, got.ui_size == want and got.shake == 0.25, "%s loads its UI size" % f)
+		var lock: bool = f == "settings_v3.json"
+		_check(t, got.force_landscape == lock, "%s loads landscape only as %s" % [f, lock])
+	s.adjust("force_landscape", 1)
+	_check(t, s.force_landscape and s.value("force_landscape") == 1.0, "Landscape only toggles")
+	_check(t, GameSettings.from_dict(s.to_dict()).force_landscape, "and saves")
+	_check(
+		t, not GameSettings.from_dict({"force_landscape": 1}).force_landscape, "a bad one is off"
+	)
 	s.reset()
 	_check(t, s.ui_size == 0, "Defaults puts UI size back on auto")
+	_check(t, not s.force_landscape, "and lets the phone turn again")
 
 
 ## On the options screen: + and - change the real scale, a step that can't fit

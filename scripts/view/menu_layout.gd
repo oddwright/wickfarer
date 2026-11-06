@@ -4,7 +4,8 @@ extends RefCounted
 ## options screen and the yes/no confirm screen. Pure data so tests can check
 ## every phone shape without a screen, like HudLayout and RunLayout.
 ## In the Square layout the title or question sits on the left page and the
-## buttons on the right, so nothing you tap sits on the fold.
+## buttons on the right, so nothing you tap sits on the fold. Tall (a phone held
+## upright) stacks everything in one column.
 
 const BTN_W := 120
 const BTN_H := 20
@@ -14,6 +15,7 @@ const TITLE_H := 30  ## room for a 2x title line and its gap
 const TEXT_PAGES := {"depth": 56, "log": 0}
 const TOP := 26  ## first options row, under the title
 const ROW := 24  ## options row pitch
+const ROW_MIN := 20  ## the pitch a short canvas (the Fold cover at 6x) squeezes the rows to
 const CTRL_H := 16  ## options control height
 const STEP_W := 18  ## the - and + buttons
 const LABEL_W := 58  ## options label column
@@ -21,15 +23,21 @@ const FOOT_W := 80  ## Defaults and Back
 const LAUNCH_W := 100
 const ARROW_W := 20
 const PREVIEW := ContentDB.PLAYABLE_FRAME  ## room for the largest playable hull frame
+## Tall: how far the preview's frame may run past a side. The hull is centred, so
+## only the frames' empty edges and a pixel or two of engine glow go off the canvas.
+const PREVIEW_BLEED := 12
 const SHIP_BAND_TOP := 18
 const SHIP_GROUP_MAX := 600  ## arrows, hull and words stay together on a big canvas
 const SHIP_SQUARE_H := 204  ## name, hull, then the button column
+const SHIP_WORDS_H := 120  ## Tall: the blurb, stats and crew under the hull
 const MARGIN := 8
 const COL_GAP := 12  ## between the two options columns in Wide
 ## The two options columns, top to bottom. Volumes are GameSettings bus names.
 const AUDIO_ROWS: Array[String] = ["Master", "Music", "SFX", "UI"]
-const FEEL_ROWS: Array[String] = ["haptics", "shake", "hitstop", "reduce_flashing", "ui_size"]
-const TOGGLES: Array[String] = ["hitstop", "reduce_flashing"]
+const FEEL_ROWS: Array[String] = [
+	"haptics", "shake", "hitstop", "reduce_flashing", "ui_size", "force_landscape"
+]
+const TOGGLES: Array[String] = ["hitstop", "reduce_flashing", "force_landscape"]
 ## Rows that step through a few named values, written between - and +, not a bar.
 const STEPPERS: Array[String] = ["ui_size"]
 
@@ -107,14 +115,20 @@ func _list(ids: Array[String], title_h := TITLE_H) -> void:
 
 
 ## Two columns of rows: sound on the left, feel on the right (each on its own
-## page in Square), then Defaults and Back along the bottom.
+## page in Square, one under the other in Tall), then Defaults and Back along the bottom.
 func _options() -> void:
 	var w := native.x
 	var lx := MARGIN
 	var lw: int
 	var rx: int
 	var rw: int
-	if hinge.size.x == 0:
+	var feel_top := TOP
+	if kind == "tall":
+		lw = w - MARGIN * 2
+		rx = lx
+		rw = lw
+		feel_top = TOP + AUDIO_ROWS.size() * ROW + 6
+	elif hinge.size.x == 0:
 		lw = (w - MARGIN * 2 - COL_GAP) / 2
 		rx = lx + lw + COL_GAP
 		rw = w - MARGIN - rx
@@ -123,12 +137,17 @@ func _options() -> void:
 		rx = hinge.end.x + 4
 		rw = w - MARGIN - rx
 	title_rect = Rect2i(lx, 6, w - MARGIN * 2, 10)
-	for i in AUDIO_ROWS.size():
-		_row(AUDIO_ROWS[i], lx, lw, TOP + i * ROW)
-	for i in FEEL_ROWS.size():
-		_row(FEEL_ROWS[i], rx, rw, TOP + i * ROW)
+	# A short Wide or Square canvas closes the rows up rather than pushing the footer
+	# off the bottom. Tall has height to spare (ScreenManager.MIN_TALL_H).
 	var deepest := maxi(AUDIO_ROWS.size(), FEEL_ROWS.size())
-	var foot_y := maxi(TOP + deepest * ROW + 4, native.y - BTN_H - MARGIN)
+	var pitch := clampi((native.y - BTN_H - MARGIN - 4 - TOP) / deepest, ROW_MIN, ROW)
+	if kind == "tall":
+		pitch = ROW
+	for i in AUDIO_ROWS.size():
+		_row(AUDIO_ROWS[i], lx, lw, TOP + i * pitch)
+	for i in FEEL_ROWS.size():
+		_row(FEEL_ROWS[i], rx, rw, feel_top + i * pitch)
+	var foot_y := maxi(feel_top + FEEL_ROWS.size() * pitch + 4, native.y - BTN_H - MARGIN)
 	_add("defaults", 0, Rect2i(lx, foot_y, FOOT_W, BTN_H))
 	_add("back", 0, Rect2i(rx + rw - FOOT_W, foot_y, FOOT_W, BTN_H))
 
@@ -136,9 +155,12 @@ func _options() -> void:
 ## Ship select. Wide: arrows either side of the hull, its blurb and stats to
 ## the right, Back and Launch in the thumb corners. Square: the hull spans the
 ## fold (it is only a picture), the words sit on the left page and every
-## button on the right.
+## button on the right. Tall: name, hull and words down the page, the buttons at
+## the bottom.
 func _ship() -> void:
-	if hinge.size.x == 0:
+	if kind == "tall":
+		_ship_tall()
+	elif hinge.size.x == 0:
 		_ship_wide()
 	else:
 		_ship_square()
@@ -178,6 +200,27 @@ func _ship_square() -> void:
 	_add("launch", 0, Rect2i(bx, y0 + 34, BTN_W, BTN_H))
 	_add("back", 0, Rect2i(bx, y0 + 60, BTN_W, BTN_H))
 	pips_rect = Rect2i(rx + 40, y0, rw - 80, BTN_H)
+
+
+## The hull is only a picture, so on a phone narrower than the largest frame its
+## empty edges, and at most a few pixels of engine, run off the sides.
+func _ship_tall() -> void:
+	var w := native.x
+	var fy := native.y - BTN_H - MARGIN
+	var arrows_y := fy - BTN_H - GAP
+	_add("back", 0, Rect2i(MARGIN, fy, FOOT_W, BTN_H))
+	_add("launch", 0, Rect2i(w - MARGIN - LAUNCH_W, fy, LAUNCH_W, BTN_H))
+	_add("prev", 0, Rect2i(MARGIN, arrows_y, 36, BTN_H))
+	_add("next", 0, Rect2i(w - MARGIN - 36, arrows_y, 36, BTN_H))
+	pips_rect = Rect2i(MARGIN + 40, arrows_y, w - MARGIN * 2 - 80, BTN_H)
+	# Name, hull and words, centred in the space over the buttons.
+	var words_h := mini(SHIP_WORDS_H, arrows_y - MARGIN * 2 - 18 - PREVIEW.y - 8)
+	var group_h := 18 + PREVIEW.y + 8 + words_h
+	var top := maxi(MARGIN, (arrows_y - MARGIN - group_h) / 2)
+	title_rect = Rect2i(MARGIN, top, w - MARGIN * 2, 12)
+	preview_rect = Rect2i(Vector2i((w - PREVIEW.x) / 2, top + 18), PREVIEW)
+	var y0 := preview_rect.end.y + 8
+	info_rect = Rect2i(MARGIN, y0, w - MARGIN * 2, arrows_y - MARGIN - y0)
 
 
 func _row(id: String, x: int, width: int, y: int) -> void:
@@ -238,7 +281,10 @@ func problems() -> Array[String]:
 			if o != b and r.grow(1).intersects(o.rect):
 				out.append("%s and %s %s overlap" % [name, o.kind, o.id])
 	if preview_rect.has_area():
-		if not canvas.encloses(preview_rect) or not canvas.encloses(info_rect):
+		var room := canvas
+		if kind == "tall":
+			room = canvas.grow_individual(PREVIEW_BLEED, 0, PREVIEW_BLEED, 0)
+		if not room.encloses(preview_rect) or not canvas.encloses(info_rect):
 			out.append("the ship preview or its words leave the canvas")
 		for b in buttons:
 			if (b.rect as Rect2i).intersects(preview_rect):
