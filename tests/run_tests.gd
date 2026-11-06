@@ -40,6 +40,7 @@ func _init() -> void:
 	ContentDB.load_all()
 	for t in [
 		"test_content_is_valid",
+		"test_ship_preview_sprite_survives_to_render",
 		"test_rng_streams_are_independent_and_saveable",
 		"test_same_seed_same_fight",
 		"test_save_mid_fight_resumes_identically",
@@ -124,6 +125,10 @@ func _aim_player(c: Combat) -> void:
 
 
 # ------------------------------------------------------------------ tests
+
+
+func test_ship_preview_sprite_survives_to_render() -> void:
+	SHIP_TESTS.preview_texture_lives(self)
 
 
 func test_content_is_valid() -> void:
