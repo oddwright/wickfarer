@@ -1,13 +1,15 @@
 name: iOS
 
 # macOS minutes cost ten times Linux minutes (a 3 minute build bills 30), so iOS builds only
-# when started by hand (Actions, iOS, Run workflow) and on PRs that change this file (those
-# build unsigned and upload nothing). A nightly build used to cost about 30 minutes a day.
+# when started by hand (Actions, iOS, Run workflow) and on PRs that change this file or the
+# export presets (those build unsigned and upload nothing). A nightly build used to cost about
+# 30 minutes a day.
 on:
   workflow_dispatch:
   pull_request:
     paths:
       - .github/workflows/ios.yml
+      - export_presets.cfg
 
 env:
   GODOT_VERSION: 4.7.2
@@ -21,7 +23,7 @@ jobs:
   testflight:
     name: iOS build (TestFlight on main)
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 40
     permissions:
       contents: read
       actions: read
@@ -78,7 +80,9 @@ jobs:
           path: |
             ~/godot-bin
             ~/Library/Application Support/Godot/export_templates
-          key: godot-macos-${{ env.GODOT_VERSION }}
+          # Only the iOS templates are kept: the full set is over 1 GB, and restoring it on a
+          # runner billed at 10x cost minutes on every build.
+          key: godot-macos-ios-${{ env.GODOT_VERSION }}
       - name: Install Godot and the export templates
         if: steps.godot_cache.outputs.cache-hit != 'true'
         # A stalled download once held this step for 45 minutes; fail fast and retry instead.
@@ -89,7 +93,8 @@ jobs:
           curl -fsSL --retry 3 --connect-timeout 30 --max-time 300 -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_macos.universal.zip"
           unzip -oq godot.zip -d ~/godot-bin
           curl -fsSL --retry 3 --connect-timeout 30 --max-time 600 -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
-          unzip -oq templates.tpz
+          unzip -oq templates.tpz 'templates/ios*' templates/version.txt
+          ls templates
           dest="$HOME/Library/Application Support/Godot/export_templates/${GODOT_VERSION}.stable"
           mkdir -p "$(dirname "$dest")"
           mv templates "$dest"

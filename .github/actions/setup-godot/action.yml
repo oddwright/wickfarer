@@ -16,9 +16,10 @@ runs:
     - name: Download Godot
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
+      # A stalled or failed download fails fast and retries instead of holding a runner.
       run: |
         mkdir -p ~/godot-bin
-        curl -sSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${{ inputs.version }}-stable/Godot_v${{ inputs.version }}-stable_linux.x86_64.zip"
+        curl -fsSL --retry 3 --connect-timeout 30 --max-time 300 -o godot.zip "https://github.com/godotengine/godot/releases/download/${{ inputs.version }}-stable/Godot_v${{ inputs.version }}-stable_linux.x86_64.zip"
         unzip -q godot.zip -d ~/godot-bin
         rm godot.zip
     - name: Put Godot on the path

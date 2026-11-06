@@ -21,9 +21,10 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: checks-${{ github.event.pull_request.number || github.ref }}
-  # Every merge to main must publish its build, so only PR runs are cut short.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # A PR's runs share a group, so a new push cancels the old run. Every other run gets a group of
+  # its own: a shared group would also drop a queued merge to main, which must publish its build.
+  group: ${{ github.event_name == 'pull_request' && format('checks-pr-{0}', github.event.pull_request.number) || format('checks-run-{0}', github.run_id) }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -36,7 +37,7 @@ jobs:
     name: Lint and tests
     runs-on: ubuntu-latest
     # A stalled step must not bill for hours (one apt-get once held a runner for six).
-    timeout-minutes: 25
+    timeout-minutes: 40
     permissions:
       contents: read
       pull-requests: read
@@ -57,12 +58,12 @@ jobs:
             balance=false
             screens=false
           elif [ "$EVENT" = pull_request ]; then
-            if files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename'); then
+            if files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)'); then
               printf 'Changed files:\n%s\n' "$files"
-              if ! grep -qE '^(scripts/(sim|core)/|data/|tools/auto(battle|run)\.gd$|\.github/workflows/checks\.yml$)' <<< "$files"; then
+              if ! grep -qE '^(scripts/(sim|core)/|data/|tools/auto[a-z]*\.gd$|tools/ci_godot\.sh$|\.github/(actions|workflows/checks\.yml)' <<< "$files"; then
                 balance=false
               fi
-              if ! grep -qE '^(scripts/|data/|art/|scenes/|tools/shot\.gd$|project\.godot$|\.github/workflows/checks\.yml$)' <<< "$files"; then
+              if ! grep -qE '^(scripts/|data/|art/|scenes/|tools/(shot\.gd|ci_godot\.sh)$|project\.godot$|\.github/(actions|workflows/checks\.yml))' <<< "$files"; then
                 screens=false
               fi
             else
@@ -112,7 +113,7 @@ jobs:
     name: Android APK and layout screenshots
     needs: checks
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     outputs:
       version: ${{ steps.version.outputs.name }}
     steps:
