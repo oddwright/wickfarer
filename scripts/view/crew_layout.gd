@@ -6,6 +6,8 @@ extends RefCounted
 ## Wide: rows run down in columns, each with its post button beside it.
 ## Square: the rows sit on the left page and every button on the right page,
 ## so nothing interactive touches the fold.
+## Tall: one column of rows with their post buttons, the picker under them and
+## Close and Muster at the bottom, under the thumb.
 ## Pure data so tests can check every phone shape without a screen.
 
 const ROW_W := 168
@@ -34,7 +36,9 @@ static func build(screen: Dictionary, crew_count: int, picks: Array[String] = []
 	l.kind = screen.layout
 	l.native = screen.native
 	l.hinge = screen.hinge
-	if l.kind == "wide":
+	if l.kind == "tall":
+		l._build_tall(crew_count, picks)
+	elif l.kind == "wide":
 		l._build_wide(crew_count, picks)
 	else:
 		l._build_square(crew_count, picks)
@@ -62,6 +66,26 @@ func _build_wide(crew_count: int, picks: Array[String]) -> void:
 		_add("pick", i, Rect2i(x + i * (PICK_W + 4), bottom, PICK_W, PICK_H))
 	hint_rect = Rect2i(4, 4, native.x - 8, 10)
 	title_rect = hint_rect
+
+
+func _build_tall(crew_count: int, picks: Array[String]) -> void:
+	var bottom := native.y - BTN_H - 6
+	var row_w := mini(ROW_W, native.x - 8 - 4 - POST_W)
+	var post_x := 4 + row_w + 4
+	for i in crew_count:
+		var at := Vector2i(4, TOP + i * ROW_H)
+		rows.append(Rect2i(at, Vector2i(row_w, ROW_H - 2)))
+		_add("post", i, Rect2i(post_x, at.y + (ROW_H - 2 - POST_H) / 2, POST_W, POST_H))
+	var per_line := maxi(1, (native.x - 4) / (PICK_W + 4))
+	var py := TOP + maxi(1, crew_count) * ROW_H + 4
+	for i in picks.size():
+		var at := Vector2i(4 + (i % per_line) * (PICK_W + 4), py + (i / per_line) * (PICK_H + 4))
+		_add("pick", i, Rect2i(at, Vector2i(PICK_W, PICK_H)))
+	_add("close", 0, Rect2i(4, bottom, BTN_W, BTN_H))
+	_add("muster", 0, Rect2i(native.x - 4 - BTN_W, bottom, BTN_W, BTN_H))
+	# Too narrow to share the title's line: the hint sits over Close and Muster.
+	title_rect = Rect2i(4, 4, native.x - 8, 10)
+	hint_rect = Rect2i(4, bottom - 14, native.x - 8, 10)
 
 
 func _build_square(crew_count: int, picks: Array[String]) -> void:

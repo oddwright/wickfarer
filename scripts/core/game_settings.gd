@@ -1,14 +1,16 @@
 class_name GameSettings
 extends RefCounted
-## The player's comfort settings: volumes, haptics, shake, hit-stop, flashing and UI size.
+## The player's comfort settings: volumes, haptics, shake, hit-stop, flashing, UI size
+## and whether the game stays sideways.
 ## Kept in their own save slot so they outlive any run and never touch the run save.
 ## SaveService.migrate() steps only touch run and fight keys, so they pass this
 ## data through unchanged; a change to the settings shape bumps SETTINGS_VERSION
 ## and upgrades in from_dict() instead (fixtures: tests/fixtures/settings_v*.json).
 ## v2 added ui_size; a v1 file loads with it at auto.
+## v3 added force_landscape; older files load with it off, so the phone may turn.
 
 const SLOT := "settings"
-const SETTINGS_VERSION := 2
+const SETTINGS_VERSION := 3
 const STEP := 0.1  ## one tap of - or + on the options screen
 ## UI size steps around the auto scale (see ScreenManager.compute): one smaller, one
 ## larger. Two smaller would shrink tap targets well under a fingertip.
@@ -21,10 +23,12 @@ var shake := 1.0  ## screen shake strength, 0..1
 var hitstop := true
 var reduce_flashing := false
 var ui_size := 0  ## whole scale steps from auto; 0 is auto
+var force_landscape := false  ## true holds the game sideways when the phone turns upright
 
 
 ## A setting's value by options-screen id: a bus name, "haptics" or "shake"
-## (0..1), "hitstop" / "reduce_flashing" (1 on, 0 off), or "ui_size" (a step, -1..1).
+## (0..1), "hitstop" / "reduce_flashing" / "force_landscape" (1 on, 0 off), or "ui_size"
+## (a step, -1..1).
 func value(id: String) -> float:
 	if volume.has(id):
 		return float(volume[id])
@@ -37,6 +41,8 @@ func value(id: String) -> float:
 			return 1.0 if hitstop else 0.0
 		"reduce_flashing":
 			return 1.0 if reduce_flashing else 0.0
+		"force_landscape":
+			return 1.0 if force_landscape else 0.0
 		"ui_size":
 			return float(ui_size)
 	return 0.0
@@ -51,6 +57,9 @@ func adjust(id: String, dir: int) -> void:
 			return
 		"reduce_flashing":
 			reduce_flashing = not reduce_flashing
+			return
+		"force_landscape":
+			force_landscape = not force_landscape
 			return
 		"ui_size":
 			ui_size = clampi(ui_size + signi(dir), UI_SIZE_MIN, UI_SIZE_MAX)
@@ -73,6 +82,7 @@ func reset() -> void:
 	hitstop = d.hitstop
 	reduce_flashing = d.reduce_flashing
 	ui_size = d.ui_size
+	force_landscape = d.force_landscape
 
 
 static func load_or_default(dir := SaveService.DIR) -> GameSettings:
@@ -91,7 +101,8 @@ func to_dict() -> Dictionary:
 		"shake": shake,
 		"hitstop": hitstop,
 		"reduce_flashing": reduce_flashing,
-		"ui_size": ui_size
+		"ui_size": ui_size,
+		"force_landscape": force_landscape
 	}
 
 
@@ -107,6 +118,7 @@ static func from_dict(d: Dictionary) -> GameSettings:
 	s.hitstop = _flag(d.get("hitstop"), s.hitstop)
 	s.reduce_flashing = _flag(d.get("reduce_flashing"), s.reduce_flashing)
 	s.ui_size = _step(d.get("ui_size"), s.ui_size)
+	s.force_landscape = _flag(d.get("force_landscape"), s.force_landscape)
 	return s
 
 
