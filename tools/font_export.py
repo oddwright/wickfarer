@@ -1,4 +1,5 @@
-"""Export the 3x5 pixel font from the concept art (pixel-src/font.py) as a glyph strip.
+"""Export the 3x5 pixel font from the concept art (pixel-src/font.py) as a glyph strip
+(font_3x5.png + .json) and a matching outline strip (font_3x5_outline.png).
 Usage: python3 tools/font_export.py /mnt/project-files/concept-art/pixel-src art/
 """
 import sys, os, json

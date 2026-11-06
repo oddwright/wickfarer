@@ -72,11 +72,10 @@ func _text(
 				x += (int(width) - w) / 2
 			elif align == HORIZONTAL_ALIGNMENT_RIGHT:
 				x += int(width) - w
-		# A one-pixel ink outline keeps text readable over stars, fire and panels. Neighbouring
-		# letters' outlines overlap in the gap between them, so fading text (alpha < 1) would
-		# show dark seams there; it goes without, which is only the last moments of a floater.
-		if col.a >= 1.0:
-			_line(line, Vector2i(x, y), k, Pixel.c("a"), true)
+		# A one-pixel ink outline keeps text readable over stars, fire and panels. It fades with
+		# the text; while a floater fades, the gap column between letters, where two outlines
+		# overlap, is a little darker for a moment, which beats the outline vanishing at once.
+		_line(line, Vector2i(x, y), k, Pixel.c("a", col.a), true)
 		_line(line, Vector2i(x, y), k, col)
 		y += LINE * k
 
@@ -86,21 +85,16 @@ func _line(s: String, at: Vector2i, k: int, col: Color, outlined := false) -> vo
 	for ch in s:
 		if glyph_index.has(ch):
 			var g: Array = glyph_index[ch]
-			var gw := int(g[1])
-			if outlined:
-				draw_texture_rect_region(
-					outline,
-					Rect2(x - k, at.y - k, (gw + 2) * k, (GLYPH_H + 2) * k),
-					Rect2(int(g[0]) * OUTLINE_CELL, 0, gw + 2, GLYPH_H + 2),
-					col
-				)
-			else:
-				draw_texture_rect_region(
-					glyphs,
-					Rect2(x, at.y, gw * k, GLYPH_H * k),
-					Rect2(int(g[0]) * CELL, 0, gw, GLYPH_H),
-					col
-				)
+			# the outline slot is the glyph grown by one font pixel (pad) on every side
+			var pad := 1 if outlined else 0
+			var w := int(g[1]) + 2 * pad
+			var h := GLYPH_H + 2 * pad
+			draw_texture_rect_region(
+				outline if outlined else glyphs,
+				Rect2(x - pad * k, at.y - pad * k, w * k, h * k),
+				Rect2(int(g[0]) * (OUTLINE_CELL if outlined else CELL), 0, w, h),
+				col
+			)
 		x += _adv(ch) * k
 
 
