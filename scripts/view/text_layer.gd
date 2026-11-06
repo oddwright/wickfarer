@@ -8,8 +8,7 @@ extends Node2D
 const CELL := 5  ## glyph slot width in the font strip
 const OUTLINE_CELL := CELL + 2  ## outline strip slot: the glyph grown a pixel each side
 const GLYPH_H := 5
-const LINE := 8  ## leaves one clear pixel between one line's outline and the next
-const SPACE := 5  ## a word gap two pixels wider than a letter gap, so words don't run together
+const LINE := 7
 
 static var glyph_index: Dictionary = {}  ## char -> [slot, width]
 
@@ -26,8 +25,6 @@ func setup(main_node: Node) -> void:
 
 
 static func _adv(ch: String) -> int:
-	if ch == " ":
-		return SPACE
 	var g: Array = glyph_index.get(ch, [0, 3])
 	return int(g[1]) + 1
 
@@ -278,4 +275,4 @@ func _draw_promotions(me: Ship, at: Vector2i, width: int) -> void:
 			% [tr(c.name), tr(Skills.rank_name(int(p.rank))), tr(Skills.spec(p.skill).name)]
 		)
 		_text(Vector2(at.x, y), line, 5.0, Pixel.c("v"), HORIZONTAL_ALIGNMENT_CENTER, width)
-		y += LINE
+		y += 8

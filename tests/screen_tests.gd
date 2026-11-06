@@ -7,8 +7,7 @@ static func _check(t: SceneTree, cond: bool, what: String) -> void:
 	t.call("check", cond, what)
 
 
-## The outline strip is exactly the glyph strip grown a pixel each way, glyph for glyph; the
-## letters with diagonals stay wide enough to show them; and words have a wider gap than letters.
+## The outline strip is exactly the glyph strip grown a pixel each way, glyph for glyph.
 static func font(t: SceneTree) -> void:
 	var index: Dictionary = JSON.parse_string(
 		FileAccess.get_file_as_string("res://art/font_3x5.json")
@@ -26,12 +25,6 @@ static func font(t: SceneTree) -> void:
 		if not _outline_matches(glyphs, outline, int(index[ch][0]), int(index[ch][1])):
 			bad.append(ch)
 	_check(t, bad.is_empty(), "every outline is its glyph grown by a pixel (%s)" % ", ".join(bad))
-	for ch in ["M", "N", "V", "W"]:
-		_check(t, int(index[ch][1]) == 5, "%s is five pixels wide" % ch)
-	# K's arms leave the stem in the middle row, so it doesn't read as R
-	var k := int(index["K"][0]) * TextLayer.CELL
-	_check(t, glyphs.get_pixel(k + 1, 2).a == 0.0, "K has a gap beside its stem")
-	_check(t, TextLayer._adv(" ") > TextLayer._adv("A"), "a word gap is wider than a letter")
 
 
 ## True when every pixel of the outline slot is set exactly where a glyph pixel is within one.

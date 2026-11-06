@@ -13,14 +13,11 @@ EXTRA = {
 }
 for k, v in EXTRA.items():
     F[k] = v.replace(' ', '')
-# Letters with diagonals read as H or U at 3 pixels, so M, N, V and W get five columns
-# (the diagonal needs three rows to show), and K gets arms that leave the stem.
+# Wide letters read badly at 3 pixels, so M, N and W get extra columns.
 WIDE = {
-    'M': ["#...#", "##.##", "#.#.#", "#.#.#", "#...#"],
-    'W': ["#...#", "#...#", "#.#.#", "#.#.#", ".#.#."],
-    'N': ["#...#", "##..#", "#.#.#", "#..##", "#...#"],
-    'V': ["#...#", "#...#", "#...#", ".#.#.", "..#.."],
-    'K': ["#.#", "##.", "#..", "##.", "#.#"],
+    'M': ["#...#", "##.##", "#.#.#", "#...#", "#...#"],
+    'W': ["#...#", "#...#", "#.#.#", "##.##", "#...#"],
+    'N': ["#..#", "##.#", "#.##", "#..#", "#..#"],
 }
 rows = {}
 for k, g in F.items():
