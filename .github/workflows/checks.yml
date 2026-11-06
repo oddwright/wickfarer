@@ -165,7 +165,7 @@ jobs:
           godot --headless --path . --export-debug "Android" build/wickfarer-debug.apk
           ls -la build
           test -s build/wickfarer-debug.apk
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wickfarer-android-debug
           path: build/wickfarer-debug.apk
@@ -200,7 +200,7 @@ jobs:
           1080 2520 fold7-cover-portrait
           1080 2340 phone-portrait
           LIST
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: layout-screenshots
           path: screens/
