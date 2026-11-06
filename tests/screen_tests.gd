@@ -7,6 +7,42 @@ static func _check(t: SceneTree, cond: bool, what: String) -> void:
 	t.call("check", cond, what)
 
 
+## The outline strip is exactly the glyph strip grown a pixel each way, glyph for glyph.
+static func font(t: SceneTree) -> void:
+	var index: Dictionary = JSON.parse_string(
+		FileAccess.get_file_as_string("res://art/font_3x5.json")
+	)
+	var glyphs := (load("res://art/font_3x5.png") as Texture2D).get_image()
+	var outline := (load("res://art/font_3x5_outline.png") as Texture2D).get_image()
+	_check(t, outline.get_height() == TextLayer.GLYPH_H + 2, "outline strip is 7 pixels tall")
+	_check(
+		t,
+		outline.get_width() == index.size() * TextLayer.OUTLINE_CELL,
+		"outline strip has a slot for every glyph"
+	)
+	var bad: Array[String] = []
+	for ch: String in index:
+		if not _outline_matches(glyphs, outline, int(index[ch][0]), int(index[ch][1])):
+			bad.append(ch)
+	_check(t, bad.is_empty(), "every outline is its glyph grown by a pixel (%s)" % ", ".join(bad))
+
+
+## True when every pixel of the outline slot is set exactly where a glyph pixel is within one.
+static func _outline_matches(glyphs: Image, outline: Image, slot: int, w: int) -> bool:
+	for y in TextLayer.GLYPH_H + 2:
+		for x in TextLayer.OUTLINE_CELL:
+			var near := false
+			for d in 9:
+				var gx := x - 1 + d % 3 - 1
+				var gy := y - 1 + d / 3 - 1
+				if gx >= 0 and gx < w and gy >= 0 and gy < TextLayer.GLYPH_H:
+					near = near or glyphs.get_pixel(slot * TextLayer.CELL + gx, gy).a > 0.0
+			var lit := outline.get_pixel(slot * TextLayer.OUTLINE_CELL + x, y).a > 0.0
+			if lit != near:
+				return false
+	return true
+
+
 ## Every screen at every UI size the setting can reach on it, keyed "name at Nx",
 ## so layout checks cover the scales players can actually pick.
 static func variants(screens: Dictionary) -> Dictionary:

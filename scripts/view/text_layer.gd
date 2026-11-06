@@ -6,6 +6,7 @@ extends Node2D
 ## title as 3x3.
 
 const CELL := 5  ## glyph slot width in the font strip
+const OUTLINE_CELL := CELL + 2  ## outline strip slot: the glyph grown a pixel each side
 const GLYPH_H := 5
 const LINE := 7
 
@@ -13,11 +14,13 @@ static var glyph_index: Dictionary = {}  ## char -> [slot, width]
 
 var main: Node
 var glyphs: Texture2D
+var outline: Texture2D
 
 
 func setup(main_node: Node) -> void:
 	main = main_node
 	glyphs = load("res://art/font_3x5.png")
+	outline = load("res://art/font_3x5_outline.png")
 	glyph_index = JSON.parse_string(FileAccess.get_file_as_string("res://art/font_3x5.json"))
 
 
@@ -69,23 +72,27 @@ func _text(
 				x += (int(width) - w) / 2
 			elif align == HORIZONTAL_ALIGNMENT_RIGHT:
 				x += int(width) - w
-		# a one-pixel ink shadow keeps text readable over stars and fire
-		var shadow := Pixel.c("a", col.a)
-		_line(line, Vector2i(x, y + k), k, shadow)
+		# A one-pixel ink outline keeps text readable over stars, fire and panels. It fades with
+		# the text; while a floater fades, the gap column between letters, where two outlines
+		# overlap, is a little darker for a moment, which beats the outline vanishing at once.
+		_line(line, Vector2i(x, y), k, Pixel.c("a", col.a), true)
 		_line(line, Vector2i(x, y), k, col)
 		y += LINE * k
 
 
-func _line(s: String, at: Vector2i, k: int, col: Color) -> void:
+func _line(s: String, at: Vector2i, k: int, col: Color, outlined := false) -> void:
 	var x := at.x
 	for ch in s:
 		if glyph_index.has(ch):
 			var g: Array = glyph_index[ch]
-			var gw := int(g[1])
+			# the outline slot is the glyph grown by one font pixel (pad) on every side
+			var pad := 1 if outlined else 0
+			var w := int(g[1]) + 2 * pad
+			var h := GLYPH_H + 2 * pad
 			draw_texture_rect_region(
-				glyphs,
-				Rect2(x, at.y, gw * k, GLYPH_H * k),
-				Rect2(int(g[0]) * CELL, 0, gw, GLYPH_H),
+				outline if outlined else glyphs,
+				Rect2(x - pad * k, at.y - pad * k, w * k, h * k),
+				Rect2(int(g[0]) * (OUTLINE_CELL if outlined else CELL), 0, w, h),
 				col
 			)
 		x += _adv(ch) * k

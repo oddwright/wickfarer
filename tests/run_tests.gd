@@ -67,6 +67,7 @@ func _init() -> void:
 		"test_fire_spreads_and_crew_put_it_out",
 		"test_layouts_on_every_screen",
 		"test_ui_size_setting",
+		"test_pixel_font",
 		"test_run_screens_on_every_screen",
 		"test_view_screens_follow_the_run",
 		"test_weapon_ready_event",
@@ -389,6 +390,10 @@ func test_layouts_on_every_screen() -> void:
 
 func test_ui_size_setting() -> void:
 	SCREEN_TESTS.ui_size(self)
+
+
+func test_pixel_font() -> void:
+	SCREEN_TESTS.font(self)
 
 
 ## Saves from every released version live in tests/fixtures. They must always load and play on.
