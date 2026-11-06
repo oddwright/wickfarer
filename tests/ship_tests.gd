@@ -198,3 +198,13 @@ static func _torch_captain(t: SceneTree) -> void:
 	for target in me.weapon_target:
 		decks.append(foe.room(target).deck)
 	_check(t, decks == [1, 1], "and re-aims when the ward moves over its shot: %s" % [decks])
+
+
+## The select page draws each hull from a texture it holds. One loaded and let go
+## inside _draw() is freed before the frame renders: a white box on the phone.
+static func preview_texture_lives(t: SceneTree) -> void:
+	for id in ShipRoster.playable():
+		var view := MenuView.new()
+		var held: WeakRef = weakref(view._ship_texture(id))
+		_check(t, held.get_ref() != null, "ship select keeps %s's sprite alive to render" % id)
+		view.free()
