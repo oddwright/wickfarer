@@ -34,7 +34,14 @@ const TARGETS: Array[String] = [
 ]
 const ORDERS: Array[String] = ["aim", "move", "power_up", "power_down", "ward", "muster", "post"]
 const TIP_MOMENTS: Array[String] = [
-	"fire_start", "ward_block", "cold", "low_hull", "dark_jump", "rank_up"
+	"fire_start",
+	"ward_block",
+	"cold",
+	"low_hull",
+	"dark_jump",
+	"rank_up",
+	"rent_open",
+	"flare_ready"
 ]
 ## Run screens a lesson can belong to (Main.run_screen(), and "fight" while it is on).
 const SCREENS: Array[String] = [
@@ -119,6 +126,9 @@ func on_events(events: Array) -> void:
 			"skill_up":
 				if int(e.side) == 0:
 					_moments["rank_up"] = true
+			"rent_open":
+				if int(e.side) == 0:
+					_moments["rent_open"] = true
 
 
 ## Call once a frame while no menu is open. ctx: {screen, paused, weapon, crew, run,
@@ -273,6 +283,8 @@ func _moment(on: String, ctx: Dictionary) -> bool:
 			return false
 		"low_hull":
 			return c.player().hull * 3 <= c.player().max_hull
+		"flare_ready":  # once a fight is under way, so the tip names a real choice
+			return c.siege == null and c.time() >= 20.0 and c.player().can_flare()
 	return _moments.has(on)
 
 

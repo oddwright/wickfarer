@@ -708,5 +708,13 @@
   "UI_WAVE_CHILL": "Chill",
   "UI_WAVE_SWALLOW": "Swallow",
   "UI_WAVE_BROKEN": "Broken",
-  "UI_WAVE_SOAKED": "Soaked"
+  "UI_WAVE_SOAKED": "Soaked",
+  "UI_FLARE": "Flare",
+  "UI_RENT": "Rent",
+  "UI_RENT_OPEN": "Torn",
+  "UI_RENT_SEALED": "Sealed +1",
+  "UI_FLARE_LIT": "Flare",
+  "UI_FLARE_SPENT": "Cracked",
+  "TIP_RENT": "A rent drains warmth. Send crew to seal it: a seal gives 1 hull back.",
+  "TIP_FLARE": "Flare: 8 s of fast guns and warmth, then the Ember cracks."
 }

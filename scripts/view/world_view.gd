@@ -161,6 +161,9 @@ func _draw_rooms(side: int) -> void:
 				var fx := rr.position.x + 2 + k * int(max(1, (rr.size.x - 7) / n))
 				var tex := Pixel.grid(Pixel.FIRE[(int(anim_time * 8.0) + k) % 3])
 				draw_texture(tex, Vector2(fx, rr.end.y - 7))
+		FightMarks.draw_rent(self, r, rr, anim_time)
+		if r.system == "ember":
+			FightMarks.draw_flare(self, s, rr, anim_time)
 		var flash: float = main.flash_amount(side, r.id)
 		if flash > 0.0:
 			draw_rect(inner, Pixel.c("x", flash * 0.8))
@@ -360,6 +363,8 @@ func _draw_hud() -> void:
 				_draw_panel(r, b.kind == "crew" and main.roster.open)
 			"kindle":
 				SiegeView.draw_kindle_button(self, combat, r)
+			"flare":
+				FightMarks.draw_button(self, me, r)
 			"pause":
 				_draw_panel(r, main.paused)
 				var cx := r.position.x + 11

@@ -79,6 +79,8 @@
     {"id": "cold", "on": "cold", "text": "TIP_COLD"},
     {"id": "low_hull", "on": "low_hull", "text": "TIP_LOW_HULL"},
     {"id": "dark_jump", "on": "dark_jump", "text": "TIP_DARK_JUMP"},
-    {"id": "post", "on": "rank_up", "text": "TIP_POST"}
+    {"id": "post", "on": "rank_up", "text": "TIP_POST"},
+    {"id": "rent", "on": "rent_open", "text": "TIP_RENT"},
+    {"id": "flare", "on": "flare_ready", "text": "TIP_FLARE"}
   ]
 }

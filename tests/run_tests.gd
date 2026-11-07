@@ -19,6 +19,7 @@ const TUTORIAL_TESTS = preload("res://tests/tutorial_tests.gd")
 const FACTION_TESTS = preload("res://tests/faction_tests.gd")
 const GEAR_TESTS = preload("res://tests/gear_tests.gd")
 const SIEGE_TESTS = preload("res://tests/siege_tests.gd")
+const FIGHT_TESTS = preload("res://tests/fight_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -90,6 +91,7 @@ func _init() -> void:
 		"test_gear",
 		"test_tutorial",
 		"test_kindling_siege",
+		"test_rents_and_flare",
 	]:
 		current = t
 		call(t)
@@ -962,3 +964,14 @@ func test_kindling_siege() -> void:
 	SIEGE_TESTS.siege_resumes_identically(self)
 	SIEGE_TESTS.autopilot_finishes_sieges(self)
 	SIEGE_TESTS.content_is_checked(self)
+
+
+func test_rents_and_flare() -> void:
+	FIGHT_TESTS.rents_tear_and_drain(self)
+	FIGHT_TESTS.crew_seal_rents(self)
+	FIGHT_TESTS.flare_burns_then_cracks(self)
+	FIGHT_TESTS.enemies_use_them(self)
+	FIGHT_TESTS.resume_mid_flare(self)
+	FIGHT_TESTS.fixtures_load(self)
+	FIGHT_TESTS.content_is_checked(self)
+	FIGHT_TESTS.foe_line_clears_buttons(self, SCREEN_TESTS.variants(SCREENS))

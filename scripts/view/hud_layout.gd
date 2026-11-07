@@ -107,23 +107,40 @@ static func build(
 		l.message_rect = Rect2i(4, msg_top, w - 8, row2 - msg_top - 4)
 	l.player_body = Rect2i(l.player_origin + pu.position, pu.size)
 	l.enemy_body = Rect2i(l.enemy_origin + eu.position, eu.size)
+	l._add_flare()
 	if siege:
 		l._add_kindle()
 	return l
 
 
+## Flare the Ember: one more small button beside Crew and Muster, after them in
+## the top bar (Wide) and before them over the guns (Tall). Square puts it over
+## the systems, left of the fold, level with the crew buttons on the right.
+func _add_flare() -> void:
+	var muster: Rect2i = button("muster").rect
+	var size := Vector2i(CREW_W, CREW_H)
+	if kind == "tall":
+		var crew: Rect2i = button("crew").rect
+		_add("flare", 0, Rect2i(crew.position - Vector2i(CREW_W + 4, 0), size))
+	elif kind == "wide":
+		_add("flare", 0, Rect2i(muster.position + Vector2i(CREW_W + 4, 0), size))
+	else:  # Square: the right of the fold is full on a narrow Fold, so left of it, over the systems
+		var row2 := native.y - (ROW_H + 4) * 2
+		_add("flare", 0, Rect2i(Vector2i(4, row2 + ROW_H - CREW_H), size))
+
+
 ## The Kindling's one extra order. The bottom rows are full on the narrowest
-## canvases, so it sits in the top bar beside the crew buttons in Wide, at the
+## canvases, so it sits in the top bar after the Flare button in Wide, at the
 ## top bar just right of the fold in Square (its crew buttons are down by the ward), and
-## beside the crew buttons over the guns in Tall.
+## before the Flare button over the guns in Tall.
 func _add_kindle() -> void:
-	var crew: Rect2i = button("crew").rect
+	var flare: Rect2i = button("flare").rect
 	var size := Vector2i(KINDLE_W, CREW_H)
 	match kind:
 		"wide":
-			_add("kindle", 0, Rect2i(crew.position + Vector2i((CREW_W + 4) * 2, 0), size))
+			_add("kindle", 0, Rect2i(flare.position + Vector2i(CREW_W + 4, 0), size))
 		"tall":
-			_add("kindle", 0, Rect2i(crew.position - Vector2i(KINDLE_W + 4, 0), size))
+			_add("kindle", 0, Rect2i(flare.position - Vector2i(KINDLE_W + 4, 0), size))
 		_:
 			_add("kindle", 0, Rect2i(Vector2i(hinge.end.x + 4, 4), size))
 

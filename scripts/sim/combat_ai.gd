@@ -19,6 +19,28 @@ func think(combat: Combat, side: int) -> void:
 	_aim(combat, me, foe, side, r)
 	_wards(combat, me, foe, side)
 	_crew(combat, me, side)
+	_flare(combat, me, side)
+
+
+## Flares when it pays: guns aimed and still charging, or the ship going cold,
+## and never with the Ember already hurt or burning (the crack would stack).
+static func _flare(combat: Combat, me: Ship, side: int) -> void:
+	if not me.can_flare():
+		return
+	var ember := me.system_room("ember")
+	if ember.damage > 0.0 or ember.fire > 0.0:
+		return
+	var charging := 0
+	for i in me.weapon_ids.size():
+		var full := float(ContentDB.weapons[me.weapon_ids[i]].charge)
+		if me.weapon_target[i] != "" and me.weapon_powered(i) and me.weapon_charge[i] < full - 3.0:
+			charging += 1
+	var cold := false
+	for st in STATIONS:
+		var r := me.system_room(st)
+		cold = cold or (r != null and r.warmth < Ship.COLD and not me.crew_in(r.id).is_empty())
+	if charging >= 2 or cold:
+		combat.apply({"type": "flare"}, side)
 
 
 func _aim(combat: Combat, me: Ship, foe: Ship, side: int, r: RandomNumberGenerator) -> void:
@@ -91,15 +113,28 @@ func _crew(combat: Combat, me: Ship, side: int) -> void:
 		if mend and mend.power > 0 and c.hp < c.max_hp * 0.35 and c.room != mend.id:
 			combat.apply({"type": "move", "crew": c.uid, "room": mend.id}, side)
 			idle.erase(c)
-	# Emergencies next: fires, then broken systems.
+	# Whoever is sealing a rent stays on it: walking off leaves the room bleeding warmth.
+	for c in idle.duplicate():
+		if me.room(c.room).rent > 0.0:
+			idle.erase(c)
+	# Emergencies next: fires, then rents, then broken systems.
 	var jobs: Array[String] = []
 	for room in me.rooms:
 		if room.fire > 0.0 and me.crew_in(room.id).is_empty() and not busy.has(room.id):
 			jobs.append(room.id)
 	for room in me.rooms:
 		if (
+			room.rent > 0.0
+			and room.fire <= 0.0
+			and me.crew_in(room.id).is_empty()
+			and not busy.has(room.id)
+		):
+			jobs.append(room.id)
+	for room in me.rooms:
+		if (
 			room.damage > 0.0
 			and room.fire <= 0.0
+			and room.rent <= 0.0
 			and me.crew_in(room.id).is_empty()
 			and not busy.has(room.id)
 		):

@@ -140,6 +140,11 @@ static func validate() -> Array[String]:
 				errors.append("weapon %s: missing %s" % [wid, field])
 		if w.get("charge", 0.0) <= 0.0:
 			errors.append("weapon %s: charge must be > 0" % wid)
+		var rent: Variant = w.get("rent_chance", 0.0)
+		if not (rent is float or rent is int) or float(rent) < 0.0 or float(rent) > 1.0:
+			errors.append("weapon %s: rent_chance must be a number from 0 to 1" % wid)
+		elif float(rent) > 0.0 and int(w.get("hull_damage", 0)) <= 0:
+			errors.append("weapon %s: only a gun that hurts the hull can tear a rent" % wid)
 		_check_string(w.get("name", ""), "weapon %s" % wid, errors)
 	for sid: String in species:
 		var s: Dictionary = species[sid]
@@ -151,6 +156,7 @@ static func validate() -> Array[String]:
 		_validate_system(sys_id, systems[sys_id], errors)
 	if not systems.has("ember") or not systems.ember.get("stoke_light", []) is Array:
 		errors.append("system ember: needs a stoke_light price list")
+	_validate_flare(systems.get("ember", {}).get("flare"), errors)
 	for sys_id in Run.REFIT_SYSTEMS:
 		if not systems.has(sys_id):
 			errors.append("refit offers unknown system %s" % sys_id)
@@ -174,6 +180,19 @@ static func validate() -> Array[String]:
 	GearCheck.validate(errors)
 	_validate_tutorial(tutorial, errors)
 	return errors
+
+
+## The Ember's flare: how long it burns, how long it rests, and what it gives and costs.
+static func _validate_flare(f: Variant, errors: Array[String]) -> void:
+	if not f is Dictionary:
+		errors.append("system ember: needs a flare block")
+		return
+	for k in ["seconds", "cooldown", "charge", "warmth", "crack"]:
+		var v: Variant = f.get(k)
+		if not (v is float or v is int) or float(v) <= 0.0:
+			errors.append("system ember: flare %s must be a number above 0" % k)
+	if float(f.get("cooldown", 0)) < float(f.get("seconds", 0)):
+		errors.append("system ember: a flare must rest at least as long as it burns")
 
 
 static func _validate_system(sys_id: String, sys: Dictionary, errors: Array[String]) -> void:

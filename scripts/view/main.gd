@@ -671,6 +671,8 @@ func _press_button(b: Dictionary, long: bool) -> void:
 			roster.press(b.kind)
 		"kindle":
 			ui_cue("buy" if combat.apply({"type": "kindle"}) else "refused")
+		"flare":
+			ui_cue("buy" if combat.apply({"type": "flare"}) else "refused")
 
 
 func _tap_run(p: Vector2i) -> void:

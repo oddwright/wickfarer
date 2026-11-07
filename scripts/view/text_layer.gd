@@ -161,17 +161,19 @@ func _draw() -> void:
 				)
 			"kindle":
 				SiegeView.draw_button_text(self, combat, r)
+			"flare":
+				FightMarks.draw_button_text(self, me, r)
 			"ward":
 				_text(Vector2(r.position.x + 17, r.position.y + 25), tr("UI_WARD_UP"), 4.5, quiet)
 				_text(Vector2(r.position.x + 17, r.position.y + 35), tr("UI_WARD_LOW"), 4.5, quiet)
-	# cold rooms get a word, so warmth isn't read from colour alone
+	# cold and rented rooms get a word, so neither is read from colour alone
 	for side in 2:
 		for room in combat.ships[side].rooms:
-			if room.warmth < Ship.COLD:
+			if room.warmth < Ship.COLD or room.rent > 0.0:
 				var rr: Rect2i = main.world.room_rect(side, room)
 				_text(
 					Vector2(rr.position.x, rr.position.y + 7),
-					tr("UI_COLD"),
+					tr("UI_RENT") if room.rent > 0.0 else tr("UI_COLD"),
 					4.0,
 					Pixel.c("j"),
 					HORIZONTAL_ALIGNMENT_RIGHT,

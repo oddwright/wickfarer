@@ -8,7 +8,7 @@ extends RefCounted
 ## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
-const VERSION := 8
+const VERSION := 9
 const DIR := "user://"
 
 
@@ -84,6 +84,13 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 			# "siege" random stream. A version 7 fight is an ordinary one and needs
 			# neither (the stream seeds itself); the bump keeps an older build from
 			# loading a siege it would play as a fight with no end.
+			return d
+		8:
+			# Version 9 rooms can hold a rent and ships an Ember flare (its burn
+			# and rest). A version 8 fight had neither: Room.load_dict and
+			# Ship.from_dict start them at 0, and the "rents" random stream seeds
+			# itself. Nothing moves; the bump keeps an older build from loading a
+			# torn or flaring ship it would play without the rules.
 			return d
 	return null
 

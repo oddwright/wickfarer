@@ -30,6 +30,7 @@ func combat_step(c: Combat) -> void:
 		if t == "" or foe.room(t).deck != open_deck:
 			c.apply({"type": "aim", "weapon": i, "room": want})
 	pilot._crew(c, c.player(), 0)
+	CombatAI._flare(c, c.player(), 0)
 
 
 ## Puts a run on its Reach's Gate and arrives there, as a jump would: for tests
