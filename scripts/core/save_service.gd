@@ -8,7 +8,7 @@ extends RefCounted
 ## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
-const VERSION := 5
+const VERSION := 6
 const DIR := "user://"
 
 
@@ -56,6 +56,12 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 						c["xp"] = {}
 					if not c.has("fight_xp"):
 						c["fight_xp"] = {}
+			return d
+		5:
+			# Version 6 fights can be the Kindling siege, with a "siege" block and a
+			# "siege" random stream. A version 5 fight is an ordinary one and needs
+			# neither (the stream seeds itself); the bump keeps an older build from
+			# loading a siege it would play as a fight with no end.
 			return d
 	return null
 

@@ -63,6 +63,11 @@
     "crew_died.us": {"sound": "crew_bell", "haptic": "heartbeat", "hitstop": 0.09, "duck": true, "priority": 3, "cooldown": 0.3},
     "crew_died.them": {"sound": "crew_bell", "haptic": "tap", "priority": 2, "cooldown": 0.3},
     "skill_up.us": {"sound": "skill_chime", "haptic": "tick", "priority": 1, "cooldown": 0.4},
+    "wave_gather.them": {"sound": "enemy_fire", "haptic": "double_tick", "priority": 2, "cooldown": 0.5},
+    "knot_hit.them": {"sound": "hull_hit_light", "haptic": "tap", "shake": 0.12, "priority": 2, "cooldown": 0.05},
+    "wave_broken.them": {"sound": "enemy_break", "haptic": "rumble", "shake": 0.35, "priority": 3, "cooldown": 0.5},
+    "swallowed.us": {"sound": "hull_hit_heavy", "haptic": "rumble", "shake": 0.5, "kick": 2.0, "duck": true, "priority": 3, "cooldown": 0.5},
+    "siege_phase": {"sound": "ui_jump", "haptic": "big_rumble", "shake": 0.4, "priority": 3, "cooldown": 1.0},
     "danger": {"sound": "heartbeat", "haptic": "heartbeat", "priority": 3, "cooldown": 5.0},
     "won": {"sound": "enemy_break", "haptic": "big_rumble", "shake": 0.8, "hitstop": 0.09, "duck": true, "priority": 4, "cooldown": 1.0},
     "lost": {"sound": "our_break", "haptic": "big_rumble", "shake": 0.9, "hitstop": 0.12, "duck": true, "priority": 4, "cooldown": 1.0}

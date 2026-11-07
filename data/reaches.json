@@ -71,7 +71,8 @@
     "start": {"scrap": 20, "light": 4},
     "fight_reward": {"scrap": [24, 38], "light": [1, 3]},
     "store": {"repair_scrap": 4, "light_scrap": 6},
-    "enemy_boost": {"hull": 3, "systems": ["helm"]}
+    "enemy_boost": {"hull": 3, "systems": ["helm"]},
+    "boss": "kindling"
   },
   "training": {
     "name": "REACH_TRAINING_NAME",

@@ -741,5 +741,72 @@
       "engines": 1
     },
     "ward_deck": 1
+  },
+  "hush_maw": {
+    "name": "SHIP_HUSH_MAW",
+    "playable": false,
+    "siege_only": true,
+    "sprite": "res://art/ship_hush_maw.png",
+    "frame_size": [
+      196,
+      66
+    ],
+    "hull": 1,
+    "reactor": 0,
+    "rooms": [
+      {
+        "id": "knot_up_fore",
+        "deck": 1,
+        "rect": [
+          62,
+          20,
+          89,
+          37
+        ],
+        "system": ""
+      },
+      {
+        "id": "knot_up_aft",
+        "deck": 1,
+        "rect": [
+          92,
+          20,
+          121,
+          37
+        ],
+        "system": ""
+      },
+      {
+        "id": "knot_low_fore",
+        "deck": 0,
+        "rect": [
+          62,
+          40,
+          89,
+          57
+        ],
+        "system": ""
+      },
+      {
+        "id": "knot_low_aft",
+        "deck": 0,
+        "rect": [
+          92,
+          40,
+          121,
+          57
+        ],
+        "system": ""
+      }
+    ],
+    "ladders": [
+      {
+        "upper": "knot_up_aft",
+        "lower": "knot_low_aft",
+        "x": 106
+      }
+    ],
+    "weapons": [],
+    "crew": []
   }
 }

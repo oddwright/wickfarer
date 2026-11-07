@@ -17,6 +17,7 @@ var state: String = "fighting"  ## fighting | won | lost
 var events: Array = []
 var ai_timer: float = 0.0
 var ai: CombatAI
+var siege: Siege  ## the Kindling's waves and progress; null in an ordinary fight
 
 
 static func create(
@@ -59,18 +60,7 @@ func apply(cmd: Dictionary, side := 0) -> bool:
 		"power_down":
 			return s.power_down(cmd.system)
 		"aim":
-			var i := int(cmd.weapon)
-			if i < 0 or i >= s.weapon_ids.size():
-				return false
-			var target_room: String = cmd.get("room", "")
-			if target_room != "" and ships[1 - side].room(target_room) == null:
-				return false
-			# Re-sighting a gun that was already aimed elsewhere costs 2 s of charge,
-			# so chasing the open deck every few seconds isn't free.
-			if s.weapon_target[i] != "" and target_room != "" and target_room != s.weapon_target[i]:
-				s.weapon_charge[i] = maxf(0.0, s.weapon_charge[i] - RESIGHT_COST)
-			s.weapon_target[i] = target_room
-			return true
+			return _aim(s, side, cmd)
 		"move":
 			return s.order_move(int(cmd.crew), cmd.room)
 		"post":
@@ -80,7 +70,24 @@ func apply(cmd: Dictionary, side := 0) -> bool:
 		"ward_deck":
 			s.set_ward_deck(int(cmd.deck))
 			return true
+		"kindle":
+			return siege != null and siege.kindle(s)
 	return false
+
+
+func _aim(s: Ship, side: int, cmd: Dictionary) -> bool:
+	var i := int(cmd.weapon)
+	if i < 0 or i >= s.weapon_ids.size():
+		return false
+	var target_room: String = cmd.get("room", "")
+	if target_room != "" and ships[1 - side].room(target_room) == null:
+		return false
+	# Re-sighting a gun that was already aimed elsewhere costs 2 s of charge,
+	# so chasing the open deck every few seconds isn't free.
+	if s.weapon_target[i] != "" and target_room != "" and target_room != s.weapon_target[i]:
+		s.weapon_charge[i] = maxf(0.0, s.weapon_charge[i] - RESIGHT_COST)
+	s.weapon_target[i] = target_room
+	return true
 
 
 func tick() -> void:
@@ -94,6 +101,8 @@ func tick() -> void:
 	if ai_timer >= AI_THINK:
 		ai_timer = Q.q(ai_timer - AI_THINK)
 		ai.think(self, 1)
+	if siege:
+		siege.tick(self, TICK, events)
 	_fire_weapons()
 	_move_projectiles()
 	tick_count += 1
@@ -104,7 +113,7 @@ func tick() -> void:
 	if player().is_dead():
 		state = "lost"
 		events.append({"type": "lost"})
-	elif enemy().is_dead():
+	elif siege.done if siege else enemy().is_dead():
 		state = "won"
 		events.append({"type": "won"})
 
@@ -150,6 +159,9 @@ func _move_projectiles() -> void:
 func _resolve(p: Dictionary) -> void:
 	var target := ships[1 - int(p.owner)]
 	var w: Dictionary = ContentDB.weapons[p.weapon]
+	if siege and target == enemy():  # the Hush maw: its knots, not a hull
+		siege.strike(ships[int(p.owner)], p.target, int(w.hull_damage), events)
+		return
 	var r := target.room(p.target)
 	var where := {"side": target.side, "room": r.id}
 	if target.ward_layers > 0 and r.deck == target.ward_deck:
@@ -187,7 +199,8 @@ func to_dict() -> Dictionary:
 		"tick": tick_count,
 		"state": state,
 		"ai_timer": ai_timer,
-		"ai_ward_timer": ai.ward_timer
+		"ai_ward_timer": ai.ward_timer,
+		"siege": siege.to_dict() if siege else {}
 	}
 
 
@@ -213,4 +226,7 @@ static func from_dict(d: Dictionary) -> Combat:
 	c.ai_timer = float(d.get("ai_timer", 0.0))
 	c.ai = CombatAI.new()
 	c.ai.ward_timer = float(d.get("ai_ward_timer", 0.0))
+	var sd: Dictionary = d.get("siege", {})
+	if not sd.is_empty():
+		c.siege = Siege.from_dict(sd)
 	return c

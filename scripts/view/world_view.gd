@@ -133,6 +133,8 @@ func _draw() -> void:
 		_draw_rooms(side)
 		_draw_wards(side)
 	_draw_aims()
+	if combat.siege:
+		SiegeView.draw_world(self, combat)
 	for side in 2:
 		_draw_crew(side)
 	_draw_projectiles()
@@ -315,7 +317,10 @@ func _draw_hud() -> void:
 	var l: HudLayout = main.layout
 	var me := combat.player()
 	_draw_hull(me, Vector2i(4, 4 + l.player_bar_y), false)
-	_draw_hull(combat.enemy(), Vector2i(l.native.x - 34, 4), true)  # clear of the menu button
+	if combat.siege:
+		SiegeView.draw_hud(self, combat, l)
+	else:
+		_draw_hull(combat.enemy(), Vector2i(l.native.x - 34, 4), true)  # clear of the menu button
 	Pixel.menu_icon(self, l.menu_rect)
 	# reactor: green = in use, outline = spare, red = lost to Ember damage
 	var used := me.used_power()
@@ -348,6 +353,8 @@ func _draw_hud() -> void:
 					)
 			"crew", "muster":
 				_draw_panel(r, b.kind == "crew" and main.roster.open)
+			"kindle":
+				SiegeView.draw_kindle_button(self, combat, r)
 			"pause":
 				_draw_panel(r, main.paused)
 				var cx := r.position.x + 11
