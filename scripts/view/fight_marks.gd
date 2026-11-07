@@ -9,7 +9,8 @@ const PATCHED := ".j...\njff..\n.fff.\n..ffj\n...j."
 const FLAME := "..w..\n.wvw.\nwvxvw\n.wvw.\n..w.."
 
 
-## A rent in the bottom-right of a room (its word sits top-right), with specks of warmth pulled out through it.
+## A rent in the bottom-right of a room (its word sits top-right), with specks of
+## warmth pulled out through it.
 ## The room's cold shading already shows the warmth it costs.
 static func draw_rent(world: WorldView, r: Room, rr: Rect2i, t: float) -> void:
 	if r.rent <= 0.0:
