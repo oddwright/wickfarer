@@ -28,6 +28,10 @@ var ward_regen: float = 0.0
 var next_uid: int = 1
 var stokes: int = 0  ## times the Ember has been stoked this run
 var ladders: Array[Dictionary] = []
+var modules: Array[String] = []  ## module ids in hull slots (see Gear)
+var module_slots: int = Gear.DEFAULT_MODULE_SLOTS
+var weapon_slots: int = Gear.MIN_WEAPON_SLOTS
+var mods: Dictionary = {}  ## the fitted modules' summed effects, kept by Gear
 
 var _room_by_id: Dictionary = {}
 var _neighbors: Dictionary = {}  ## room id -> Array of [room id, seconds]
@@ -42,6 +46,9 @@ static func from_content(id: String, side_value: int) -> Ship:
 	s.hull = s.max_hull
 	s.reactor = int(c.reactor)
 	s.ward_deck = int(c.get("ward_deck", 1))
+	s.module_slots = int(c.get("module_slots", Gear.DEFAULT_MODULE_SLOTS))
+	s.weapon_slots = maxi(int(c.get("weapon_slots", 0)), (c.weapons as Array).size())
+	s.weapon_slots = maxi(s.weapon_slots, Gear.MIN_WEAPON_SLOTS)
 	for rd: Dictionary in c.rooms:
 		var r := Room.new()
 		r.id = rd.id
@@ -73,6 +80,9 @@ static func from_content(id: String, side_value: int) -> Ship:
 			if int(start[k]) > 0:
 				m.xp[k] = Skills.xp_for_rank(int(start[k]))
 		s.crew.append(m)
+	for mid: String in c.get("modules", []):
+		Gear.fit(s, mid)
+	s.hull = s.max_hull
 	for sys: String in c.get("start_power", {}):
 		var r := s.system_room(sys)
 		if r:
@@ -165,7 +175,7 @@ func available_power() -> int:
 	var lost := 0
 	if ember:
 		lost = 2 * (ember.level - ember.effective_level())
-	return maxi(0, reactor - lost)
+	return maxi(0, reactor + int(mod("reactor")) - int(mod("power")) - lost)
 
 
 func used_power() -> int:
@@ -345,6 +355,7 @@ func evasion() -> float:
 		return 0.0
 	var ev := 5.0 * helm.power + 5.0 * system_power("engines")
 	ev += station_bonus("helm", 0.0) + station_bonus("engines", 5.0)
+	ev = maxf(0.0, ev + mod("evasion") - mod("helm"))
 	if helm.warmth < COLD:
 		ev *= 0.5
 	return minf(ev, 45.0)
@@ -356,6 +367,11 @@ func max_ward_layers() -> int:
 
 func is_dead() -> bool:
 	return hull <= 0 or alive_crew().is_empty()
+
+
+## One summed module effect (Gear.GAINS and Gear.COSTS), 0 when nothing gives it.
+func mod(effect: String) -> float:
+	return float(mods.get(effect, 0.0))
 
 
 # ---------------------------------------------------------------- tick
@@ -412,6 +428,7 @@ func _tick_crew(dt: float, events: Array) -> void:
 			var next: String = c.path[0]
 			var t := LADDER_TIME if is_ladder(c.room, next) else WALK_TIME
 			var speed := float(spec.speed) * (0.6 if here.warmth < COLD else 1.0)
+			speed *= 1.0 + mod("crew_speed")
 			c.progress += dt * speed / t
 			if c.progress >= 1.0:
 				c.room = next
@@ -438,7 +455,7 @@ func _tick_crew(dt: float, events: Array) -> void:
 		if here.warmth < FREEZING and not c.spec().cold_proof:
 			c.hp -= 2.0 * dt
 		if mend and c.room == mend.id and mend.power > 0 and not c.is_moving():
-			c.hp = minf(c.max_hp, c.hp + 6.0 * mend.power * dt)
+			c.hp = minf(c.max_hp, c.hp + 6.0 * mend.power * (1.0 + mod("mend")) * dt)
 		if c.hp <= 0.0:
 			c.hp = 0.0
 			c.path.clear()
@@ -507,8 +524,9 @@ func promotions() -> Array[Dictionary]:
 
 func _tick_warmth(dt: float) -> void:
 	var delta := {}
+	var fitted := mod("warmth") - mod("heat")
 	for r in rooms:
-		var d := -1.2
+		var d := -1.2 + fitted
 		if r.system == "ember" and r.level > 0:
 			var stoked := 1.0 + station_bonus("ember", STOKE_BOOST)
 			d += 7.0 * stoked * float(r.effective_level()) / float(r.level)
@@ -556,7 +574,8 @@ func _tick_wards(dt: float) -> void:
 	if ward_layers > cap:
 		ward_layers = cap
 	if ward_layers < cap:
-		ward_regen += dt * maxf(1.0, station_bonus("wards", WARD_BOOST))
+		var rate := maxf(1.0, station_bonus("wards", WARD_BOOST)) * (1.0 + mod("ward_regen"))
+		ward_regen += dt * rate
 		if ward_regen >= WARD_REGEN_TIME:
 			ward_layers += 1
 			ward_regen = 0.0
@@ -565,7 +584,7 @@ func _tick_wards(dt: float) -> void:
 
 
 func _tick_weapons(dt: float, events: Array) -> void:
-	var boost := maxf(1.0, station_bonus("weapons", GUN_BOOST))
+	var boost := maxf(1.0, station_bonus("weapons", GUN_BOOST)) * (1.0 + mod("weapon_charge"))
 	for i in weapon_ids.size():
 		var full := float(ContentDB.weapons[weapon_ids[i]].charge)
 		if weapon_powered(i):
@@ -675,6 +694,8 @@ func to_dict() -> Dictionary:
 		"stokes": stokes,
 		"rooms": rd,
 		"crew": cd,
+		"weapons": Array(weapon_ids),
+		"modules": Array(modules),
 		"weapon_charge": Array(weapon_charge),
 		"weapon_target": Array(weapon_target),
 		"ward_deck": ward_deck,
@@ -701,11 +722,39 @@ static func from_dict(d: Dictionary) -> Ship:
 		if not cd.has("post"):  # saved before posts: posted where they stand, if a station
 			c.post = c.room if s.room(c.room) and s.room(c.room).system != "" else ""
 		s.crew.append(c)
+	_load_gear(s, d)
+	var charge: Array = d.weapon_charge
+	var aim: Array = d.weapon_target
+	var same := charge.size() == s.weapon_ids.size() and aim.size() == charge.size()
 	for i in s.weapon_ids.size():
-		s.weapon_charge[i] = float(d.weapon_charge[i])
-		s.weapon_target[i] = str(d.weapon_target[i])
+		s.weapon_charge[i] = float(charge[i]) if same else 0.0
+		s.weapon_target[i] = str(aim[i]) if same else ""
 	s.ward_deck = int(d.ward_deck)
 	s.ward_layers = int(d.ward_layers)
 	s.ward_regen = float(d.ward_regen)
 	s.next_uid = int(d.next_uid)
 	return s
+
+
+## Guns and modules as saved; a save from before stores had the hull's own.
+## Unknown ids (cut in an update) are dropped rather than breaking the save;
+## from_dict drops the saved charge if the gun list no longer matches it.
+static func _load_gear(s: Ship, d: Dictionary) -> void:
+	if d.has("weapons"):
+		var kept: Array[String] = []
+		for w: Variant in d.weapons:
+			if ContentDB.weapons.has(str(w)):
+				kept.append(str(w))
+		if not kept.is_empty():
+			s.weapon_ids = kept
+	var n := s.weapon_ids.size()
+	s.weapon_charge.resize(n)
+	s.weapon_target.resize(n)
+	if d.has("modules"):
+		s.modules.clear()
+		for m: Variant in d.modules:
+			if ContentDB.modules.has(str(m)):
+				s.modules.append(str(m))
+	s.weapon_slots = maxi(s.weapon_slots, n)
+	s.module_slots = maxi(s.module_slots, s.modules.size())
+	s.mods = Gear.sum(s.modules)
