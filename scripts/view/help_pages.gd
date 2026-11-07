@@ -32,6 +32,19 @@ static func tap(main: Node, id: String) -> bool:
 	return true
 
 
+## The page as drawn: [heading, body lines], the body being where the topic falls
+## ("3 of 16") and its paragraphs with a blank line (a half-line gap) between each.
+static func page_text(at := page) -> Array:
+	var all := lines(at)
+	var heading: String = all.pop_front()
+	var body: Array[String] = []
+	for line in all:
+		if not body.is_empty():
+			body.append("")
+		body.append(line)
+	return [heading, body]
+
+
 ## The topic's heading, where it falls ("3 of 16"), then its paragraphs.
 static func lines(at := page) -> Array[String]:
 	var all := topics()

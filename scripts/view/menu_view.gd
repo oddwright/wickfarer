@@ -92,14 +92,13 @@ func _draw_profile_page(l: MenuLayout) -> void:
 		heading = t[0]
 		lines.append(t[1])
 	elif main.menu == "help":
-		lines = HelpPages.lines()
-		heading = lines.pop_front()
+		var page := HelpPages.page_text()
+		heading = page[0]
+		lines.assign(page[1])
 	else:
 		lines = ProfilePages.log_lines(main.profile)
 	_text(Vector2(r.position.x, r.position.y + 10), heading, 10.0, Pixel.c("w"))
 	var top := r.position.y + 22
-	if main.menu == "help":
-		lines = _paragraphs(lines)
 	for row: Array in page_rows(lines, r.size.x, r.end.y + 4 - top):
 		_text(Vector2(r.position.x, top + int(row[1])), str(row[0]), 5.0, Pixel.c("h"))
 	for b in l.buttons:
@@ -109,16 +108,6 @@ func _draw_profile_page(l: MenuLayout) -> void:
 		elif b.id == "depth_more":
 			on = main.profile.depth < main.profile.depth_open
 		_button(b.rect, tr("UI_MENU_" + str(b.id).to_upper()), on)
-
-
-## A half-line gap between paragraphs, as page_rows reads a blank line.
-static func _paragraphs(lines: Array[String]) -> Array[String]:
-	var out: Array[String] = []
-	for line in lines:
-		if not out.is_empty():
-			out.append("")
-		out.append(line)
-	return out
 
 
 ## A small lit ember under the title, the one warm thing on the screen.

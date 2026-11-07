@@ -66,25 +66,28 @@ static func help_fits(t: SceneTree, screen_sizes: Dictionary) -> void:
 		var r := l.title_rect
 		var top := r.position.y + 22
 		for i in HelpPages.topics().size():
-			var lines := HelpPages.lines(i)
-			var heading: String = lines.pop_front()
+			var page := HelpPages.page_text(i)
+			var heading: String = page[0]
 			if TextLayer.text_width(heading.to_upper()) * 2 > r.size.x:
 				probs.append("%s: topic %d's heading is too wide" % [name, i])
-			var body := MenuView._paragraphs(lines)
+			var body: Array[String] = []
+			body.assign(page[1])
 			var all := MenuView.page_rows(body, r.size.x, 100000).size()
 			if MenuView.page_rows(body, r.size.x, r.end.y + 4 - top).size() < all:
 				probs.append("%s: topic %d is too long" % [name, i])
 	_check(t, probs.is_empty(), "every Help topic fits: %s" % [probs.slice(0, 4)])
 
 
-## Normal play doesn't explain itself: how-to words ("tap", "hold to") are only in
-## the training flight (TUT_, TIP_, the aim and move prompts it shows) and in Help.
+## Normal play doesn't explain itself: how-to words ("tap", "hold a") are only in
+## the coach (training lessons, the aim and move prompts training shows, and the
+## one-time tips, each shown once ever) and in Help.
 static func no_how_to_in_play(t: SceneTree) -> void:
 	var allowed: Array[String] = ["TUT_", "TIP_", "HELP_", "UI_AIM_PROMPT", "UI_MOVE_PROMPT"]
+	var how_to := RegEx.create_from_string("\\b(tap|press|hold (a|to))\\b")
 	var bad: Array[String] = []
 	for key: String in ContentDB.strings:
 		var text := str(ContentDB.strings[key]).to_lower()
-		if not (text.contains("tap ") or text.contains("hold to")):
+		if not how_to.search(text):
 			continue
 		if not allowed.any(func(a: String) -> bool: return key.begins_with(a)):
 			bad.append(key)

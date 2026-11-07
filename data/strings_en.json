@@ -36,7 +36,7 @@
   "UI_HULL": "Hull",
   "UI_POWER": "Power",
   "UI_PAUSED": "Paused",
-  "UI_TAP_TO_RESUME": "Where you left off",
+  "UI_TAP_TO_RESUME": "Paused where you left off",
   "UI_AIM_PROMPT": "Tap an enemy room",
   "UI_MOVE_PROMPT": "Tap a room",
   "UI_WARD_DECK_UPPER": "Ward: upper deck",
@@ -858,5 +858,6 @@
   "UI_HELP_TITLE": "Help",
   "UI_MENU_HELP_NEXT": "Next",
   "UI_MENU_HELP_PREV": "Previous",
-  "UI_HELP_PAGE": "%d of %d"
+  "UI_HELP_PAGE": "%d of %d",
+  "UI_REP_PRICE": "Prices %+d."
 }

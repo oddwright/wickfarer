@@ -8,7 +8,7 @@ extends SceneTree
 ## store:<faction>:<standing>, reach_done,
 ## won or lost, roster or roster_pick (the crew roster over a fight,
 ## picker shut or open), or a menu over a fight: title, pause, options, confirm, depth or
-## log, help or help:<topic> (from the pause menu), or ship select from the title: ship
+## log, help or help:<n> (topic n, from 1, over the pause menu), or ship select from the title: ship
 ## or ship:<ship id> (shown unlocked), or siege (the
 ## Kindling, played by the autopilot for [ticks], then on to the next gathering wave). ui size
 ## is the options setting, a step from auto (-2 to 1); it is not saved.
@@ -130,7 +130,7 @@ func _set_up() -> void:
 			main.open_menu("title")
 			main.open_menu(which)
 	if which.begins_with("help"):
-		HelpPages.page = int(which.get_slice(":", 1)) if ":" in which else 0
+		HelpPages.page = int(which.get_slice(":", 1)) - 1 if ":" in which else 0  # as "N of 16"
 		main.open_menu("pause")
 		main.open_menu("help")
 

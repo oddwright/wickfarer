@@ -127,8 +127,8 @@ func _story(l: RunLayout, s: String) -> void:
 	_text_block(r, s, Pixel.c("h"))
 
 
-## A store page's text: each paragraph starts on its own line, the first (the
-## place's own words) in grey. The open card, if any, takes the place of it all.
+## A store page's text: each paragraph starts on its own line. The open card,
+## if any, takes the place of it all.
 func _page(run: Run, l: RunLayout, paragraphs: Array[String]) -> void:
 	var r := l.text_rect
 	draw_rect(Rect2(r.grow(4)), Pixel.c("a", 0.85))
@@ -142,7 +142,7 @@ func _page(run: Run, l: RunLayout, paragraphs: Array[String]) -> void:
 	var y := r.position.y
 	for i in paragraphs.size():
 		var lines := _wrap(paragraphs[i].to_upper(), r.size.x, 1)
-		var col := Pixel.c("g") if i == 0 else Pixel.c("h")
+		var col := Pixel.c("h")
 		for line in lines:
 			if y + LINE > r.end.y + 2:
 				return  # a short page: the card still has it all
@@ -297,11 +297,15 @@ func _draw_store(run: Run, l: RunLayout) -> void:
 
 
 ## The keeper's line, after the standing of the faction that runs the store, if
-## one does. Its prices already carry that standing (Help says how).
+## one does, and how far that standing moves its prices.
 func _store_text(run: Run) -> String:
 	var text := tr("UI_STORE_TEXT")
 	var f := run.store_faction
-	return text if f == "" else _standing_line(run, f) + " " + text
+	if f == "":
+		return text
+	var delta := run.standing.price_delta(f)
+	var price := "" if delta == 0 else " " + tr("UI_REP_PRICE") % delta
+	return _standing_line(run, f) + price + " " + text
 
 
 ## One button per system the dock can raise, then Stoke the Ember, then Back.

@@ -300,6 +300,7 @@ func _ui_state() -> Dictionary:
 		"weapon": selected_weapon,
 		"crew": selected_crew,
 		"ship": ships.picked(),
+		"help": HelpPages.page,
 		"music": music_director.to_dict(combat),
 	}
 
@@ -325,6 +326,7 @@ func _restore_ui(d: Dictionary) -> bool:
 	if page != "":
 		ships.show(str(d.get("ship", "")))  # the depth page launches the hull picked before it
 		confirm_action = str(d.get("confirm", ""))
+		HelpPages.page = maxi(0, _int_or(d.get("help"), 0))  # lines() wraps a stale index
 		if page == "confirm" and not confirm_action in CONFIRMS:
 			page = base  # a confirm page that asks nothing: back to its menu
 		_paused_before_menu = d.get("paused_before_menu") == true
