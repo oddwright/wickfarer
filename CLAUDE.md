@@ -47,7 +47,9 @@ xvfb-run godot --path . -s tools/shot.gd -- 2400 1080 out.png   # screenshot at 
    `RunLayout` (checked by `test_run_screens_on_every_screen`). Both run on every device size.
 10. **Touch first.** Hit targets are at least 48 dp (about 10 native pixels at 5x). No hover-only
     information. Long press is the secondary action; right click stands in for it on desktop.
-11. **Text is pixel text.** Use `TextLayer._text()` with the 3x5 font; no hi-res fonts.
+11. **Text is pixel text.** Use `TextLayer._text()`; no hi-res fonts. Layouts measure against the
+    3x5 font; on screens at 2x and up the letters are drawn from the finer 4x6 font (4 screen px
+    per font px at 5x), which never takes more room. Only text is finer; art stays whole-scale.
 12. **Mobile lifecycle.** Save on `NOTIFICATION_APPLICATION_PAUSED` and focus loss, never rely on
     a quit event.
 

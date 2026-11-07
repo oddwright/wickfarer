@@ -268,7 +268,7 @@ func _draw_crew(side: int) -> void:
 	var s: Ship = main.combat.ships[side]
 	for c in s.alive_crew():
 		var tex: Texture2D = crew_tex[c.species + ":" + str(side)]
-		var fp := crew_pos(side, c)
+		var fp := crew_pos(side, c).round()  # whole art pixels, also on a screen-size canvas
 		var f: int
 		if c.is_moving():
 			f = 2 + int(anim_time * 8.0 + c.uid) % 4
