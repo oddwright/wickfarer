@@ -109,7 +109,7 @@ func _draw_skill(c: Crew, skill: String, at: Vector2i) -> void:
 		elif k < earned:
 			draw_rect(pip, Pixel.c("v") if blink else Pixel.c("e"))
 		else:
-			draw_rect(pip, Pixel.c("e"), false, 1.0)
+			Pixel.frame(self, Rect2i(pip), Pixel.c("e"))
 	if earned < Skills.MAX_RANK:
 		var lo := Skills.xp_for_rank(earned)
 		var hi := Skills.xp_for_rank(earned + 1)

@@ -117,7 +117,56 @@ static func dither(key: String, density: int) -> ImageTexture:
 static func panel(ci: CanvasItem, r: Rect2i, active: bool) -> void:
 	ci.draw_rect(Rect2(r), c("b"))
 	ci.draw_rect(Rect2(r.position, Vector2(r.size.x, 1)), c("e"))
-	ci.draw_rect(Rect2(r), c("v") if active else c("d"), false, 1.0)
+	frame(ci, r, c("v") if active else c("d"))
+
+
+## A one-pixel outline on whole art pixels, where draw_rect(r, col, false, 1.0) used to land on
+## a native-size canvas: a stroke centred on the edge is half a pixel off the grid once the
+## canvas is drawn at screen size, so it is drawn as four filled bars instead.
+static func frame(ci: CanvasItem, r: Rect2i, col: Color) -> void:
+	for bar in frame_rects(r):
+		ci.draw_rect(Rect2(bar), col)
+
+
+static func frame_rects(r: Rect2i) -> Array[Rect2i]:
+	var p := r.position - Vector2i.ONE
+	var s := r.size + Vector2i.ONE
+	return [
+		Rect2i(p.x, p.y, s.x, 1),
+		Rect2i(p.x, p.y + s.y - 1, s.x, 1),
+		Rect2i(p.x, p.y + 1, 1, s.y - 2),
+		Rect2i(p.x + s.x - 1, p.y + 1, 1, s.y - 2),
+	]
+
+
+## A one-pixel line stepped on whole art pixels (draw_line would be smooth on a screen-size
+## canvas). Drawn as runs along the long axis, so a line costs one bar per step, not per pixel.
+static func line(ci: CanvasItem, a: Vector2i, b: Vector2i, col: Color) -> void:
+	for bar in line_rects(a, b):
+		ci.draw_rect(Rect2(bar), col)
+
+
+static func line_rects(a: Vector2i, b: Vector2i) -> Array[Rect2i]:
+	var d := b - a
+	var steep := absi(d.y) > absi(d.x)
+	var n := maxi(absi(d.x), absi(d.y))
+	var out: Array[Rect2i] = []
+	var run_start := a
+	var prev := a
+	for i in range(1, n + 1):
+		var p := Vector2i(Vector2(a).lerp(Vector2(b), float(i) / n).round())
+		if (p.x != prev.x and steep) or (p.y != prev.y and not steep):
+			out.append(_run(run_start, prev))
+			run_start = p
+		prev = p
+	out.append(_run(run_start, prev))
+	return out
+
+
+static func _run(from: Vector2i, to: Vector2i) -> Rect2i:
+	var lo := Vector2i(mini(from.x, to.x), mini(from.y, to.y))
+	var hi := Vector2i(maxi(from.x, to.x), maxi(from.y, to.y))
+	return Rect2i(lo, hi - lo + Vector2i.ONE)
 
 
 ## Corner brackets n pixels long, used for aim marks and selections.

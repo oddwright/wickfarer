@@ -220,7 +220,7 @@ func _on_resize() -> void:
 	if not screen.is_empty() and next.layout != screen.layout and mid_fight:
 		_pause(ScreenManager.change_reason(screen.layout, next.layout))  # a fold or a turn
 	screen = next
-	container.stretch_shrink = screen.scale
+	TextLayer.fit_canvas(container, viewport, screen.scale)
 	container.position = Vector2.ZERO
 	container.size = Vector2(screen.native * screen.scale)
 	world.make_stars(screen.native)

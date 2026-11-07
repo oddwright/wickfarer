@@ -7,35 +7,120 @@ static func _check(t: SceneTree, cond: bool, what: String) -> void:
 	t.call("check", cond, what)
 
 
-## The outline strip is exactly the glyph strip grown a pixel each way, glyph for glyph.
+## Each font's outline strip is exactly its glyph strip grown a pixel each way, glyph for glyph.
 static func font(t: SceneTree) -> void:
+	_font_strips(t, "3x5", TextLayer.GLYPH_H)
+	_font_strips(t, "4x6", TextLayer.FINE_H)
+	fine_text(t)
+	pixel_lines(t)
+
+
+static func _font_strips(t: SceneTree, name: String, h: int) -> void:
 	var index: Dictionary = JSON.parse_string(
-		FileAccess.get_file_as_string("res://art/font_3x5.json")
+		FileAccess.get_file_as_string("res://art/font_%s.json" % name)
 	)
-	var glyphs := (load("res://art/font_3x5.png") as Texture2D).get_image()
-	var outline := (load("res://art/font_3x5_outline.png") as Texture2D).get_image()
-	_check(t, outline.get_height() == TextLayer.GLYPH_H + 2, "outline strip is 7 pixels tall")
+	var glyphs := (load("res://art/font_%s.png" % name) as Texture2D).get_image()
+	var outline := (load("res://art/font_%s_outline.png" % name) as Texture2D).get_image()
+	_check(t, outline.get_height() == h + 2, "%s outline strip is %d pixels tall" % [name, h + 2])
 	_check(
 		t,
 		outline.get_width() == index.size() * TextLayer.OUTLINE_CELL,
-		"outline strip has a slot for every glyph"
+		"%s outline strip has a slot for every glyph" % name
 	)
 	var bad: Array[String] = []
 	for ch: String in index:
-		if not _outline_matches(glyphs, outline, int(index[ch][0]), int(index[ch][1])):
+		if not _outline_matches(glyphs, outline, int(index[ch][0]), int(index[ch][1]), h):
 			bad.append(ch)
-	_check(t, bad.is_empty(), "every outline is its glyph grown by a pixel (%s)" % ", ".join(bad))
+	_check(
+		t,
+		bad.is_empty(),
+		"every %s outline is its glyph grown by a pixel (%s)" % [name, ", ".join(bad)]
+	)
+
+
+## The finer text font: picked by scale, and never bigger than the 3x5 letters it replaces.
+static func fine_text(t: SceneTree) -> void:
+	TextLayer.load_glyphs()
+	var coarse := TextLayer.glyph_index
+	var fine := TextLayer.fine_index
+	_check(t, fine.keys() == coarse.keys(), "the 4x6 font has every 3x5 glyph")
+	var n := TextLayer.FINE_NUM
+	var d := TextLayer.FINE_DEN
+	var bad: Array[String] = []
+	for ch: String in fine:
+		var wf := int(fine[ch][1])
+		var wc := int(coarse[ch][1])
+		# advance (letter + gap), and the outlined letter, at the largest fine pixel size
+		if (wf + 1) * n > (wc + 1) * d or (wf + 2) * n > (wc + 2) * d:
+			bad.append(ch)
+	_check(t, bad.is_empty(), "no 4x6 letter is wider than its 3x5 one (%s)" % ", ".join(bad))
+	_check(t, (TextLayer.FINE_H + 2) * n <= (TextLayer.GLYPH_H + 2) * d, "4x6 text is no taller")
+	_check(t, TextLayer.FINE_LINE * n <= TextLayer.LINE * d, "4x6 lines are no further apart")
+	_check(t, TextLayer.fine_px(1) == 0 and TextLayer.fine_px(2) == 0, "1x and 2x keep 3x5 text")
+	_check(t, TextLayer.fine_px(3) == 2, "3x draws 4x6 text at 2 pixels")
+	_check(t, TextLayer.fine_px(5) == 4 and TextLayer.fine_px(6) == 4, "and at 4 at 5x and 6x")
+	var was := [TextLayer.px_scale, TextLayer.font_px]
+	var word := "MUSTER THE CREW, 14/20 HULL"
+	var coarse_w := TextLayer.text_width(word)
+	var c := SubViewportContainer.new()
+	var v := SubViewport.new()
+	TextLayer.fit_canvas(c, v, 5)
+	_check(t, c.stretch_shrink == 1, "fine text draws the canvas at screen size")
+	_check(t, v.canvas_transform.get_scale() == Vector2(5, 5), "the art keeps its 5x scale")
+	_check(t, TextLayer.text_width(word) == coarse_w, "layouts measure in the 3x5 font at 5x")
+	TextLayer.fit_canvas(c, v, 2)
+	_check(t, c.stretch_shrink == 2 and v.canvas_transform == Transform2D.IDENTITY, "2x: native")
+	c.free()
+	v.free()
+	TextLayer.px_scale = was[0]
+	TextLayer.font_px = was[1]
+
+
+## The pixel-grid outline and line helpers, which replace strokes that a screen-size canvas
+## would draw half a pixel off the grid or smooth.
+static func pixel_lines(t: SceneTree) -> void:
+	var lit := _pixels(Pixel.frame_rects(Rect2i(2, 2, 6, 4)))
+	var want := {}
+	for x in range(1, 8):
+		want[Vector2i(x, 1)] = true
+		want[Vector2i(x, 5)] = true
+	for y in range(1, 6):
+		want[Vector2i(1, y)] = true
+		want[Vector2i(7, y)] = true
+	_check(t, lit == want, "a frame lands where a 1px draw_rect outline did on a native canvas")
+	var runs := Pixel.line_rects(Vector2i(10, 2), Vector2i(17, 6))
+	lit = _pixels(runs)
+	var steps := lit.size() == 8
+	for x in range(10, 18):
+		var col := 0
+		for y in 10:
+			col += 1 if lit.has(Vector2i(x, y)) else 0
+		steps = steps and col == 1
+	_check(t, steps and lit.has(Vector2i(10, 2)) and lit.has(Vector2i(17, 6)), "a stepped line")
+	_check(t, runs.size() == 5, "a shallow line is drawn as one run per step, not per pixel")
+	var steep := _pixels(Pixel.line_rects(Vector2i(3, 9), Vector2i(1, 0)))
+	_check(t, steep.size() == 10 and steep.has(Vector2i(1, 0)), "a steep line, drawn backwards")
+	_check(t, _pixels(Pixel.line_rects(Vector2i(4, 4), Vector2i(4, 4))).size() == 1, "a dot")
+
+
+static func _pixels(rects: Array[Rect2i]) -> Dictionary:
+	var out := {}
+	for r in rects:
+		for x in range(r.position.x, r.end.x):
+			for y in range(r.position.y, r.end.y):
+				out[Vector2i(x, y)] = true
+	return out
 
 
 ## True when every pixel of the outline slot is set exactly where a glyph pixel is within one.
-static func _outline_matches(glyphs: Image, outline: Image, slot: int, w: int) -> bool:
-	for y in TextLayer.GLYPH_H + 2:
+static func _outline_matches(glyphs: Image, outline: Image, slot: int, w: int, h: int) -> bool:
+	for y in h + 2:
 		for x in TextLayer.OUTLINE_CELL:
 			var near := false
 			for d in 9:
 				var gx := x - 1 + d % 3 - 1
 				var gy := y - 1 + d / 3 - 1
-				if gx >= 0 and gx < w and gy >= 0 and gy < TextLayer.GLYPH_H:
+				if gx >= 0 and gx < w and gy >= 0 and gy < h:
 					near = near or glyphs.get_pixel(slot * TextLayer.CELL + gx, gy).a > 0.0
 			var lit := outline.get_pixel(slot * TextLayer.OUTLINE_CELL + x, y).a > 0.0
 			if lit != near:

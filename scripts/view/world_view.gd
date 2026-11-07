@@ -77,6 +77,7 @@ func room_at(side: int, p: Vector2i) -> Room:
 
 
 ## Feet position of a crew member on the canvas.
+## On whole art pixels, so a walking crew member stays on the grid on a screen-size canvas.
 func crew_pos(side: int, c: Crew) -> Vector2:
 	var s: Ship = main.combat.ships[side]
 	var o := Vector2(ship_origin(side))
@@ -88,10 +89,10 @@ func crew_pos(side: int, c: Crew) -> Vector2:
 			var y0 := float(here.rect.end.y)
 			var y1 := float(next.rect.end.y)
 			# walk to the ladder, then climb
-			return o + Vector2(lx, lerpf(y0, y1, c.progress))
+			return (o + Vector2(lx, lerpf(y0, y1, c.progress))).round()
 		var a := Vector2(here.center_x(), here.rect.end.y)
 		var b := Vector2(next.center_x(), next.rect.end.y)
-		return o + a.lerp(b, c.progress)
+		return (o + a.lerp(b, c.progress)).round()
 	var mates := s.crew_in(here.id)
 	var idx := mates.find(c)
 	var n := maxi(1, mates.size())
@@ -256,9 +257,7 @@ func _corners(r: Rect2i, col: Color, n: int) -> void:
 ## its position across the width's size whatever its sign. (Moving the position by
 ## the width as well put every enemy hand one room aft of where they really were.)
 static func crew_rect(side: int, fp: Vector2) -> Rect2:
-	var dst := Rect2(
-		Vector2(roundf(fp.x) - CREW_CELL.x / 2, fp.y - CREW_CELL.y), Vector2(CREW_CELL)
-	)
+	var dst := Rect2(Vector2(fp.x - CREW_CELL.x / 2, fp.y - CREW_CELL.y), Vector2(CREW_CELL))
 	if side == 1:
 		dst.size.x = -dst.size.x
 	return dst
@@ -281,15 +280,15 @@ func _draw_crew(side: int) -> void:
 			if post:  # show where their post is, so a move away from it is a choice
 				_corners(room_rect(0, post).grow(-1), Pixel.c("w", 0.7), 2)
 			var y := fp.y + 1
-			draw_rect(Rect2(roundf(fp.x) - 4, y, 9, 1), Pixel.c("w"))
-			draw_rect(Rect2(roundf(fp.x) - 4, y - 1, 1, 1), Pixel.c("w"))
-			draw_rect(Rect2(roundf(fp.x) + 4, y - 1, 1, 1), Pixel.c("w"))
+			draw_rect(Rect2(fp.x - 4, y, 9, 1), Pixel.c("w"))
+			draw_rect(Rect2(fp.x - 4, y - 1, 1, 1), Pixel.c("w"))
+			draw_rect(Rect2(fp.x + 4, y - 1, 1, 1), Pixel.c("w"))
 		if c.hp < c.max_hp:
 			var w := 7.0 * c.hp / c.max_hp
 			var top := fp.y - CREW_CELL.y - 2
-			draw_rect(Rect2(roundf(fp.x) - 3, top, 7, 1), Pixel.c("r"))
+			draw_rect(Rect2(fp.x - 3, top, 7, 1), Pixel.c("r"))
 			draw_rect(
-				Rect2(roundf(fp.x) - 3, top, maxf(1.0, roundf(w)), 1),
+				Rect2(fp.x - 3, top, maxf(1.0, roundf(w)), 1),
 				Pixel.c("H") if c.hp > c.max_hp * 0.35 else Pixel.c("U")
 			)
 
@@ -341,7 +340,7 @@ func _draw_hud() -> void:
 		if k < used:
 			draw_rect(pip, Pixel.c("H"))
 		elif k < me.available_power():
-			draw_rect(pip, Pixel.c("f"), false, 1.0)
+			Pixel.frame(self, Rect2i(pip), Pixel.c("f"))
 		else:
 			draw_rect(pip, Pixel.c("s"))
 	for b in l.buttons:
@@ -411,7 +410,7 @@ func _draw_system_button(me: Ship, sys: String, r: Rect2i) -> void:
 		elif k >= eff:
 			draw_rect(pip, Pixel.c("U"))
 		else:
-			draw_rect(pip, Pixel.c("e"), false, 1.0)
+			Pixel.frame(self, Rect2i(pip), Pixel.c("e"))
 
 
 func _draw_weapon_button(me: Ship, i: int, r: Rect2i) -> void:

@@ -25,7 +25,7 @@ func _draw() -> void:
 	# a steady outline so a glance finds it, and corners that blink so it reads as "tap"
 	var lit := int(main.world.anim_time * BLINK) % 2 == 0
 	for r in CoachLayout.targets(str(d.target), hud, run_l, main.run, main.combat, feet):
-		draw_rect(Rect2(r.grow(1)), Pixel.c("v"), false, 1.0)
+		Pixel.frame(self, r.grow(1), Pixel.c("v"))
 		if lit:
 			Pixel.corners(self, r.grow(3), Pixel.c("w"), 3)
 	_words(CoachLayout.text_rect(hud, run_l), d)
@@ -50,7 +50,7 @@ func _words(r: Rect2i, d: Dictionary) -> void:
 		w = maxi(w, text_width(line))
 	var box := Rect2i(r.position.x + (r.size.x - w) / 2 - 3, top - 1, w + 6, h + 1)
 	draw_rect(Rect2(box), Pixel.c("a", 0.9))
-	draw_rect(Rect2(box), Pixel.c("v"), false, 1.0)
+	Pixel.frame(self, box, Pixel.c("v"))
 	for i in lines.size():
 		_text(
 			Vector2(r.position.x, top + 7 + i * LINE),
