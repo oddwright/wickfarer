@@ -79,12 +79,11 @@ func _draw_chart(run: Run, l: RunLayout) -> void:
 		)
 	if main.coach_speaking():
 		return  # the coach writes in the message line
-	var msg := tr("UI_JUMP")
-	if not run.messages.is_empty():
-		msg = GearText.message(run.messages[-1])
+	if run.messages.is_empty():
+		return  # the blinking beacons already show where a jump can go
 	_text(
 		Vector2(l.message_rect.position.x, l.message_rect.position.y + 12),
-		msg,
+		GearText.message(run.messages[-1]),
 		5.0,
 		Pixel.c("w"),
 		HORIZONTAL_ALIGNMENT_CENTER,
@@ -128,8 +127,8 @@ func _story(l: RunLayout, s: String) -> void:
 	_text_block(r, s, Pixel.c("h"))
 
 
-## A store page's text: each paragraph starts on its own line, and the last
-## one says how to see more. The open card, if any, takes the place of it all.
+## A store page's text: each paragraph starts on its own line. The open card,
+## if any, takes the place of it all.
 func _page(run: Run, l: RunLayout, paragraphs: Array[String]) -> void:
 	var r := l.text_rect
 	draw_rect(Rect2(r.grow(4)), Pixel.c("a", 0.85))
@@ -140,11 +139,10 @@ func _page(run: Run, l: RunLayout, paragraphs: Array[String]) -> void:
 		if not b.is_empty():
 			Pixel.corners(self, (b.rect as Rect2i).grow(2), Pixel.c("x"), 3)
 		return
-	paragraphs.append(tr("UI_CARD_PROMPT"))
 	var y := r.position.y
 	for i in paragraphs.size():
 		var lines := _wrap(paragraphs[i].to_upper(), r.size.x, 1)
-		var col := Pixel.c("g") if i == paragraphs.size() - 1 else Pixel.c("h")
+		var col := Pixel.c("h")
 		for line in lines:
 			if y + LINE > r.end.y + 2:
 				return  # a short page: the card still has it all
@@ -298,20 +296,16 @@ func _draw_store(run: Run, l: RunLayout) -> void:
 				)
 
 
-## The price board, and if the store is a faction's, how that faction's view
-## of the ship moves its prices.
+## The keeper's line, after the standing of the faction that runs the store, if
+## one does, and how far that standing moves its prices.
 func _store_text(run: Run) -> String:
 	var text := tr("UI_STORE_TEXT")
 	var f := run.store_faction
 	if f == "":
 		return text
-	text = _standing_line(run, f) + " " + text
 	var delta := run.standing.price_delta(f)
-	if delta > 0:
-		text += " " + tr("UI_REP_PRICE_UP") % delta
-	elif delta < 0:
-		text += " " + tr("UI_REP_PRICE_DOWN") % -delta
-	return text
+	var price := "" if delta == 0 else " " + tr("UI_REP_PRICE") % delta
+	return _standing_line(run, f) + price + " " + text
 
 
 ## One button per system the dock can raise, then Stoke the Ember, then Back.

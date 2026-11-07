@@ -269,20 +269,20 @@ func _draw() -> void:
 		var col: Color = f.color
 		col.a = a
 		_text(f.pos, f.text, 6.0, col, HORIZONTAL_ALIGNMENT_CENTER, 60)
-	# prompts and hints
+	# prompts and the Warden rule
+	# How-to prompts only in the training flight; real runs leave that to Help.
+	var training: bool = main.tutorial != null and main.tutorial.active(main.run)
 	var msg := ""
-	if main.selected_weapon >= 0:
+	if training and main.selected_weapon >= 0:
 		msg = tr("UI_AIM_PROMPT")
-	elif main.selected_crew >= 0:
+	elif training and main.selected_crew >= 0:
 		msg = tr("UI_MOVE_PROMPT")
 	elif main.paused:
 		msg = tr(main.pause_reason) if main.pause_reason != "" else tr("UI_PAUSED")
 	elif combat.siege:
 		msg = SiegeView.hint(combat)
-	elif combat.time() < 15.0:
-		msg = tr("UI_HINT")
 	else:
-		msg = rule_text(combat)  # a Warden's twist, once the hint has gone
+		msg = rule_text(combat)  # a Warden's twist
 	if msg != "" and combat.state == "fighting" and not main.coach_speaking():
 		var mr := l.message_rect
 		_text(

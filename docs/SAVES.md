@@ -62,7 +62,7 @@ itself to `main.RESUMABLE_PAGES` under the page Back returns to. Pages over the 
 (Options, the New run confirm) reopen over the title. Unknown pages, or a page over
 the wrong base, fall back to the title.
 
-A live fight always comes back paused with "tap to resume", never running.
+A live fight always comes back paused ("Paused where you left off"), never running.
 
 ## Rules for new state
 

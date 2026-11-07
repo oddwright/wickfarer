@@ -17,8 +17,8 @@ func _draw() -> void:
 	if main == null or main.menu == "" or main.menu_layout == null:
 		return
 	var l: MenuLayout = main.menu_layout
-	# Options fills the screen too: its rows would tangle with the HUD text.
-	if main.menu_base == "title" or main.menu == "options":
+	# Options and Help fill the screen too: their text would tangle with the HUD's.
+	if main.menu_base == "title" or main.menu in ["options", "help"]:
 		draw_rect(Rect2(Vector2.ZERO, l.native), Pixel.c("a"))
 		for s in main.world.stars:
 			draw_rect(Rect2(s[0], Vector2.ONE), Pixel.c(s[1]))
@@ -31,7 +31,7 @@ func _draw() -> void:
 			_draw_confirm(l)
 		"ship":
 			_draw_ship(l)
-		"depth", "log":
+		"depth", "log", "help":
 			_draw_profile_page(l)
 		_:
 			_draw_list(l)
@@ -81,8 +81,8 @@ static func page_rows(lines: Array[String], width: int, height: int) -> Array[Ar
 	return out
 
 
-## The Hush Depth picker or the Wake Log: a heading, wrapped lines under it,
-## as many as fit, then the page's buttons.
+## The Hush Depth picker, the Wake Log or a Help topic: a heading, wrapped lines
+## under it, as many as fit, then the page's buttons.
 func _draw_profile_page(l: MenuLayout) -> void:
 	var r := l.title_rect
 	var lines: Array[String] = []
@@ -91,6 +91,10 @@ func _draw_profile_page(l: MenuLayout) -> void:
 		var t := ProfilePages.depth_text(main.profile)
 		heading = t[0]
 		lines.append(t[1])
+	elif main.menu == "help":
+		var page := HelpPages.page_text()
+		heading = page[0]
+		lines.assign(page[1])
 	else:
 		lines = ProfilePages.log_lines(main.profile)
 	_text(Vector2(r.position.x, r.position.y + 10), heading, 10.0, Pixel.c("w"))

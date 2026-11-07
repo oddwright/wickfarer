@@ -16,10 +16,11 @@ static func screens(t: SceneTree, screen_sizes: Dictionary) -> void:
 	var pages := {
 		"title": ["continue", "new_run", "options", "quit"],
 		"title, no save": ["new_run", "options", "quit"],
-		"title, everything": ["continue", "new_run", "training", "log", "options", "quit"],
+		"title, everything": ["continue", "new_run", "training", "log", "help", "options", "quit"],
 		"depth": ProfilePages.items("depth"),
 		"log": ProfilePages.items("log"),
-		"pause": ["resume", "options", "abandon", "to_title"],
+		"help": HelpPages.items(),
+		"pause": ["resume", "help", "options", "skip_training", "abandon", "to_title"],
 		"confirm": ["yes", "no"],
 		"options": [],
 	}
@@ -52,6 +53,45 @@ static func screens(t: SceneTree, screen_sizes: Dictionary) -> void:
 				probs.append("the menu button sits on the fold")
 		_check(t, probs.is_empty(), "%s menus: %s" % [name, probs.slice(0, 4)])
 	SHIP_TESTS.screens(t, screen_sizes)
+	help_fits(t, screen_sizes)
+	no_how_to_in_play(t)
+
+
+## Every Help topic fits its page whole on every screen, heading included.
+static func help_fits(t: SceneTree, screen_sizes: Dictionary) -> void:
+	_check(t, HelpPages.topics().size() >= 10, "Help covers the game")
+	var probs: Array[String] = []
+	for name: String in screen_sizes:
+		var l := MenuLayout.build(screen_sizes[name], "help", HelpPages.items())
+		var r := l.title_rect
+		var top := r.position.y + 22
+		for i in HelpPages.topics().size():
+			var page := HelpPages.page_text(i)
+			var heading: String = page[0]
+			if TextLayer.text_width(heading.to_upper()) * 2 > r.size.x:
+				probs.append("%s: topic %d's heading is too wide" % [name, i])
+			var body: Array[String] = []
+			body.assign(page[1])
+			var all := MenuView.page_rows(body, r.size.x, 100000).size()
+			if MenuView.page_rows(body, r.size.x, r.end.y + 4 - top).size() < all:
+				probs.append("%s: topic %d is too long" % [name, i])
+	_check(t, probs.is_empty(), "every Help topic fits: %s" % [probs.slice(0, 4)])
+
+
+## Normal play doesn't explain itself: how-to words ("tap", "hold a") are only in
+## the coach (training lessons, the aim and move prompts training shows, and the
+## one-time tips, each shown once ever) and in Help.
+static func no_how_to_in_play(t: SceneTree) -> void:
+	var allowed: Array[String] = ["TUT_", "TIP_", "HELP_", "UI_AIM_PROMPT", "UI_MOVE_PROMPT"]
+	var how_to := RegEx.create_from_string("\\b(tap|press|hold (a|to))\\b")
+	var bad: Array[String] = []
+	for key: String in ContentDB.strings:
+		var text := str(ContentDB.strings[key]).to_lower()
+		if not how_to.search(text):
+			continue
+		if not allowed.any(func(a: String) -> bool: return key.begins_with(a)):
+			bad.append(key)
+	_check(t, bad.is_empty(), "no how-to text outside training and Help: %s" % [bad])
 
 
 static func options_adjust(t: SceneTree) -> void:
@@ -98,7 +138,11 @@ static func flow(t: SceneTree) -> void:
 	t.root.size = Vector2i(2184, 1968)  # the unfolded Fold, the main test device
 	t.root.add_child(main)
 	_check(t, main.menu == "title", "the app opens on the title menu")
-	_check(t, main.menu_items("title") == ["new_run", "options", "quit"], "no save, no Continue")
+	_check(
+		t,
+		main.menu_items("title") == ["new_run", "help", "options", "quit"],
+		"no save, no Continue"
+	)
 	_check(t, not main.world.visible and not main.run_view.visible, "the title hides the game")
 	main.tutorial.skip()  # a returning player: tests/tutorial_tests.gd covers training
 	_tap_menu(main, "new_run")
@@ -110,6 +154,15 @@ static func flow(t: SceneTree) -> void:
 	_check(
 		t, main.menu == "pause" and main.run_view.visible, "the chart's menu button pauses over it"
 	)
+	HelpPages.page = 0
+	_tap_menu(main, "help")
+	_check(t, main.menu == "help" and main.menu_base == "pause", "Help opens from the pause menu")
+	_tap_menu(main, "help_next")
+	_tap_menu(main, "help_next")
+	_tap_menu(main, "help_prev")
+	_check(t, main.menu == "help" and HelpPages.page == 1, "Next and Previous page through it")
+	_tap_menu(main, "back")
+	_check(t, main.menu == "pause", "Back goes back to the pause menu")
 	main.back()
 	_check(t, main.menu == "", "back resumes")
 	# a fight: the pause menu stops the clock and puts it back as it was

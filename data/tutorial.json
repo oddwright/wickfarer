@@ -82,5 +82,23 @@
     {"id": "post", "on": "rank_up", "text": "TIP_POST"},
     {"id": "rent", "on": "rent_open", "text": "TIP_RENT"},
     {"id": "flare", "on": "flare_ready", "text": "TIP_FLARE"}
+  ],
+  "help": [
+    {"title": "HELP_RUN", "text": ["HELP_RUN_1", "HELP_RUN_2"]},
+    {"title": "HELP_CHART", "text": ["HELP_CHART_1", "HELP_CHART_2"]},
+    {"title": "HELP_EVENTS", "text": ["HELP_EVENTS_1", "HELP_EVENTS_2"]},
+    {"title": "HELP_FIGHT", "text": ["HELP_FIGHT_1", "HELP_FIGHT_2"]},
+    {"title": "HELP_POWER", "text": ["HELP_POWER_1", "HELP_POWER_2"]},
+    {"title": "HELP_WARDS", "text": ["HELP_WARDS_1", "HELP_WARDS_2"]},
+    {"title": "HELP_GUNS", "text": ["HELP_GUNS_1", "HELP_GUNS_2"]},
+    {"title": "HELP_CREW", "text": ["HELP_CREW_1", "HELP_CREW_2"]},
+    {"title": "HELP_DAMAGE", "text": ["HELP_DAMAGE_1", "HELP_DAMAGE_2"]},
+    {"title": "HELP_FLARE", "text": ["HELP_FLARE_1", "HELP_FLARE_2"]},
+    {"title": "HELP_STORE", "text": ["HELP_STORE_1", "HELP_STORE_2"]},
+    {"title": "HELP_GEAR", "text": ["HELP_GEAR_1", "HELP_GEAR_2"]},
+    {"title": "HELP_STANDING", "text": ["HELP_STANDING_1", "HELP_STANDING_2"]},
+    {"title": "HELP_WARDENS", "text": ["HELP_WARDENS_1", "HELP_WARDENS_2", "HELP_WARDENS_3"]},
+    {"title": "HELP_KINDLING", "text": ["HELP_KINDLING_1", "HELP_KINDLING_2"]},
+    {"title": "HELP_DEPTH", "text": ["HELP_DEPTH_1"]}
   ]
 }

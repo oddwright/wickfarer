@@ -98,8 +98,8 @@ static func draw_button_text(tl: TextLayer, combat: Combat, r: Rect2i) -> void:
 	)
 
 
-## The line under the ships: the siege's opening words, then each phase's
-## advice, when nothing more pressing is being said.
+## The line under the ships: the siege's opening words, then a few words on
+## what the phase is doing, when nothing more pressing is being said.
 static func hint(combat: Combat) -> String:
 	var sg := combat.siege
 	if combat.time() < 6.0:

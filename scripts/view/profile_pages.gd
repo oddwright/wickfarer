@@ -5,7 +5,7 @@ extends RefCounted
 ## Kept out of main.gd, which is at the lint line limit. Like the other views
 ## it only reads state; it changes the profile only through Profile's methods.
 
-const PAGES: Array[String] = ["depth", "log"]
+const PAGES: Array[String] = ["depth", "log", "help"]
 
 
 static func items(page: String) -> Array[String]:
@@ -15,11 +15,16 @@ static func items(page: String) -> Array[String]:
 			out.assign(["depth_less", "depth_more", "set_out", "back"])
 		"log":
 			out.assign(["back"])
+		"help":
+			out = HelpPages.items()
 	return out
 
 
-## Handles a tap on one of these pages' buttons. Returns false if the id isn't theirs.
+## Handles a tap on one of these pages' buttons (Help's go to HelpPages).
+## Returns false if the id isn't theirs.
 static func tap(main: Node, id: String) -> bool:
+	if main.menu == "help":
+		return HelpPages.tap(main, id)
 	var profile: Profile = main.profile
 	match id:
 		"depth_less", "depth_more":
