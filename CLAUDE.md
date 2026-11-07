@@ -13,6 +13,7 @@ gdformat -l 100 scripts tests tools                 # format (pip install "gdtoo
 gdlint scripts tests tools                          # lint, config in gdlintrc
 godot --headless --path . -s tools/autobattle.gd -- 60   # fight balance after any rules change
 godot --headless --path . -s tools/autorun.gd -- 40      # whole-run balance (Gate rate)
+godot --headless --path . -s tools/autosiege.gd -- 20    # Kindling boss balance per hull
 xvfb-run godot --path . -s tools/shot.gd -- 2400 1080 out.png   # screenshot at a screen size
 ```
 

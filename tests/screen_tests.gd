@@ -82,7 +82,8 @@ static func hud(t: SceneTree, screens: Dictionary) -> void:
 					systems,
 					s.weapon_ids.size(),
 					player.used,
-					enemy.used
+					enemy.used,
+					bool(ContentDB.ships[id].get("siege_only", false))
 				)
 				for p in l.problems():
 					probs.append("%s vs %s: %s" % [pid, id, p])

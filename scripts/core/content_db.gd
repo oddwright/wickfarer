@@ -18,6 +18,7 @@ const FILES := {
 	"depths": "res://data/depths.json",
 	"factions": "res://data/factions.json",
 	"modules": "res://data/modules.json",
+	"sieges": "res://data/sieges.json",
 }
 ## What a Hush Depth's rules may change, and the sign each must have (+1: only
 ## harder when positive, -1: only harder when negative).
@@ -71,6 +72,7 @@ static var unlocks: Dictionary = {}  ## unlock id -> {name, hint, stat, at_least
 static var depths: Dictionary = {}  ## {"depths": [{name, text, effects}]}, depth 1 first
 static var factions: Dictionary = {}  ## standing range, tiers, and each faction
 static var modules: Dictionary = {}  ## module id -> {name, price, weight, gain, cost, unlock}
+static var sieges: Dictionary = {}  ## boss sieges (the Kindling); see Siege
 static var loaded := false
 
 
@@ -91,6 +93,7 @@ static func load_all() -> void:
 	depths = _read(FILES.depths)
 	factions = _read(FILES.factions)
 	modules = _read(FILES.modules)
+	sieges = _read(FILES.sieges)
 	_install_translation()
 	loaded = true
 
@@ -164,6 +167,8 @@ static func validate() -> Array[String]:
 	_validate_reach_chain(errors)
 	_validate_unlocks(errors)
 	_validate_depths(errors)
+	for sid: String in sieges:
+		Siege.validate(sid, sieges[sid], errors)
 	_validate_feedback(feedback, errors)
 	Skills.validate(errors)
 	GearCheck.validate(errors)
@@ -266,6 +271,13 @@ static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -
 	for e: String in enemies:
 		if not ships.has(e):
 			errors.append("%s: unknown enemy ship %s" % [where, e])
+		elif bool(ships[e].get("siege_only", false)):
+			errors.append("%s: %s is a siege's maw, not a ship to fight" % [where, e])
+	if r.has("boss"):
+		if not sieges.has(str(r.boss)):
+			errors.append("%s: unknown boss siege %s" % [where, r.boss])
+		elif str(r.get("next", "")) != "":
+			errors.append("%s: a boss ends the run, so its Reach can't have a next" % where)
 	var kinds: Dictionary = r.get("kinds", {})
 	var kind_total := 0
 	for k: String in kinds:
@@ -328,6 +340,10 @@ static func is_int_in(v: Variant, lo: int, hi: int) -> bool:
 	return _int_in(v, lo, hi)
 
 
+static func is_num_in(v: Variant, lo: float, hi: float) -> bool:
+	return _num_in(v, lo, hi)
+
+
 static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]) -> void:
 	var where := "ship %s" % ship_id
 	_check_string(s.get("name", ""), where, errors)
@@ -349,7 +365,16 @@ static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]
 		var rect: Array = r.get("rect", [])
 		if rect.size() != 4 or rect[2] <= rect[0] or rect[3] <= rect[1]:
 			errors.append("%s: room %s has a bad rect" % [where, r.id])
-	if not has_ember:
+	var siege_only: Variant = s.get("siege_only", false)
+	if not siege_only is bool:
+		errors.append("%s: siege_only must be true or false" % where)
+	elif siege_only:
+		# A siege's maw is the Hush itself: no Ember, crew, guns or helm.
+		if has_ember or not s.get("crew", []).is_empty() or not s.get("weapons", []).is_empty():
+			errors.append("%s: a siege maw has no ember, crew or weapons" % where)
+		if bool(s.get("playable", false)):
+			errors.append("%s: a siege maw can't be playable" % where)
+	elif not has_ember:
 		errors.append("%s: every ship needs an ember room" % where)
 	_validate_playable(where, s, errors)
 	for l: Dictionary in s.get("ladders", []):

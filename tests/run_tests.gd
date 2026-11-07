@@ -18,6 +18,7 @@ const RESUME_TESTS = preload("res://tests/resume_tests.gd")
 const TUTORIAL_TESTS = preload("res://tests/tutorial_tests.gd")
 const FACTION_TESTS = preload("res://tests/faction_tests.gd")
 const GEAR_TESTS = preload("res://tests/gear_tests.gd")
+const SIEGE_TESTS = preload("res://tests/siege_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -88,6 +89,7 @@ func _init() -> void:
 		"test_progression",
 		"test_gear",
 		"test_tutorial",
+		"test_kindling_siege",
 	]:
 		current = t
 		call(t)
@@ -945,3 +947,18 @@ func _test_tutorial_flow() -> void:
 ## The crew roster, driven through the real scene. Private like the tutorial flow.
 func _test_crew_roster_flow() -> void:
 	CREW_TESTS.roster_flow(self)
+
+
+## The Kindling boss siege; see tests/siege_tests.gd for each check.
+func test_kindling_siege() -> void:
+	SIEGE_TESTS.starts_at_the_last_gate(self)
+	SIEGE_TESTS.phases_follow_the_clock(self)
+	SIEGE_TESTS.waves_telegraph_and_land(self)
+	SIEGE_TESTS.wards_soak_waves(self)
+	SIEGE_TESTS.guns_break_the_knot(self)
+	SIEGE_TESTS.swallow_knocks_out_a_system(self)
+	SIEGE_TESTS.kindling_wins_the_run(self)
+	SIEGE_TESTS.ember_share_slows_kindling(self)
+	SIEGE_TESTS.siege_resumes_identically(self)
+	SIEGE_TESTS.autopilot_finishes_sieges(self)
+	SIEGE_TESTS.content_is_checked(self)

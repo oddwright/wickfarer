@@ -8,7 +8,7 @@ extends RefCounted
 ## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
-const VERSION := 7
+const VERSION := 8
 const DIR := "user://"
 
 
@@ -78,6 +78,12 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 			# fight the ship is at. A version 6 run met no faction yet: Run.from_dict
 			# starts every faction neutral with no flags. Nothing moves; the bump
 			# keeps an older build from dropping a newer run's standing.
+			return d
+		7:
+			# Version 8 fights can be the Kindling siege, with a "siege" block and a
+			# "siege" random stream. A version 7 fight is an ordinary one and needs
+			# neither (the stream seeds itself); the bump keeps an older build from
+			# loading a siege it would play as a fight with no end.
 			return d
 	return null
 

@@ -150,6 +150,9 @@ func jump(target: String) -> bool:
 ## this beacon's kind. Its choices lead into, or around, the fight or store.
 func _arrive() -> void:
 	var kind := str(here().kind)
+	if kind == "gate" and str(reach().get("boss", "")) != "":
+		_start_siege(str(reach().boss))
+		return
 	if kind == "gate":
 		reaches_crossed += 1
 		state = "reach_done" if str(reach().get("next", "")) != "" else "won"
@@ -244,14 +247,34 @@ func _pick_enemy(faction := "") -> String:
 	return str(pool[maxi(0, RngStreams.weighted_pick(weights, rng.stream("encounters")))])
 
 
+## The last Reach's Gate opens on the Kindling: the Hush itself, not a ship to
+## beat. The run's Light goes into the fight, to be burned there for the Cradle.
+func _start_siege(siege_id: String) -> void:
+	var sd: Dictionary = ContentDB.sieges[siege_id]
+	combat = Combat.from_ship(rng.stream("combat").randi(), ship, str(sd.maw))
+	combat.siege = Siege.create(siege_id, light)
+	state = "fight"
+
+
 ## Call once the combat has ended (combat.state is won or lost).
 func finish_fight() -> bool:
 	if state != "fight" or combat == null or combat.state == "fighting":
 		return false
 	ship = combat.player()
+	if combat.siege:
+		light = combat.siege.light  # whatever wasn't burned for the Cradle
 	if combat.state == "lost" or ship.is_dead():
 		state = "lost"
 		combat = null
+		return true
+	if combat.siege:
+		# Kindled: the Gate is crossed and the run is won. No loot past the end.
+		reaches_crossed += 1
+		fights_won += 1
+		ship.recover_after_fight()
+		combat = null
+		messages.clear()
+		state = "won"
 		return true
 	var loot := rng.stream("loot")
 	var reward: Dictionary = reach().fight_reward

@@ -242,7 +242,8 @@ func _rebuild_layout() -> void:
 		systems,
 		combat.player().weapon_ids.size(),
 		world.ship_used[0],
-		world.ship_used[1]
+		world.ship_used[1],
+		combat.siege != null
 	)
 	roster.rebuild()  # the roster's buttons follow the screen too
 
@@ -515,19 +516,15 @@ func _on_events(events: Array) -> void:
 		tutorial.on_events(events)
 	roster.on_events(events)
 	for e: Dictionary in events:
-		match e.type:
-			"hit":
-				_float(e.side, e.room, "-%d" % e.damage, Pixel.c("U"))
-				flashes["%d:%s" % [e.side, e.room]] = 0.15
-			"miss":
-				_float(e.side, e.room, tr("UI_MISS"), Pixel.c("h"))
-			"ward_hit", "ward_block":
-				_float(e.side, e.room, tr("UI_WARDED"), Pixel.c("j"))
-			"crew_died":
-				if e.side == 0 and selected_crew == e.uid:
-					selected_crew = -1
-			"won", "lost":
-				_save()
+		var said := FloaterWords.for_event(e)
+		if not said.is_empty():
+			_float(e.side, e.room, said.text, said.color)
+		if e.type == "hit":
+			flashes["%d:%s" % [e.side, e.room]] = 0.15
+		elif e.type == "crew_died" and e.side == 0 and selected_crew == e.uid:
+			selected_crew = -1
+		elif e.type in ["won", "lost"]:
+			_save()
 
 
 func _float(side: int, room_id: String, s: String, col: Color) -> void:
@@ -672,6 +669,8 @@ func _press_button(b: Dictionary, long: bool) -> void:
 			ui_cue("tap" if _toggle_pause() else "refused")
 		"crew", "muster":
 			roster.press(b.kind)
+		"kindle":
+			ui_cue("buy" if combat.apply({"type": "kindle"}) else "refused")
 
 
 func _tap_run(p: Vector2i) -> void:

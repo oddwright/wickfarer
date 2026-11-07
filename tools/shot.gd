@@ -6,8 +6,9 @@ extends SceneTree
 ## store:<faction>:<standing>, reach_done,
 ## won or lost, roster or roster_pick (the crew roster over a fight,
 ## picker shut or open), or a menu over a fight: title, pause, options, confirm, depth or
-## log, or ship select from the title: ship or ship:<ship id> (shown unlocked). ui size is the
-## options setting, a step from auto (-2 to 1); it is not saved.
+## log, or ship select from the title: ship or ship:<ship id> (shown unlocked), or siege (the
+## Kindling, played by the autopilot for [ticks], then on to the next gathering wave). ui size
+## is the options setting, a step from auto (-2 to 1); it is not saved.
 
 var frames := 0
 var main: Node
@@ -91,8 +92,14 @@ func _set_up() -> void:
 			main.profile.unlocked.append(str(ContentDB.ships[id].unlock))
 		main.open_menu("ship")
 		return
+	if which == "siege":
+		run = Run.create(4242, hull, "reach_4")
+		run.light = 5
+		Autopilot.arrive_at_gate(run)
 	main._set_run(run)
-	if main.combat:
+	if which == "siege":
+		_play_siege(main.combat)
+	elif main.combat:
 		_play_fight(main.combat)
 	match which:
 		"title", "pause":
@@ -136,6 +143,20 @@ func _play_fight(c: Combat) -> void:
 	for i in 12:
 		c.tick()
 	main.selected_weapon = 1
+
+
+func _play_siege(c: Combat) -> void:
+	var pilot := Autopilot.new()
+	for i in ticks:
+		pilot.combat_step(c)
+		c.tick()
+		main._on_events(c.events)
+	for i in 400:  # on to a wave half gathered, so the shot shows the threat
+		if c.siege.gathering() and c.siege.gather < c.siege.gather_total * 0.6:
+			break
+		pilot.combat_step(c)
+		c.tick()
+		main._on_events(c.events)
 
 
 func _open_roster(picking: bool) -> void:
