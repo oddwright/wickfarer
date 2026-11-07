@@ -16,6 +16,7 @@ const FILES := {
 	"tutorial": "res://data/tutorial.json",
 	"unlocks": "res://data/unlocks.json",
 	"depths": "res://data/depths.json",
+	"factions": "res://data/factions.json",
 }
 ## What a Hush Depth's rules may change, and the sign each must have (+1: only
 ## harder when positive, -1: only harder when negative).
@@ -30,11 +31,22 @@ const DEPTH_EFFECTS := {
 }
 
 const EVENT_EFFECTS := [
-	"scrap", "light", "hull", "crew_hp", "hush", "fight", "fight_bonus_scrap", "enemy_hull", "store"
+	"scrap",
+	"light",
+	"hull",
+	"crew_hp",
+	"hush",
+	"fight",
+	"fight_bonus_scrap",
+	"enemy_hull",
+	"store",
+	"rep",
+	"flag",
+	"fight_faction",
 ]
 const BEACON_KINDS := ["fight", "event", "store", "empty"]  ## the Gate has no story
 const MAX_CHOICES := 3  ## what the Square layout's right page has room for
-const EVENT_REQUIRES := ["scrap", "light", "species"]
+const EVENT_REQUIRES := ["scrap", "light", "species", "skill", "rank", "rep"]
 const SOUND_BUSES: Array[String] = ["Music", "SFX", "UI"]  ## every bus a sound can play on
 const MUSIC_ENTRIES: Array[String] = ["now", "beat", "bar"]  ## when a music clip may cut in
 const PHONE_LOW_HZ := 150  ## phone speakers barely play anything lower
@@ -54,6 +66,7 @@ static var skills: Dictionary = {}  ## crew skills, ranks and how practice grows
 static var tutorial: Dictionary = {}  ## the training flight's lessons and the one-time tips
 static var unlocks: Dictionary = {}  ## unlock id -> {name, hint, stat, at_least}
 static var depths: Dictionary = {}  ## {"depths": [{name, text, effects}]}, depth 1 first
+static var factions: Dictionary = {}  ## standing range, tiers, and each faction
 static var loaded := false
 
 
@@ -72,6 +85,7 @@ static func load_all() -> void:
 	tutorial = _read(FILES.tutorial)
 	unlocks = _read(FILES.unlocks)
 	depths = _read(FILES.depths)
+	factions = _read(FILES.factions)
 	_install_translation()
 	loaded = true
 
@@ -138,6 +152,8 @@ static func validate() -> Array[String]:
 		errors.append("ships: at least one playable hull must be open from the start")
 	for eid: String in events:
 		_validate_event(eid, events[eid], errors)
+	Standing.validate(errors)
+	EventRules.validate(events, errors)
 	for rid: String in reaches:
 		_validate_reach(rid, reaches[rid], errors)
 	_validate_reach_chain(errors)

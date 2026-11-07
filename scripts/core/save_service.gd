@@ -8,7 +8,7 @@ extends RefCounted
 ## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
-const VERSION := 5
+const VERSION := 6
 const DIR := "user://"
 
 
@@ -56,6 +56,12 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 						c["xp"] = {}
 					if not c.has("fight_xp"):
 						c["fight_xp"] = {}
+			return d
+		5:
+			# Version 6 runs carry faction standing, story flags and whose store or
+			# fight the ship is at. A version 5 run met no faction yet: Run.from_dict
+			# starts every faction neutral with no flags. Nothing moves; the bump
+			# keeps an older build from dropping a newer run's standing.
 			return d
 	return null
 

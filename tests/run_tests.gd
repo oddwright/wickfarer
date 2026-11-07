@@ -16,6 +16,7 @@ const PROGRESS_TESTS = preload("res://tests/progress_tests.gd")
 const PROFILE_TESTS = preload("res://tests/profile_tests.gd")
 const RESUME_TESTS = preload("res://tests/resume_tests.gd")
 const TUTORIAL_TESTS = preload("res://tests/tutorial_tests.gd")
+const FACTION_TESTS = preload("res://tests/faction_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -55,6 +56,7 @@ func _init() -> void:
 		"test_events_apply_and_respect_requirements",
 		"test_store_and_fight_rewards",
 		"test_beacon_openers",
+		"test_faction_standing_and_skill_checks",
 		"test_both_ships_dying_together_is_a_loss",
 		"test_event_results_and_messages_survive_saves",
 		"test_run_saves_and_resumes_at_every_step",
@@ -589,6 +591,19 @@ func test_beacon_openers() -> void:
 	STORY_TESTS.lead_in(self)
 	STORY_TESTS.effects_checked(self)
 	STORY_TESTS.text_fits(self, SCREEN_TESTS.variants(SCREENS))
+
+
+## Reputation, story flags and crew skill checks; see tests/faction_tests.gd.
+func test_faction_standing_and_skill_checks() -> void:
+	FACTION_TESTS.standing_rules(self)
+	FACTION_TESTS.store_prices(self)
+	FACTION_TESTS.events_and_fights(self)
+	FACTION_TESTS.ambush_weights(self)
+	FACTION_TESTS.story_gates(self)
+	FACTION_TESTS.skill_checks(self)
+	FACTION_TESTS.saves_keep_standing(self)
+	FACTION_TESTS.content_checked(self)
+	FACTION_TESTS.fixture_keeps_standing(self)
 
 
 func test_run_saves_and_resumes_at_every_step() -> void:

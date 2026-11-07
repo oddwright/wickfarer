@@ -10,8 +10,11 @@ static func _check(t: SceneTree, cond: bool, what: String) -> void:
 
 
 static func every_beacon(t: SceneTree) -> void:
-	var per_kind := {}
+	var per_kind := {}  ## stories a new run can be told; others wait on flags or standing
+	var fresh := Run.create(0)
 	for eid: String in ContentDB.events:
+		if not EventRules.is_open(fresh, ContentDB.events[eid]):
+			continue
 		var k := str(ContentDB.events[eid].get("beacon", "event"))
 		per_kind[k] = int(per_kind.get(k, 0)) + 1
 	# Enough openers that a run of five or six jumps rarely sees one twice.
@@ -119,22 +122,52 @@ static func text_fits(t: SceneTree, screens: Dictionary) -> void:
 		for eid: String in ContentDB.events:
 			var ev: Dictionary = ContentDB.events[eid]
 			var l := RunLayout.build(scr, chart, "event", (ev.choices as Array).size())
-			var lines := tl._wrap(t.tr(str(ev.text)).to_upper(), l.text_rect.size.x, 1)
+			var story := t.tr(str(ev.text))
+			if ev.has("faction"):  # the standing line goes first, at its longest
+				story = _longest_standing(t, str(ev.faction)) + " " + story
+			var lines := tl._wrap(story.to_upper(), l.text_rect.size.x, 1)
 			if 6 + lines.size() * TextLayer.LINE > l.text_rect.size.y + 4:
 				probs.append("%s: %s story is too long" % [name, eid])
 			for i in (ev.choices as Array).size():
 				var r: Rect2i = l.button("choice", i).rect
 				var label := t.tr(str(ev.choices[i].text)).to_upper()
-				var note := tl._needs(ev.choices[i].get("requires", {})).to_upper()
+				var note := tl._needs(ev.choices[i].get("requires", {}))
+				if ev.choices[i].has("check"):  # the widest odds a check can show
+					var skill := t.tr(str(Skills.spec(str(ev.choices[i].check.skill)).name))
+					note = RunView._join(note, t.tr("UI_CHECK") % [skill, 95])
+				note = note.to_upper()
 				if not _label_fits(tl, r, label, note):
 					probs.append("%s: %s choice %d is too long" % [name, eid, i])
 			for c: Dictionary in ev.choices:
 				for o: Dictionary in c.outcomes:
-					var ol := tl._wrap(t.tr(str(o.text)).to_upper(), out.text_rect.size.x, 1)
+					var result := t.tr(str(o.text))
+					var rep: Dictionary = o.get("effects", {}).get("rep", {})
+					for f: String in rep:  # each faction that moves says so after it
+						var spec := Standing.spec(f)
+						var up := t.tr(str(spec.up))
+						var down := t.tr(str(spec.down))
+						result += " " + (up if up.length() > down.length() else down)
+					var ol := tl._wrap(result.to_upper(), out.text_rect.size.x, 1)
 					if 6 + ol.size() * TextLayer.LINE > out.text_rect.size.y + 4:
 						probs.append("%s: %s result is too long" % [name, o.text])
+		var store := RunLayout.build(scr, chart, "store", 4)
+		for f in Standing.ids():
+			var text := _longest_standing(t, f) + " " + t.tr("UI_STORE_TEXT")
+			text += " " + t.tr("UI_REP_PRICE_DOWN") % 99
+			var sl := tl._wrap(text.to_upper(), store.text_rect.size.x, 1)
+			if 6 + sl.size() * TextLayer.LINE > store.text_rect.size.y + 4:
+				probs.append("%s: the %s store's text is too long" % [name, f])
 	tl.free()
 	_check(t, probs.is_empty(), "story text fits: %s" % [probs.slice(0, 4)])
+
+
+## "Faction: Tier." with the faction's name and the longest tier name.
+static func _longest_standing(t: SceneTree, f: String) -> String:
+	var tier := ""
+	for tier_spec: Dictionary in Standing.data().tiers:
+		var n := t.tr(str(tier_spec.name))
+		tier = n if n.length() > tier.length() else tier
+	return t.tr("UI_REP_LINE") % [t.tr(str(Standing.spec(f).name)), tier]
 
 
 ## Mirrors RunView._button: one centred line with no note, or two in a tall

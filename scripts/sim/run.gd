@@ -38,6 +38,10 @@ var seen_events: Array[String] = []
 var fight_bonus_scrap: int = 0
 var messages: Array[String] = []  ## translation keys of what the last jump did, newest last
 var outcome: String = ""  ## an event result the player hasn't read yet (a translation key)
+var standing: Standing  ## each faction's view of the ship
+var flags: Array[String] = []  ## story beats this run has reached, set by event outcomes
+var store_faction: String = ""  ## whose store the ship is docked at; "" for an independent one
+var fight_faction: String = ""  ## whose ship the current fight is against; "" for nobody's
 var _mods := {}  ## the depth rules summed for _mods_depth
 var _mods_depth := -1  ## the depth _mods was summed for; -1 before the first sum
 
@@ -57,6 +61,7 @@ static func create(
 	r.scrap = maxi(0, int(r.reach().start.scrap) + int(r.mod("start_scrap")))
 	r.light = maxi(0, int(r.reach().start.light) + int(r.mod("start_light")))
 	r.hush = float(r.reach().hush_start)
+	r.standing = Standing.fresh()
 	return r
 
 
@@ -183,16 +188,27 @@ func is_swallowed(id: String) -> bool:
 # ---------------------------------------------------------------- fights
 
 
-func _start_fight(enemy: String, enemy_hull := 0) -> void:
+## faction "" means the enemy ship's own faction, if it has one.
+func _start_fight(enemy: String, enemy_hull := 0, faction := "") -> void:
 	if enemy == REACH_ENEMY:
-		var pool: Array = reach().enemies
-		enemy = str(pool[rng.stream("encounters").randi_range(0, pool.size() - 1)])
+		enemy = _pick_enemy()
+	fight_faction = faction if faction != "" else str(ContentDB.ships[enemy].get("faction", ""))
 	combat = Combat.from_ship(rng.stream("combat").randi(), ship, enemy)
 	var foe := combat.enemy()
 	foe.boost(reach().get("enemy_boost", {}))
 	foe.boost({"hull": int(mod("enemy_hull"))})
 	foe.hull = clampi(foe.hull + enemy_hull, 1, foe.max_hull)
 	state = "fight"
+
+
+## A ship from the Reach's pool. A faction that dislikes the ship sends its
+## hulls more often, and one that trusts it sends them less.
+func _pick_enemy() -> String:
+	var pool: Array = reach().enemies
+	var weights: Array[int] = []
+	for id: Variant in pool:
+		weights.append(standing.ambush(str(ContentDB.ships[str(id)].get("faction", ""))))
+	return str(pool[maxi(0, RngStreams.weighted_pick(weights, rng.stream("encounters")))])
 
 
 ## Call once the combat has ended (combat.state is won or lost).
@@ -212,6 +228,8 @@ func finish_fight() -> bool:
 	fights_won += 1
 	fight_bonus_scrap = 0
 	messages.clear()
+	messages.append_array(standing.fight_won(fight_faction))
+	fight_faction = ""
 	ship.recover_after_fight()
 	combat = null
 	state = "chart"
@@ -229,7 +247,8 @@ func _pick_event(kind: String) -> String:
 	var ids: Array[String] = []
 	var seen: Array[String] = []
 	for eid: String in ContentDB.events:
-		if str(ContentDB.events[eid].get("beacon", "event")) == kind:
+		var e: Dictionary = ContentDB.events[eid]
+		if str(e.get("beacon", "event")) == kind and EventRules.is_open(self, e):
 			(seen if seen_events.has(eid) else ids).append(eid)
 	if ids.is_empty() and not seen.is_empty():
 		var last := ""
@@ -258,23 +277,20 @@ func can_choose(i: int) -> bool:
 	var choices: Array = event().get("choices", [])
 	if state != "event" or i < 0 or i >= choices.size():
 		return false
-	var req: Dictionary = choices[i].get("requires", {})
-	if scrap < int(req.get("scrap", 0)) or light < int(req.get("light", 0)):
-		return false
-	if req.has("species"):
-		var found := false
-		for c in ship.alive_crew():
-			if c.species == req.species:
-				found = true
-		if not found:
-			return false
-	return true
+	return EventRules.meets(self, choices[i].get("requires", {}))
+
+
+## The percent chance choice i's crew skill check passes, or -1 if it has none.
+func check_chance(i: int) -> int:
+	var choices: Array = event().get("choices", [])
+	return EventRules.chance(self, choices[i]) if i >= 0 and i < choices.size() else -1
 
 
 func choose(i: int) -> bool:
 	if not can_choose(i):
 		return false
-	var outcomes: Array = event().choices[i].outcomes
+	var ev := event()
+	var outcomes := EventRules.outcomes_for(self, ev.choices[i])
 	var weights: Array[int] = []
 	for o: Dictionary in outcomes:
 		weights.append(int(o.weight))
@@ -285,11 +301,12 @@ func choose(i: int) -> bool:
 	outcome = str(picked.text)
 	event_id = ""
 	state = "chart"
-	_apply(picked.get("effects", {}))
+	_apply(picked.get("effects", {}), str(ev.get("faction", "")))
 	return true
 
 
-func _apply(fx: Dictionary) -> void:
+## faction is the event's own: a store the event opens is that faction's.
+func _apply(fx: Dictionary, faction := "") -> void:
 	_gain_scrap(int(fx.get("scrap", 0)))
 	light = maxi(0, light + int(fx.get("light", 0)))
 	ship.hull = clampi(ship.hull + int(fx.get("hull", 0)), 0, ship.max_hull)
@@ -299,13 +316,20 @@ func _apply(fx: Dictionary) -> void:
 		for c in ship.alive_crew():
 			# Events can hurt crew but never kill them outright.
 			c.hp = Q.q(clampf(c.hp + heal, 1.0, c.max_hp))
+	var rep: Dictionary = fx.get("rep", {})
+	for f: String in rep:
+		messages.append_array(Standing.news_for(f, standing.change(f, int(rep[f]))))
+	for f in EventRules.names(fx.get("flag", [])):
+		if not flags.has(f):
+			flags.append(f)
 	if ship.hull <= 0:
 		state = "lost"
 		return
 	if fx.has("fight"):
 		fight_bonus_scrap = int(fx.get("fight_bonus_scrap", 0))
-		_start_fight(str(fx.fight), int(fx.get("enemy_hull", 0)))
+		_start_fight(str(fx.fight), int(fx.get("enemy_hull", 0)), str(fx.get("fight_faction", "")))
 	elif fx.get("store", false):
+		store_faction = faction
 		state = "store"
 
 
@@ -360,6 +384,7 @@ func leave_store() -> bool:
 	if state != "store":
 		return false
 	messages.clear()
+	store_faction = ""
 	state = "chart"
 	return true
 
@@ -426,10 +451,13 @@ func refit_price(sys: String) -> int:
 	return _marked_up(int(prices[ship.system_room(sys).level - 1]))
 
 
-## A store or refit price with the Hush Depth's markup. Only a real price is
-## marked up: -1 (not for sale) and 0 (dropped by the Reach) stay as they are.
+## A store or refit price with the Hush Depth's markup and the store's faction's
+## view of the ship. Only a real price changes: -1 (not for sale) and 0 (dropped
+## by the Reach) stay as they are, and a friendly discount never makes one free.
 func _marked_up(p: int) -> int:
-	return p + int(mod("store_markup")) if p > 0 else p
+	if p <= 0:
+		return p
+	return maxi(1, p + int(mod("store_markup")) + standing.price_delta(store_faction))
 
 
 func can_refit(sys: String) -> bool:
@@ -494,6 +522,10 @@ func to_dict() -> Dictionary:
 		"seen_events": Array(seen_events),
 		"fight_bonus_scrap": fight_bonus_scrap,
 		"messages": Array(messages),
+		"standing": standing.to_dict(),
+		"flags": Array(flags),
+		"store_faction": store_faction,
+		"fight_faction": fight_faction,
 	}
 
 
@@ -523,6 +555,11 @@ static func from_dict(d: Dictionary) -> Run:
 	r.jumps = int(d.jumps)
 	r.event_id = str(d.event)
 	r.outcome = str(d.get("outcome", ""))
+	r.standing = Standing.from_dict(d.get("standing", {}))
+	for f in d.get("flags", []):
+		r.flags.append(str(f))
+	r.store_faction = str(d.get("store_faction", ""))
+	r.fight_faction = str(d.get("fight_faction", ""))
 	if r.state == "event" and not ContentDB.events.has(r.event_id):
 		# The event was removed or renamed in an update; don't strand the save
 		# on it, but keep the fight or store its beacon holds.
