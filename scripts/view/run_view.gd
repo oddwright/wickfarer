@@ -4,6 +4,9 @@ extends TextLayer
 ## and the endings. Like WorldView it only reads the sim; taps go back to
 ## Main, which calls the Run's action methods.
 
+## The store option whose card is open; Main asks it whether a tap acts.
+var focus := StoreFocus.new()
+
 
 func _draw() -> void:
 	if main == null or main.run_layout == null or main.run == null:
@@ -66,6 +69,14 @@ func _draw_chart(run: Run, l: RunLayout) -> void:
 	var blink := int(main.world.anim_time * 3.0) % 2 == 0
 	for n in run.chart.nodes:
 		_draw_beacon(run, l, n, targets.has(n.id), blink)
+	for k in l.key:
+		ChartKey.draw_icon(self, k.key, k.at + Vector2i(3, 3), ChartKey.key_color(k.key))
+		_text(
+			Vector2(k.at.x + ChartKey.ICON + 3, k.at.y + 6),
+			ChartKey.label(k.key),
+			5.0,
+			Pixel.c("g")
+		)
 	if main.coach_speaking():
 		return  # the coach writes in the message line
 	var msg := tr("UI_JUMP")
@@ -94,25 +105,16 @@ func _draw_hush(run: Run, l: RunLayout) -> void:
 		draw_rect(Rect2(area.end.x, area.position.y, 1, area.size.y), Pixel.c("n"))
 
 
+## Each beacon wears the icon the key names. Where the ship can jump next, the
+## beacon is lit and corner marks blink round it.
 func _draw_beacon(run: Run, l: RunLayout, n: Dictionary, target: bool, blink: bool) -> void:
 	var c := l.beacon_pos(n)
 	var swallowed := run.is_swallowed(n.id)
-	var col := Pixel.c("f")
-	if run.visited.has(n.id):
-		col = Pixel.c("g")
-	if n.kind == "store":
-		col = Pixel.c("y")
-	if n.kind == "gate":
-		col = Pixel.c("w")
-	if swallowed:
-		col = Pixel.c("n")
-	var core := Rect2(c - Vector2i(2, 2), Vector2(5, 5))
-	draw_rect(core, col, run.visited.has(n.id) or n.kind in ["store", "gate"])
-	if n.kind == "gate":
-		draw_rect(core.grow(2), col, false, 1.0)
-	if n.id == run.at:
-		draw_rect(core.grow(3), Pixel.c("w"), false, 1.0)
-	elif target and blink:
+	draw_rect(Rect2(c - Vector2i(4, 4), Vector2(9, 9)), Pixel.c("a"))  # links stop at the icon
+	ChartKey.draw_icon(self, ChartKey.icon_for(run, n), c, ChartKey.color_for(run, n, target))
+	if n.id == run.at:  # a ring, so the ship is the first thing the eye finds
+		draw_rect(Rect2(c - Vector2i(6, 6), Vector2(13, 13)), Pixel.c("w"), false, 1.0)
+	if target and blink:
 		var box := Rect2i(c - Vector2i(5, 5), Vector2i(11, 11))
 		Pixel.corners(self, box, Pixel.c("o") if swallowed else Pixel.c("v"), 2)
 
@@ -124,6 +126,59 @@ func _story(l: RunLayout, s: String) -> void:
 	var r := l.text_rect
 	draw_rect(Rect2(r.grow(4)), Pixel.c("a", 0.85))
 	_text_block(r, s, Pixel.c("h"))
+
+
+## A store page's text: each paragraph starts on its own line, and the last
+## one says how to see more. The open card, if any, takes the place of it all.
+func _page(run: Run, l: RunLayout, paragraphs: Array[String]) -> void:
+	var r := l.text_rect
+	draw_rect(Rect2(r.grow(4)), Pixel.c("a", 0.85))
+	var option := focus.current(run)
+	if option != "":
+		_draw_card(r, ItemCard.build(run, option))
+		var b := l.button(run.state, run.page_options().find(option))
+		if not b.is_empty():
+			Pixel.corners(self, (b.rect as Rect2i).grow(2), Pixel.c("x"), 3)
+		return
+	paragraphs.append(tr("UI_CARD_PROMPT"))
+	var y := r.position.y
+	for i in paragraphs.size():
+		var lines := _wrap(paragraphs[i].to_upper(), r.size.x, 1)
+		var col := Pixel.c("g") if i == paragraphs.size() - 1 else Pixel.c("h")
+		for line in lines:
+			if y + LINE > r.end.y + 2:
+				return  # a short page: the card still has it all
+			_text(Vector2(r.position.x, y + 6), line, 5.0, col)
+			y += LINE
+
+
+## Name and price on top, what it is for, its numbers in columns, then what a
+## second tap does, in orange, or in red why it can't.
+func _draw_card(r: Rect2i, c: Dictionary) -> void:
+	var y := r.position.y + 6
+	var note := str(c.note).to_upper()
+	_text(Vector2(r.position.x, y), c.title, 5.0, Pixel.c("w"))
+	var room := r.size.x - text_width(str(c.title).to_upper()) - 8
+	if note != "" and text_width(note) > room:
+		y += LINE
+	if note != "":
+		_text(
+			Vector2(r.position.x, y), note, 5.0, Pixel.c("g"), HORIZONTAL_ALIGNMENT_RIGHT, r.size.x
+		)
+	y += LINE
+	for line in _wrap(str(c.about).to_upper(), r.size.x, 1):
+		_text(Vector2(r.position.x, y), line, 5.0, Pixel.c("h"))
+		y += LINE
+	var lines: Array = c.lines
+	var cols := clampi(r.size.x / 140, 1, 3)
+	var rows := ceili(float(lines.size()) / cols)
+	var cw := r.size.x / cols
+	for i in lines.size():
+		var at := Vector2(r.position.x + (i / rows) * cw, y + 2 + (i % rows) * LINE)
+		_text(at, lines[i][0], 5.0, Pixel.c(lines[i][1]))
+	y += rows * LINE + 4
+	var hint_col := Pixel.c("v") if c.ok else Pixel.c("U")
+	_text(Vector2(r.position.x, y), c.hint, 5.0, hint_col, HORIZONTAL_ALIGNMENT_LEFT, r.size.x)
 
 
 ## Wrapped text whose first line starts at the top of the rect.
@@ -224,7 +279,7 @@ func _needs(req: Dictionary) -> String:
 
 
 func _draw_store(run: Run, l: RunLayout) -> void:
-	_story(l, _store_text(run))
+	_page(run, l, [_store_text(run)])
 	var opts := run.store_options()
 	for b in l.buttons:
 		var option := opts[int(b.id)]
@@ -262,7 +317,7 @@ func _store_text(run: Run) -> String:
 ## One button per system the dock can raise, then Stoke the Ember, then Back.
 ## Each shows the level it buys and its price; a capped one says so.
 func _draw_refit(run: Run, l: RunLayout) -> void:
-	_story(l, tr("UI_REFIT_TEXT") + " " + tr("UI_REFIT_REACTOR") % run.ship.reactor)
+	_page(run, l, [tr("UI_REFIT_TEXT"), tr("UI_REFIT_REACTOR") % run.ship.reactor])
 	var opts := run.refit_options()
 	for b in l.buttons:
 		var option := opts[int(b.id)]
@@ -363,14 +418,15 @@ func _draw_next(run: Run, l: RunLayout) -> void:
 # ------------------------------------------------------------------ gear pages
 
 
-## The trader's wares: each one's numbers in the text, its price on its button.
+## The trader's wares: a line each in the text, its price on its button, and the
+## whole story on its card.
 func _draw_wares(run: Run, l: RunLayout) -> void:
-	var lines: Array[String] = [tr("UI_WARES_TEXT"), _hold_count(run)]
+	var lines: Array[String] = [tr("UI_WARES_TEXT") + " " + _hold_count(run)]
 	if run.stock.is_empty():
 		lines.append(tr("UI_WARES_EMPTY"))
 	for item in run.stock:
-		lines.append(GearText.line(item) + ".")
-	_story(l, " ".join(lines))
+		lines.append(GearText.line(item))
+	_page(run, l, lines)
 	var opts := run.page_options()
 	for b in l.buttons:
 		var option := opts[int(b.id)]
@@ -383,19 +439,20 @@ func _draw_wares(run: Run, l: RunLayout) -> void:
 		_button(b.rect, _name(item), Market.can(run, option), note, run.scrap < p)
 
 
-## Modules or Guns: the ship's slots, then the hold, then Sell and Back. What
-## each piece does is written out above, so nothing hides behind a long press.
+## Modules or Guns: the ship's slots, then the hold, then Sell and Back. Each
+## piece has a line above, and a tap opens its card, so nothing hides behind
+## a long press.
 func _draw_gear(run: Run, l: RunLayout) -> void:
 	var guns := run.state == "guns"
 	var head := "UI_SELL_TEXT" if run.selling else ("UI_GUNS_TEXT" if guns else "UI_MODULES_TEXT")
-	var lines: Array[String] = [tr(head), _hold_count(run)]
+	var lines: Array[String] = [tr(head) + " " + _hold_count(run)]
 	var opts := run.page_options()
 	for option in opts:
 		var item := Market.item_at(run, option)
 		if not item.is_empty():
 			var where := tr("UI_IN_HOLD") if option.begins_with("hold") else tr("UI_FITTED")
-			lines.append("%s (%s)." % [GearText.line(item), where])
-	_story(l, " ".join(lines))
+			lines.append("%s (%s)" % [GearText.line(item), where])
+	_page(run, l, lines)
 	for b in l.buttons:
 		_draw_gear_button(run, opts[int(b.id)], b.rect, guns)
 

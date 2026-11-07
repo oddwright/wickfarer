@@ -21,7 +21,13 @@ func setup(main_node: Node) -> void:
 	main = main_node
 	glyphs = load("res://art/font_3x5.png")
 	outline = load("res://art/font_3x5_outline.png")
-	glyph_index = JSON.parse_string(FileAccess.get_file_as_string("res://art/font_3x5.json"))
+	load_glyphs()
+
+
+## Glyph widths, so layouts can measure text before any layer is set up.
+static func load_glyphs() -> void:
+	if glyph_index.is_empty():
+		glyph_index = JSON.parse_string(FileAccess.get_file_as_string("res://art/font_3x5.json"))
 
 
 static func _adv(ch: String) -> int:

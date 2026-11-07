@@ -1,13 +1,13 @@
 {
-  "wick_bellows":    {"name": "MOD_WICK_BELLOWS",    "price": 55, "weight": 8,  "gain": {"reactor": 1},                       "cost": {"light_upkeep": 1}},
-  "tallow_baffles":  {"name": "MOD_TALLOW_BAFFLES",  "price": 40, "weight": 10, "gain": {"ward_regen": 0.35},                 "cost": {"heat": 0.3}},
-  "gyre_vanes":      {"name": "MOD_GYRE_VANES",      "price": 45, "weight": 10, "gain": {"evasion": 8.0},                    "cost": {"power": 1}},
-  "rivet_hopper":    {"name": "MOD_RIVET_HOPPER",    "price": 50, "weight": 10, "gain": {"weapon_charge": 0.15},             "cost": {"heat": 0.4}},
-  "salvage_maw":     {"name": "MOD_SALVAGE_MAW",     "price": 35, "weight": 10, "gain": {"salvage": 0.3},                "cost": {"helm": 6.0}},
-  "slag_plating":    {"name": "MOD_SLAG_PLATING",    "price": 40, "weight": 10, "gain": {"max_hull": 5},                     "cost": {"helm": 8.0}},
-  "kiln_coils":      {"name": "MOD_KILN_COILS",      "price": 35, "weight": 10, "gain": {"warmth": 0.8, "chill_resist": 0.3}, "cost": {"power": 1}},
-  "mender_lattice":  {"name": "MOD_MENDER_LATTICE",  "price": 35, "weight": 10, "gain": {"mend": 0.6},                       "cost": {"power": 1}},
-  "quickstep_rails": {"name": "MOD_QUICKSTEP_RAILS", "price": 30, "weight": 10, "gain": {"crew_speed": 0.3},                 "cost": {"heat": 0.25}},
-  "lamp_siphon":     {"name": "MOD_LAMP_SIPHON",     "price": 45, "weight": 8,  "gain": {"fight_light": 1},                  "cost": {"hush": 0.15}, "unlock": "gear_lamp_siphon"},
-  "hush_veil":       {"name": "MOD_HUSH_VEIL",       "price": 60, "weight": 6,  "gain": {"evasion": 12.0},                   "cost": {"light_upkeep": 1}, "unlock": "gear_hush_veil"}
+  "wick_bellows":    {"name": "MOD_WICK_BELLOWS", "desc": "MOD_WICK_BELLOWS_DESC",    "price": 55, "weight": 8,  "gain": {"reactor": 1},                       "cost": {"light_upkeep": 1}},
+  "tallow_baffles":  {"name": "MOD_TALLOW_BAFFLES", "desc": "MOD_TALLOW_BAFFLES_DESC",  "price": 40, "weight": 10, "gain": {"ward_regen": 0.35},                 "cost": {"heat": 0.3}},
+  "gyre_vanes":      {"name": "MOD_GYRE_VANES", "desc": "MOD_GYRE_VANES_DESC",      "price": 45, "weight": 10, "gain": {"evasion": 8.0},                    "cost": {"power": 1}},
+  "rivet_hopper":    {"name": "MOD_RIVET_HOPPER", "desc": "MOD_RIVET_HOPPER_DESC",    "price": 50, "weight": 10, "gain": {"weapon_charge": 0.15},             "cost": {"heat": 0.4}},
+  "salvage_maw":     {"name": "MOD_SALVAGE_MAW", "desc": "MOD_SALVAGE_MAW_DESC",     "price": 35, "weight": 10, "gain": {"salvage": 0.3},                "cost": {"helm": 6.0}},
+  "slag_plating":    {"name": "MOD_SLAG_PLATING", "desc": "MOD_SLAG_PLATING_DESC",    "price": 40, "weight": 10, "gain": {"max_hull": 5},                     "cost": {"helm": 8.0}},
+  "kiln_coils":      {"name": "MOD_KILN_COILS", "desc": "MOD_KILN_COILS_DESC",      "price": 35, "weight": 10, "gain": {"warmth": 0.8, "chill_resist": 0.3}, "cost": {"power": 1}},
+  "mender_lattice":  {"name": "MOD_MENDER_LATTICE", "desc": "MOD_MENDER_LATTICE_DESC",  "price": 35, "weight": 10, "gain": {"mend": 0.6},                       "cost": {"power": 1}},
+  "quickstep_rails": {"name": "MOD_QUICKSTEP_RAILS", "desc": "MOD_QUICKSTEP_RAILS_DESC", "price": 30, "weight": 10, "gain": {"crew_speed": 0.3},                 "cost": {"heat": 0.25}},
+  "lamp_siphon":     {"name": "MOD_LAMP_SIPHON", "desc": "MOD_LAMP_SIPHON_DESC",     "price": 45, "weight": 8,  "gain": {"fight_light": 1},                  "cost": {"hush": 0.15}, "unlock": "gear_lamp_siphon"},
+  "hush_veil":       {"name": "MOD_HUSH_VEIL", "desc": "MOD_HUSH_VEIL_DESC",       "price": 60, "weight": 6,  "gain": {"evasion": 12.0},                   "cost": {"light_upkeep": 1}, "unlock": "gear_hush_veil"}
 }
