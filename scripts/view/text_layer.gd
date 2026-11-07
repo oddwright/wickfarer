@@ -207,7 +207,7 @@ func _draw() -> void:
 	elif combat.time() < 15.0:
 		msg = tr("UI_HINT")
 	else:
-		msg = IntentLayer.rule_text(combat)  # a Warden's twist, once the hint has gone
+		msg = rule_text(combat)  # a Warden's twist, once the hint has gone
 	if msg != "" and combat.state == "fighting" and not main.coach_speaking():
 		var mr := l.message_rect
 		_text(
@@ -272,3 +272,16 @@ func _draw_promotions(me: Ship, at: Vector2i, width: int) -> void:
 		)
 		_text(Vector2(at.x, y), line, 5.0, Pixel.c("v"), HORIZONTAL_ALIGNMENT_CENTER, width)
 		y += 8
+
+
+## The Warden's rule, for the message line; "" in an ordinary fight. Each rule's
+## line is RULE_<RULE>; the tide's counts down to its next turn.
+static func rule_text(combat: Combat) -> String:
+	if combat.rule() == "":
+		return ""
+	var line := TranslationServer.translate(rule_key(combat.rule()))
+	return line % ceili(combat.tide_eta()) if combat.rule() == "tide" else line
+
+
+static func rule_key(rule: String) -> String:
+	return "RULE_" + rule.to_upper()

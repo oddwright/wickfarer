@@ -62,7 +62,7 @@ func _apply_rule() -> void:
 
 
 ## Extra warmth every room on both ships loses a second, under the hymn.
-func chill() -> float:
+func rule_chill() -> float:
 	return HYMN_CHILL if _rule == "hymn" else 0.0
 
 
@@ -133,7 +133,7 @@ func tick() -> void:
 		return
 	var combat_rng := rng.stream("combat")
 	for s in ships:
-		s.tick(TICK, combat_rng, events, chill())
+		s.tick(TICK, combat_rng, events, rule_chill())
 	ai_timer = Q.q(ai_timer + TICK)
 	if ai_timer >= AI_THINK:
 		ai_timer = Q.q(ai_timer - AI_THINK)

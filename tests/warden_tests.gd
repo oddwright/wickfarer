@@ -153,7 +153,7 @@ static func warden_rules(t: SceneTree) -> void:
 		"and keep their layers"
 	)
 	var hymn := Combat.create(10, "tallow_wren", "warden_cantor")
-	_check(t, hymn.rule() == "hymn" and hymn.chill() > 0.0, "the Cantor sings the hymn")
+	_check(t, hymn.rule() == "hymn" and hymn.rule_chill() > 0.0, "the Cantor sings the hymn")
 	var calm := Combat.create(10)
 	_ticks(hymn, 200)
 	_ticks(calm, 200)
@@ -164,10 +164,12 @@ static func warden_rules(t: SceneTree) -> void:
 	)
 	var back := Combat.from_dict(JSON.parse_string(J.s(hymn.to_dict())))
 	_check(
-		t, back.rule() == "hymn" and back.chill() == hymn.chill(), "a loaded fight keeps its rule"
+		t,
+		back.rule() == "hymn" and back.rule_chill() == hymn.rule_chill(),
+		"a loaded fight keeps its rule"
 	)
 	var next := Combat.from_ship(11, hymn.player(), "ashmarket_cutter")
-	_check(t, next.chill() == 0.0 and next.rule() == "", "the hymn ends with its fight")
+	_check(t, next.rule_chill() == 0.0 and next.rule() == "", "the hymn ends with its fight")
 
 
 ## A Choir bell that lands takes Light; the run pays it once the fight is won.
@@ -296,9 +298,20 @@ static func intent_readout(t: SceneTree) -> void:
 	_check(t, "NO POWER" in IntentLayer.line(c, 0).to_upper(), "an unpowered gun says so")
 	var k := Combat.create(6, "tallow_wren", "tidewarden_ketch")
 	_check(t, "VOLLEY" in IntentLayer.line(k, 0).to_upper(), "a held gun names the volley")
-	_check(t, IntentLayer.rule_text(c) == "", "an ordinary fight has no rule line")
+	_check(t, TextLayer.rule_text(c) == "", "an ordinary fight has no rule line")
 	var tide := Combat.create(6, "tallow_wren", "warden_breakwater")
-	_check(t, "10" in IntentLayer.rule_text(tide), "the tide's line counts down")
+	_check(t, "10" in TextLayer.rule_text(tide), "the tide's line counts down")
+	for rule in Combat.RULES:
+		if rule != "":
+			var key := TextLayer.rule_key(rule)
+			_check(t, TranslationServer.translate(key) != key, "rule %s has a line" % rule)
+	var gate := Run.create(6)
+	gate.messages.assign(
+		["REP_BEATEN_ASHMARKET", "UI_LIGHT_SUNG", "UI_GEAR_FITTED|WPN_TORCH_LANCE"]
+	)
+	var news := RunView._fight_news(gate)
+	_check(t, not "|" in news and not ".." in news, "the Gate screen reads every fight line")
+	_check(t, load("res://tools/shot.gd") != null, "the screenshot tool still compiles")
 
 
 ## Enemy crew are drawn mirrored over the same box as the player's, so they stand in

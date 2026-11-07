@@ -283,13 +283,14 @@ func finish_fight() -> bool:
 	light += loot.randi_range(int(reward.light[0]), int(reward.light[1]))
 	light += int(ship.mod("fight_light"))
 	# What the Choir sang out of the Ember is gone once the fight ends.
-	light = maxi(0, light - combat.light_drained[0])
+	var sung := clampi(combat.light_drained[0], 0, maxi(0, light))
+	light -= sung
 	fights_won += 1
 	fight_bonus_scrap = 0
 	messages.clear()
 	messages.append_array(standing.fight_won(fight_faction))
 	fight_faction = ""
-	if combat.light_drained[0] > 0:
+	if sung > 0:
 		messages.append("UI_LIGHT_SUNG")
 	var gear_roll := rng.stream("gear")
 	if gear_roll.randf() < float(reward.get("gear_chance", 0.0)):
@@ -297,7 +298,7 @@ func finish_fight() -> bool:
 		if not found.is_empty():
 			gain(found)
 	ship.recover_after_fight()
-	var gate := str(here().kind) == "gate"
+	var gate := is_warden_fight()
 	combat = null
 	state = "chart"
 	if gate:

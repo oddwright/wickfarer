@@ -84,7 +84,7 @@ func _set_up() -> void:
 	if which.begins_with("fight:"):
 		run._start_fight("ashmarket_cutter")
 	if which.begins_with("vs:"):  # unboosted, as the hull is in ships.json
-		run._start_fight(which.trim_prefix("vs:"), 0, false)
+		run._start_fight(which.trim_prefix("vs:"), 0, "", false)
 	if which in ["title", "pause", "options", "confirm", "depth", "log", "roster", "roster_pick"]:
 		run._start_fight("ashmarket_cutter")
 	if which.begins_with("ship"):

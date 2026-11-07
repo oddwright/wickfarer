@@ -297,6 +297,18 @@ func _draw_stoke(run: Run, r: Rect2i) -> void:
 	_button(r, tr("UI_STOKE"), run.can_stoke(), "%d %s" % [p, tr("UI_LIGHT")], run.light < p)
 
 
+## Every line the last fight left (standing, sung-away Light, gear found), each
+## read as a sentence, ahead of the Gate screen's own text.
+static func _fight_news(run: Run) -> String:
+	var out := ""
+	for m in run.messages:
+		var line := GearText.message(m)
+		if not line.ends_with(".") and not line.ends_with("!"):
+			line += "."
+		out += line + " "
+	return out
+
+
 func _draw_next(run: Run, l: RunLayout) -> void:
 	var title := ""
 	var body := ""
@@ -310,8 +322,7 @@ func _draw_next(run: Run, l: RunLayout) -> void:
 			title = tr("UI_REACH_DONE_TITLE")
 			var ahead := tr(str(ContentDB.reaches[str(run.reach().next)].name))
 			body = tr("UI_REACH_DONE") + " " + tr("UI_REACH_NEXT") % ahead
-			if not run.messages.is_empty():  # what the Warden fight cost, e.g. sung-away Light
-				body = tr(run.messages[-1]) + ". " + body
+			body = _fight_news(run) + body  # what the Warden fight cost or brought
 			label = "UI_JUMP_THROUGH"
 		"won":
 			title = tr("UI_RUN_WON_TITLE")

@@ -60,18 +60,6 @@ static func room_name(ship: Ship, room_id: String) -> String:
 	return TranslationServer.translate(ContentDB.systems[sys].name)
 
 
-## The Warden's rule, for the message line; "" in an ordinary fight.
-static func rule_text(combat: Combat) -> String:
-	match combat.rule():
-		"tether":
-			return TranslationServer.translate("RULE_TETHER")
-		"tide":
-			return TranslationServer.translate("RULE_TIDE") % ceili(combat.tide_eta())
-		"hymn":
-			return TranslationServer.translate("RULE_HYMN")
-	return ""
-
-
 func _draw_tags(combat: Combat) -> void:
 	var foe := combat.enemy()
 	var me := combat.player()

@@ -72,7 +72,7 @@ static func _volley_ready(me: Ship) -> bool:
 	for i in me.weapon_ids.size():
 		if me.weapon_powered(i):
 			any = true
-			if me.weapon_charge[i] < float(ContentDB.weapons[me.weapon_ids[i]].charge):
+			if me.weapon_eta(i) > 0.0:
 				return false
 	return any
 

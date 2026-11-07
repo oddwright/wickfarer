@@ -377,7 +377,7 @@ func mod(effect: String) -> float:
 # ---------------------------------------------------------------- tick
 
 
-## chill is extra warmth every room loses a second, from the fight's rule (Combat.chill()).
+## chill is extra warmth every room loses a second, from the fight's rule (Combat.rule_chill()).
 func tick(dt: float, rng: RandomNumberGenerator, events: Array, chill := 0.0) -> void:
 	if is_dead():
 		return
