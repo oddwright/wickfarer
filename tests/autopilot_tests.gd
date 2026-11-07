@@ -42,9 +42,7 @@ static func skilled_resumes(t: SceneTree) -> void:
 		)
 
 
-## The split aim: guns that strip a ward work on the warded deck and the rest
-## on the open one, with the weakest as a decoy if there aren't enough
-## strippers, so as many guns point at each deck.
+## Every powered gun goes on the deck the enemy ward leaves open.
 static func split_aim(t: SceneTree) -> void:
 	var pilot := Autopilot.make("skilled")
 	for hull in ShipRoster.playable():
@@ -52,19 +50,9 @@ static func split_aim(t: SceneTree) -> void:
 		var me := c.player()
 		var foe := c.enemy()
 		var decks := pilot._gun_decks(me, foe)
-		_check(
-			t, decks.count(0) == decks.count(1), "%s: as many guns on each deck %s" % [hull, decks]
-		)
-		var strippers: Array[int] = []
 		for i in me.weapon_ids.size():
-			if ContentDB.weapons[me.weapon_ids[i]].strips_ward:
-				strippers.append(i)
-		if strippers.size() == 1:
-			_check(
-				t, decks[strippers[0]] == foe.ward_deck, "%s: the stripper takes the ward" % hull
-			)
-		# The enemy ward no longer stays put for an even count: it weighs each
-		# gun (see fight_tests.ward_follows_threat), so the split only keeps it guessing.
+			var want := 1 - foe.ward_deck if me.weapon_powered(i) else -1
+			_check(t, decks[i] == want, "%s: gun %d aims at the open deck %s" % [hull, i, decks])
 
 
 ## When damage takes reactor power away, the skilled player moves power from

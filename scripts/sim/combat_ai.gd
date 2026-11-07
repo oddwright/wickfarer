@@ -8,6 +8,8 @@ const STATIONS: Array[String] = ["weapons", "helm", "wards", "engines"]
 const WARD_REACT := 3.0
 ## How much more the other deck must be threatened before the ward moves there.
 const WARD_MOVE_MARGIN := 1.25
+## Extra seconds the ward stays put after a move.
+const WARD_SETTLE := 5.0
 ## How each hull's captain fights comes from its "ai" block in ships.json:
 ## "targets" (room weights by system), "ward_react" (seconds between ward checks),
 ## "volley" (hold every gun until all are charged, then fire together) and
@@ -174,6 +176,9 @@ func _wards(combat: Combat, me: Ship, foe: Ship, side: int, react: float) -> voi
 	# it only moves for a clear gain.
 	if there > here * WARD_MOVE_MARGIN:
 		combat.apply({"type": "ward_deck", "deck": 1 - me.ward_deck}, side)
+		# Then let the layers grow back before thinking again: chasing every
+		# re-aim kept the ward at no layers at all.
+		ward_timer = -WARD_SETTLE
 
 
 ## Damage a ward on this deck would stop each second from the foe's powered,
