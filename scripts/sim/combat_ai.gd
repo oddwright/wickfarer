@@ -189,16 +189,14 @@ func _crew(combat: Combat, me: Ship, side: int) -> void:
 		if mend and mend.power > 0 and c.hp < c.max_hp * 0.35 and c.room != mend.id:
 			combat.apply({"type": "move", "crew": c.uid, "room": mend.id}, side)
 			idle.erase(c)
-	# Crew already fighting a fire or repairing stay at it; pulling them off to
-	# fill a station left broken guns broken for good (crew bounced between the
-	# two). One hand sealing a rent stays too, and the rest are free for fires.
-	var sealing := {}
+	# One hand already fighting a fire, sealing a rent or repairing stays at it:
+	# pulling the last one off to fill a station left broken guns broken for good
+	# (crew bounced between the two). Anyone else in the room is free for jobs.
+	var held := {}
 	for c in idle.duplicate():
 		var here := me.room(c.room)
-		if here.fire > 0.0 or here.damage > 0.0:
-			idle.erase(c)
-		elif here.rent > 0.0 and not sealing.has(c.room):
-			sealing[c.room] = true
+		if (here.fire > 0.0 or here.rent > 0.0 or here.damage > 0.0) and not held.has(c.room):
+			held[c.room] = true
 			idle.erase(c)
 	# Emergencies next: fires, then rents, then broken systems.
 	var jobs: Array[String] = []
@@ -209,7 +207,7 @@ func _crew(combat: Combat, me: Ship, side: int) -> void:
 		if (
 			room.rent > 0.0
 			and room.fire <= 0.0
-			and not sealing.has(room.id)
+			and not held.has(room.id)
 			and me.crew_in(room.id).is_empty()
 			and not busy.has(room.id)
 		):

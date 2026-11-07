@@ -44,7 +44,7 @@ static func draw_button(world: WorldView, s: Ship, r: Rect2i) -> void:
 	Pixel.panel(world, r, burning)
 	var tint := Color(1, 1, 1, 1.0 if ready or burning else 0.35)
 	world.draw_texture(Pixel.grid(FLAME), Vector2(r.position + Vector2i(r.size.x / 2 - 2, 4)), tint)
-	var f := Ship.flare_data()
+	var f := EmberFlare.data()
 	var bar := Rect2(r.position.x + 4, r.end.y - 6, r.size.x - 8, 2)
 	var k := 0.0
 	var col := Pixel.c("v")

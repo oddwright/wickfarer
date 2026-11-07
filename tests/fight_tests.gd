@@ -124,7 +124,7 @@ static func crew_seal_rents(t: SceneTree) -> void:
 
 
 static func flare_burns_then_cracks(t: SceneTree) -> void:
-	var f := Ship.flare_data()
+	var f := EmberFlare.data()
 	var c := _open_fight()
 	var me := c.player()
 	var calm := _open_fight()
@@ -249,10 +249,7 @@ static func _has_error(errors: Array[String], part: String) -> bool:
 ## Muster and Flare) for every enemy hull on every screen. A siege draws its own
 ## line instead, which SiegeView starts past the Kindle button.
 static func foe_line_clears_buttons(t: SceneTree, screens: Dictionary) -> void:
-	if TextLayer.glyph_index.is_empty():
-		TextLayer.glyph_index = JSON.parse_string(
-			FileAccess.get_file_as_string("res://art/font_3x5.json")
-		)
+	_load_glyphs()
 	var bad: Array[String] = []
 	for name: String in screens:
 		var scr: Dictionary = screens[name]
@@ -317,3 +314,87 @@ static func crew_keep_repairing(t: SceneTree) -> void:
 	mend.damage = 0.0
 	c.ai.call("_crew", c, foe, 1)
 	_check(t, hand.is_moving(), "and leaves for an empty station once it is fixed")
+
+
+## Only one hand stays on a repair: a second one in the room still answers a fire.
+static func spare_hands_answer_fires(t: SceneTree) -> void:
+	var c := Combat.create(5, "tallow_wren", "ashmarket_cutter")
+	var foe := c.enemy()
+	var helm := foe.system_room("helm")
+	helm.damage = 1.0
+	for m in foe.crew:
+		m.room = helm.id
+		m.path.clear()
+	foe.room("hold").fire = 40.0
+	c.ai.call("_crew", c, foe, 1)
+	var off := 0
+	var to_fire := false
+	for m in foe.crew:
+		off += 1 if m.is_moving() else 0
+		to_fire = to_fire or (m.is_moving() and m.path.back() == "hold")
+	_check(t, off == foe.crew.size() - 1, "one hand stays on the repair, the rest are free")
+	_check(t, to_fire, "and one of them goes to the fire")
+
+
+static func hazard_edges(t: SceneTree) -> void:
+	# An Ember shot out mid-burn stops the flare at once.
+	var c := _open_fight()
+	var me := c.player()
+	EmberFlare.light(me)
+	_ticks(c, 10)
+	var ember := me.system_room("ember")
+	ember.damage = float(ember.level)
+	var seen := _ticks(c, 1)
+	_check(t, me.flare_time == 0.0, "a flare ends when its Ember is shot out")
+	_check(t, _has(seen, "flare_spent", 0), "and says so")
+	# A half-sealed rent torn again starts over and says so.
+	var d := _open_fight()
+	d.player().room("galley").rent = 10.0
+	_shoot(d, "heavy_rivet", "galley", 1.0)
+	_check(t, d.player().room("galley").rent == 100.0, "a fresh tear undoes the sealing")
+	_check(t, _has(d.events, "rent_open", 0), "and is shown")
+	# A seal at full hull says it gave nothing.
+	var e := _open_fight()
+	_disarm(e)
+	e.player().room("helm").rent = 5.0
+	var got := -1
+	for ev: Dictionary in _ticks(e, 40):
+		if ev.type == "rent_sealed" and int(ev.side) == 0:
+			got = int(ev.hull)
+	_check(t, got == 0, "a seal at full hull plates nothing back")
+
+
+## A siege writes its phase and name in the top bar, past the Kindle button (after
+## Flare in Wide): each must fit one line on every screen.
+static func siege_lines_fit(t: SceneTree, screens: Dictionary) -> void:
+	_load_glyphs()
+	var bad: Array[String] = []
+	for name: String in screens:
+		var scr: Dictionary = screens[name]
+		var l := HudLayout.build(
+			scr, Vector2i(120, 60), Vector2i(120, 60), [], 2, Rect2i(), Rect2i(), true
+		)
+		if l.kind == "tall":
+			continue
+		var width := l.native.x - 34 - SiegeView._left_edge(l)
+		for sid: String in ContentDB.sieges:
+			var sg: Dictionary = ContentDB.sieges[sid]
+			var lines: Array[String] = [
+				TranslationServer.translate("UI_SIEGE_KINDLING") % 100,
+				TranslationServer.translate(str(sg.name))
+			]
+			for ph: Dictionary in sg.phases:
+				var phase := TranslationServer.translate(str(ph.name))
+				lines.append(TranslationServer.translate("UI_SIEGE_LEFT") % [phase, 999])
+			for line in lines:
+				if TextLayer.text_width(line.to_upper()) > width:
+					bad.append("%s on %s" % [line, name])
+	_check(t, bad.is_empty(), "siege lines fit beside the top-bar buttons: %s" % [bad.slice(0, 3)])
+
+
+## Text widths need the font's glyph table, which the text layer loads on screen.
+static func _load_glyphs() -> void:
+	if TextLayer.glyph_index.is_empty():
+		TextLayer.glyph_index = JSON.parse_string(
+			FileAccess.get_file_as_string("res://art/font_3x5.json")
+		)

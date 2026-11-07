@@ -481,9 +481,9 @@ func _seal(c: Crew, here: Room, work: float, events: Array) -> void:
 	# Under half a quantum would round to 0 at the end of the tick with no payout.
 	if here.rent < Q.STEP * 0.5:
 		here.rent = 0.0
-		var back := int(rent_data().hull)
-		hull = mini(max_hull, hull + back)
-		events.append({"type": "rent_sealed", "side": side, "room": here.id, "hull": back})
+		var was := hull
+		hull = mini(max_hull, hull + int(rent_data().hull))
+		events.append({"type": "rent_sealed", "side": side, "room": here.id, "hull": hull - was})
 
 
 ## Crew at a working station practise its skill.
@@ -550,7 +550,7 @@ func _tick_warmth(dt: float, chill: float) -> void:
 	var delta := {}
 	var fitted := mod("warmth") - mod("heat")
 	if flare_time > 0.0:
-		fitted += float(flare_data().warmth)
+		fitted += float(EmberFlare.data().warmth)
 	var drain := float(rent_data().drain)
 	for r in rooms:
 		var d := -1.2 + fitted - chill
@@ -617,7 +617,7 @@ func _tick_wards(dt: float) -> void:
 func charge_rate() -> float:
 	var rate := maxf(1.0, station_bonus("weapons", GUN_BOOST)) * (1.0 + mod("weapon_charge"))
 	if flare_time > 0.0:
-		rate *= 1.0 + float(flare_data().charge)
+		rate *= 1.0 + float(EmberFlare.data().charge)
 	return rate
 
 
@@ -643,12 +643,7 @@ func _tick_weapons(dt: float, events: Array) -> void:
 			weapon_charge[i] = maxf(0.0, weapon_charge[i] - dt * 2.0)
 
 
-# ---------------------------------------------------------------- hazards
-
-
-## The Ember's flare numbers from systems.json.
-static func flare_data() -> Dictionary:
-	return ContentDB.systems.ember.flare
+# ---------------------------------------------------------------- rents
 
 
 ## Rents' numbers from hazards.json.

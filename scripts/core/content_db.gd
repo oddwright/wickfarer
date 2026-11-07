@@ -197,7 +197,9 @@ static func _validate_flare(f: Variant, errors: Array[String]) -> void:
 		var v: Variant = f.get(k)
 		if not (v is float or v is int) or float(v) <= 0.0:
 			errors.append("system ember: flare %s must be a number above 0" % k)
-	if float(f.get("cooldown", 0)) < float(f.get("seconds", 0)):
+	var cool: Variant = f.get("cooldown", 0)
+	var secs: Variant = f.get("seconds", 0)
+	if (cool is float or cool is int) and (secs is float or secs is int) and cool < secs:
 		errors.append("system ember: a flare must rest at least as long as it burns")
 
 

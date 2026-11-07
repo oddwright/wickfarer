@@ -255,10 +255,8 @@ func _tear(r: Room, w: Dictionary, where: Dictionary) -> void:
 	if chance <= 0.0:  # validation keeps rent chances to guns that hurt the hull
 		return
 	if rng.stream("rents").randf() < chance:
-		var fresh := r.rent <= 0.0
-		r.rent = 100.0
-		if fresh:
-			events.append(where.merged({"type": "rent_open"}))
+		r.rent = 100.0  # a half-sealed rent torn again starts over, and says so
+		events.append(where.merged({"type": "rent_open"}))
 
 
 ## Every hit lets some cold in; a Chill gun lets in far more, and half of it

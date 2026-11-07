@@ -158,7 +158,9 @@ func _draw_rooms(side: int) -> void:
 		if r.fire > 0.0:
 			var n := clampi(int(r.fire / 25.0) + 1, 1, 4)
 			for k in n:
-				var fx := rr.position.x + 2 + k * int(max(1, (rr.size.x - 7) / n))
+				# a rent keeps the room's bottom-right corner, so its tear stays readable
+				var span := rr.size.x - 7 - (9 if r.rent > 0.0 else 0)
+				var fx := rr.position.x + 2 + k * int(max(1, span / n))
 				var tex := Pixel.grid(Pixel.FIRE[(int(anim_time * 8.0) + k) % 3])
 				draw_texture(tex, Vector2(fx, rr.end.y - 7))
 		FightMarks.draw_rent(self, r, rr, anim_time)
@@ -170,7 +172,7 @@ func _draw_rooms(side: int) -> void:
 		if r.system != "":
 			_draw_system_icon(r, rr)
 		if side == 1 and r.system == "ember":
-			var t := Pixel.grid("..w..\n.wvw.\nwvxvw\n.wvw.\n..w..")
+			var t := Pixel.grid(FightMarks.FLAME)
 			draw_texture(t, Vector2(rr.get_center()) + Vector2(-2, 0))
 
 

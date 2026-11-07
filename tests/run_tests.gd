@@ -990,5 +990,8 @@ func test_rents_and_flare() -> void:
 	FIGHT_TESTS.resume_mid_flare(self)
 	FIGHT_TESTS.fixtures_load(self)
 	FIGHT_TESTS.crew_keep_repairing(self)
+	FIGHT_TESTS.spare_hands_answer_fires(self)
+	FIGHT_TESTS.hazard_edges(self)
+	FIGHT_TESTS.siege_lines_fit(self, SCREEN_TESTS.variants(SCREENS))
 	FIGHT_TESTS.content_is_checked(self)
 	FIGHT_TESTS.foe_line_clears_buttons(self, SCREEN_TESTS.variants(SCREENS))

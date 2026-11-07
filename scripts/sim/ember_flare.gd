@@ -5,6 +5,11 @@ extends RefCounted
 ## (flare_time, flare_cool) lives on Ship; the rules live here, for both sides.
 
 
+## The flare's numbers from systems.json.
+static func data() -> Dictionary:
+	return ContentDB.systems.ember.flare
+
+
 ## A flare needs a working Ember and a rested one (the rest starts with the burn
 ## and lasts at least as long, so a burning Ember is never rested).
 static func can(s: Ship) -> bool:
@@ -15,7 +20,7 @@ static func can(s: Ship) -> bool:
 static func light(s: Ship) -> bool:
 	if not can(s):
 		return false
-	var f := Ship.flare_data()
+	var f := data()
 	s.flare_time = float(f.seconds)
 	s.flare_cool = float(f.cooldown)
 	return true
@@ -27,10 +32,14 @@ static func tick(s: Ship, dt: float, events: Array) -> void:
 		return
 	var ember := s.system_room("ember")
 	# Orders land between ticks, where events are cleared: say it on the first tick.
-	if s.flare_time >= float(Ship.flare_data().seconds):
+	if s.flare_time >= float(data().seconds):
 		events.append({"type": "flare", "side": s.side, "room": ember.id})
+	if ember.effective_level() <= 0:  # shot out mid-burn: a dead Ember gives nothing more
+		s.flare_time = 0.0
+		events.append({"type": "flare_spent", "side": s.side, "room": ember.id})
+		return
 	s.flare_time = maxf(0.0, s.flare_time - dt)
 	if s.flare_time > 0.0:
 		return
-	ember.damage = minf(float(ember.level), ember.damage + float(Ship.flare_data().crack))
+	ember.damage = minf(float(ember.level), ember.damage + float(data().crack))
 	events.append({"type": "flare_spent", "side": s.side, "room": ember.id})
