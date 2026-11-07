@@ -575,8 +575,9 @@ func test_store_and_fight_rewards() -> void:
 	var r := Run.create(14)
 	r.state = "store"
 	r.scrap = 10
-	r.ship.hull = 15
-	check(r.buy("repair") and r.ship.hull == 16 and r.scrap == 7, "repair costs 3 scrap")
+	r.ship.hull = r.ship.max_hull - 5
+	var hull := r.ship.hull
+	check(r.buy("repair") and r.ship.hull == hull + 1 and r.scrap == 7, "repair costs 3 scrap")
 	check(r.buy("light") and r.scrap == 2, "Light costs 5 scrap")
 	check(not r.buy("light"), "can't buy without scrap")
 	check(not r.can_buy("light") and r.can_buy("repair") == false, "the store greys out")

@@ -6,12 +6,17 @@ extends RefCounted
 const TARGET_WEIGHTS := {"weapons": 3, "wards": 2, "helm": 2, "ember": 2, "engines": 1, "mend": 1}
 const STATIONS: Array[String] = ["weapons", "helm", "wards", "engines"]
 const WARD_REACT := 3.0
+## How much more the other deck must be threatened before the ward moves there.
+const WARD_MOVE_MARGIN := 1.25
+## Extra seconds the ward stays put after a move, unless the hull sets its own.
+const WARD_SETTLE := 5.0
 ## How each hull's captain fights comes from its "ai" block in ships.json:
 ## "targets" (room weights by system), "ward_react" (seconds between ward checks),
-## "volley" (hold every gun until all are charged, then fire together) and
-## "focus" (every gun on the first gun's room). A hull without one fights like
-## an Ashmarket raider.
-const TACTICS: Array[String] = ["targets", "ward_react", "volley", "focus"]
+## "ward_settle" (extra seconds the ward stays put after a move), "volley"
+## (hold every gun until all are charged, then fire together) and "focus"
+## (every gun on the first gun's room). A hull without one fights like an
+## Ashmarket raider.
+const TACTICS: Array[String] = ["targets", "ward_react", "ward_settle", "volley", "focus"]
 
 var ward_timer := 0.0
 
@@ -46,6 +51,9 @@ static func validate_tactics(where: String, ai: Variant, errors: Array[String]) 
 	var react: Variant = ai.get("ward_react", WARD_REACT)
 	if not (react is float or react is int) or float(react) < Combat.AI_THINK:
 		errors.append("%s: ai.ward_react must be at least %s seconds" % [where, Combat.AI_THINK])
+	var settle: Variant = ai.get("ward_settle", WARD_SETTLE)
+	if not (settle is float or settle is int) or float(settle) < 0.0:
+		errors.append("%s: ai.ward_settle must be 0 seconds or more" % where)
 	for flag in ["volley", "focus"]:
 		if ai.has(flag) and not ai[flag] is bool:
 			errors.append("%s: ai.%s must be true or false" % [where, flag])
@@ -62,7 +70,7 @@ func think(combat: Combat, side: int) -> void:
 		_hold(combat, me, side)
 	else:
 		_aim(combat, me, foe, side, r, t)
-	_wards(combat, me, foe, side, float(t.get("ward_react", WARD_REACT)))
+	_wards(combat, me, foe, side, t)
 	_crew(combat, me, side)
 	flare_when_it_pays(combat, me, side)
 
@@ -158,21 +166,61 @@ func _strips_wards(me: Ship) -> bool:
 	return false
 
 
-## Watches where the player is aiming and moves its ward to the busier deck.
-## It reacts on a delay so a quick player can catch it out.
-func _wards(combat: Combat, me: Ship, foe: Ship, side: int, react: float) -> void:
+## Watches where the player is aiming and moves its ward to the deck where it
+## would stop the most. It reacts on a delay so a quick player can catch it out.
+func _wards(combat: Combat, me: Ship, foe: Ship, side: int, t: Dictionary) -> void:
 	ward_timer += Combat.AI_THINK
-	if ward_timer < react:
+	if ward_timer < float(t.get("ward_react", WARD_REACT)):
 		return
 	ward_timer = 0.0
-	var counts := [0, 0]
-	for t in foe.weapon_target:
-		if t != "":
-			counts[me.room(t).deck] += 1
-	if counts[0] > counts[1]:
-		combat.apply({"type": "ward_deck", "deck": 0}, side)
-	elif counts[1] > counts[0]:
-		combat.apply({"type": "ward_deck", "deck": 1}, side)
+	if me.max_ward_layers() <= 0:
+		return  # a ward with no layers to give stops nothing wherever it sits
+	var here := ward_threat(me, foe, me.ward_deck)
+	var there := ward_threat(me, foe, 1 - me.ward_deck)
+	# Counting guns let one gun per deck pin the ward in place for good, even
+	# with the heavier gun free on the open deck. Moving halves the layers, so
+	# it only moves for a clear gain.
+	if there > here * WARD_MOVE_MARGIN:
+		combat.apply({"type": "ward_deck", "deck": 1 - me.ward_deck}, side)
+		# Then let the layers grow back before thinking again: chasing every
+		# re-aim kept the ward at no layers at all.
+		ward_timer = -float(t.get("ward_settle", WARD_SETTLE))
+
+
+## Harm a ward on this deck would stop each second from the foe's powered,
+## aimed guns: every shot of a gun it blocks, one shot per layer of a gun that
+## strips it, nothing of one that passes through. Guns that strip as many
+## layers as the ward has open it for the rest, so those count as unstopped.
+static func ward_threat(me: Ship, foe: Ship, deck: int) -> float:
+	var layers := me.max_ward_layers()
+	var strip_shots := 0
+	var aimed: Array[Dictionary] = []
+	for i in foe.weapon_ids.size():
+		var t := foe.weapon_target[i]
+		if t == "" or me.room(t).deck != deck or not foe.weapon_powered(i):
+			continue
+		var w: Dictionary = ContentDB.weapons[foe.weapon_ids[i]]
+		if w.get("pierces_ward", false):
+			continue
+		aimed.append(w)
+		if w.strips_ward:
+			strip_shots += int(w.shots)
+	var opened := strip_shots >= layers
+	var total := 0.0
+	for w in aimed:
+		var shots := int(w.shots)
+		var stopped := mini(shots, layers) if w.strips_ward else (0 if opened else shots)
+		total += _shot_harm(w) * float(stopped) / float(w.charge)
+	return total
+
+
+## A rough single number for one shot: hull and systems, plus crew harm, fire,
+## rents and Light drain at what they tend to cost.
+static func _shot_harm(w: Dictionary) -> float:
+	var harm := float(int(w.hull_damage) + int(w.system_damage))
+	harm += 0.1 * float(w.crew_damage) + 4.0 * float(w.fire_chance)
+	harm += 3.0 * float(w.get("rent_chance", 0.0)) + 2.0 * float(w.get("light_drain", 0.0))
+	return harm
 
 
 func _crew(combat: Combat, me: Ship, side: int) -> void:

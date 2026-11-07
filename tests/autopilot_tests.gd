@@ -42,41 +42,35 @@ static func skilled_resumes(t: SceneTree) -> void:
 		)
 
 
-## The split aim: guns that strip a ward work on the warded deck and the rest
-## on the open one, with the weakest as a decoy if there aren't enough
-## strippers, so as many guns point at each deck and the enemy ward stays put.
+## In a real fight, once the enemy ward moves, every powered gun is back on
+## the open deck within a second (two decisions).
 static func split_aim(t: SceneTree) -> void:
-	var pilot := Autopilot.make("skilled")
 	for hull in ShipRoster.playable():
 		var c := Combat.create(1, hull)
+		var pilot := Autopilot.make("skilled")
 		var me := c.player()
 		var foe := c.enemy()
-		var decks := pilot._gun_decks(me, foe)
-		_check(
-			t, decks.count(0) == decks.count(1), "%s: as many guns on each deck %s" % [hull, decks]
-		)
-		var strippers: Array[int] = []
-		for i in me.weapon_ids.size():
-			if ContentDB.weapons[me.weapon_ids[i]].strips_ward:
-				strippers.append(i)
-		if strippers.size() == 1:
-			_check(
-				t, decks[strippers[0]] == foe.ward_deck, "%s: the stripper takes the ward" % hull
-			)
-		# Checked until the enemy wards or our gun deck are first hit: after that
-		# a gun can lose power and the count tip while the guns re-take decks.
-		var moved := false
-		for tick in 600:
-			var hit := (
-				me.system_room("weapons").damage > 0.0 or foe.system_room("wards").damage > 0.0
-			)
-			if c.state != "fighting" or hit:
+		var moves := 0
+		var late := 0
+		var since := -1
+		for tick in 2400:
+			if c.state != "fighting":
 				break
 			var deck := foe.ward_deck
 			pilot.combat_step(c)
 			c.tick()
-			moved = moved or foe.ward_deck != deck
-		_check(t, not moved, "%s: the enemy ward stayed put" % hull)
+			if foe.ward_deck != deck:
+				moves += 1
+				since = 0
+			elif since >= 0:
+				since += 1
+			if since == 20 and foe.ward_layers > 0:
+				for i in me.weapon_ids.size():
+					var aim := me.weapon_target[i]
+					if me.weapon_powered(i) and aim != "" and foe.room(aim).deck == foe.ward_deck:
+						late += 1
+		_check(t, moves > 0, "%s: the enemy ward moved at some point" % hull)
+		_check(t, late == 0, "%s: guns followed the open deck (%d late)" % [hull, late])
 
 
 ## When damage takes reactor power away, the skilled player moves power from

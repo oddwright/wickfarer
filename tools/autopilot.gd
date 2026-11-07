@@ -10,13 +10,13 @@ extends RefCounted
 ##            power or its own ward. On the chart it heads straight for the
 ##            Gate, takes the first choice it can in every story, and spends
 ##            scrap on repairs and the cheapest refit.
-##   skilled: a player who has learned the game. It splits its guns across
-##            the enemy decks so the enemy ward has no busier deck to follow,
-##            picks the enemy room that hurts most, shares out reactor power so
-##            the guns keep firing, keeps crew on repairs, weighs every story
-##            choice, refits by a plan, and picks the route to the Gate with the
-##            most to gain on it. It leaves its own ward on the hull's starting
-##            deck: chasing the enemy's aim with it lost more runs than it saved.
+##   skilled: a player who has learned the game. It keeps its guns on the
+##            deck the enemy ward leaves open, picks the enemy room that hurts
+##            most, shares out reactor power so the guns keep firing, keeps
+##            crew on repairs, weighs every story choice, refits by a plan, and
+##            picks the route to the Gate with the most to gain on it. It
+##            leaves its own ward on the hull's starting deck: chasing the
+##            enemy's aim with it lost more runs than it saved.
 
 const PROFILES: Array[String] = ["novice", "skilled"]
 ## The skilled player's refits, most wanted first. Helm and engines dodge whole
@@ -99,6 +99,7 @@ func _skilled_step(c: Combat) -> void:
 		_spend_power(c, me)
 		_volley(c, me, c.enemy())
 		_crew(c, me)
+		CombatAI.flare_when_it_pays(c, me, 0)
 
 
 ## Shares the reactor out by plan: every gun first, then wards in pairs, then
@@ -150,11 +151,11 @@ func _gun_power(me: Ship, limit: int) -> int:
 	return total
 
 
-## Guns stay aimed, as a player leaves them, and the enemy moves its ward to
-## whichever deck more of them point at. So the skilled player keeps the count
-## even: guns that strip wards work on the warded deck, the rest hit the open
-## one, and if there are more of those, the weakest is a decoy on the warded
-## deck. With the count even the ward stays put and the open deck stays open.
+## Guns stay aimed, as a player leaves them. The enemy moves its ward to the
+## deck it would stop the most on, a few seconds late, then leaves it there a
+## while; so the skilled player keeps every powered gun on the open deck and
+## follows when the ward moves. Splitting the guns across the decks instead
+## (strippers on the ward) lost more fights once the ward weighed each gun.
 ## A gun is re-aimed within its deck only when that is free, just after it
 ## fires; it moves decks, paying to re-sight, only when its job changes.
 func _volley(c: Combat, me: Ship, foe: Ship) -> void:
@@ -184,35 +185,11 @@ func _gun_decks(me: Ship, foe: Ship) -> Array[int]:
 	out.fill(-1)
 	if foe.ward_layers <= 0 and foe.max_ward_layers() <= 0:
 		return out  # no ward to dodge
-	var shut := foe.ward_deck
-	var strippers: Array[int] = []
-	var others: Array[int] = []
 	for i in me.weapon_ids.size():
-		# A gun without power keeps pointing at the best room anywhere. Measured,
-		# that beat both dropping its aim and keeping it in the split: Wren
-		# whole-run wins 52% against 30%.
-		if not me.weapon_powered(i):
-			continue
-		(strippers if ContentDB.weapons[me.weapon_ids[i]].strips_ward else others).append(i)
-		out[i] = 1 - shut
-	var on_shut := 0
-	for i in strippers:
-		if on_shut < (strippers.size() + others.size()) / 2:
-			out[i] = shut
-			on_shut += 1
-	# Not enough strippers to even the count: the weakest of the rest is the decoy.
-	others.sort_custom(func(a: int, b: int) -> bool: return _gun_punch(me, a) < _gun_punch(me, b))
-	for i in others:
-		if on_shut < (strippers.size() + others.size()) / 2:
-			out[i] = shut
-			on_shut += 1
+		# A gun without power keeps pointing at the best room anywhere.
+		if me.weapon_powered(i):
+			out[i] = 1 - foe.ward_deck
 	return out
-
-
-## Damage a gun does per second of charging, to pick the decoy.
-func _gun_punch(me: Ship, i: int) -> float:
-	var w: Dictionary = ContentDB.weapons[me.weapon_ids[i]]
-	return float(w.shots) * float(int(w.hull_damage) + int(w.system_damage)) / float(w.charge)
 
 
 ## The enemy room a hit hurts most, on the given deck (-1: either).

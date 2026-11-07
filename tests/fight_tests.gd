@@ -14,6 +14,7 @@ static func run_all(t: SceneTree, screens: Dictionary) -> void:
 	resume_mid_flare(t)
 	fixtures_load(t)
 	crew_keep_repairing(t)
+	ward_follows_threat(t)
 	spare_hands_answer_fires(t)
 	hazard_edges(t)
 	siege_lines_fit(t, screens)
@@ -330,6 +331,70 @@ static func crew_keep_repairing(t: SceneTree) -> void:
 	mend.damage = 0.0
 	c.ai.call("_crew", c, foe, 1)
 	_check(t, hand.is_moving(), "and leaves for an empty station once it is fixed")
+
+
+## Lets the captain think for long enough to react to the player's aim.
+static func _captain_think(c: Combat) -> void:
+	var react := float(
+		CombatAI.tactics(c.enemy().content_id).get("ward_react", CombatAI.WARD_REACT)
+	)
+	for k in int(ceil(react / Combat.AI_THINK)):
+		c.ai.think(c, 1)
+
+
+static func _system_room_on(s: Ship, deck: int) -> String:
+	for r in s.rooms:
+		if r.deck == deck and r.system != "":
+			return r.id
+	return ""
+
+
+## One gun on each deck used to tie the count, so the ward never moved even
+## with only one rivet shot soaked up and the torch free on the open deck.
+static func ward_follows_threat(t: SceneTree) -> void:
+	var c := Combat.create(1, "tallow_wren")
+	var me := c.player()
+	var foe := c.enemy()
+	var shut := foe.ward_deck
+	# One layer: the rivet gun's first shot takes it and its second gets through.
+	while foe.max_ward_layers() > 1:
+		foe.power_down("wards")
+	_check(t, foe.max_ward_layers() == 1, "the enemy ward is down to one layer")
+	_check(t, me.weapon_powered(0) and me.weapon_powered(1), "both Wren guns powered")
+	c.apply({"type": "aim", "weapon": 0, "room": _system_room_on(foe, shut)})  # rivet gun
+	c.apply({"type": "aim", "weapon": 1, "room": _system_room_on(foe, 1 - shut)})  # torch lance
+	_captain_think(c)
+	_check(t, foe.ward_deck == 1 - shut, "the enemy ward moved to block the torch")
+	# Both guns on the warded deck: it has no reason to move.
+	var c2 := Combat.create(1, "tallow_wren")
+	var foe2 := c2.enemy()
+	for i in 2:
+		c2.apply({"type": "aim", "weapon": i, "room": _system_room_on(foe2, foe2.ward_deck)})
+	var was := foe2.ward_deck
+	_captain_think(c2)
+	_check(t, foe2.ward_deck == was, "the enemy ward stays where every gun points")
+	# A rivet gun that strips the one layer opens the deck for the torch behind it.
+	var c3 := Combat.create(1, "tallow_wren")
+	var me3 := c3.player()
+	var foe3 := c3.enemy()
+	while foe3.max_ward_layers() > 1:
+		foe3.power_down("wards")
+	var deck := foe3.ward_deck
+	c3.apply({"type": "aim", "weapon": 0, "room": _system_room_on(foe3, deck)})
+	var rivet_only := CombatAI.ward_threat(foe3, me3, deck)
+	c3.apply({"type": "aim", "weapon": 1, "room": _system_room_on(foe3, deck)})
+	var both := CombatAI.ward_threat(foe3, me3, deck)
+	_check(t, both == rivet_only, "a stripped ward stops nothing of the torch behind it")
+	# With no layers to give, the ward isn't moved (and doesn't wait to settle).
+	while foe3.max_ward_layers() > 0:
+		foe3.power_down("wards")
+	c3.apply({"type": "aim", "weapon": 0, "room": _system_room_on(foe3, 1 - deck)})
+	c3.apply({"type": "aim", "weapon": 1, "room": _system_room_on(foe3, 1 - deck)})
+	_captain_think(c3)
+	_check(t, foe3.ward_deck == deck and c3.ai.ward_timer >= 0.0, "a bare ward stays put")
+	var errors: Array[String] = []
+	CombatAI.validate_tactics("test", {"ward_settle": -1}, errors)
+	_check(t, errors.size() == 1, "a negative ward_settle is refused")
 
 
 ## Only one hand stays on a repair: a second one in the room still answers a fire.
