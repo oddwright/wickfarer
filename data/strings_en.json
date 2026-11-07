@@ -478,6 +478,7 @@
   "UI_FITTED": "fitted",
   "UI_IN_HOLD": "hold",
   "UI_HOLD_EMPTY": "Empty hold",
+  "UI_UPKEEP_UNPAID": "No Light for your modules. They drew on the dark, and the Hush came closer.",
   "UI_HOLD_COUNT": "Hold %d of %d.",
   "UI_SOLD_FOR": "%d scrap",
   "UI_GEAR_FITTED": "Fitted: %s",

@@ -13,6 +13,10 @@ const ENDINGS: Array[String] = ["lost", "won"]  ## states a run never leaves
 ## Systems the refit page offers, in order; "stoke" (reactor for Light) comes after them.
 const REFIT_SYSTEMS: Array[String] = ["weapons", "wards", "helm", "engines", "mend"]
 const HOLD_SIZE := 2  ## spare gear the hold carries, besides what is fitted
+## Run states that are a store's pages: the price board, the refit, and Market's.
+const STORE_PAGES: Array[String] = ["store", "refit", "wares", "modules", "guns"]
+## Hush a module's unpaid Light upkeep draws instead, per missing Light.
+const UNPAID_UPKEEP_HUSH := 0.35
 
 var reach_id: String
 var depth: int = 0  ## Hush Depth: every depth's rule up to this one applies
@@ -120,7 +124,7 @@ func jump(target: String) -> bool:
 	else:
 		ship.hull = maxi(0, ship.hull - int(reach().dark_jump_hull) - int(mod("dark_jump_hull")))
 		messages.append("UI_DARK_JUMP")
-	light = maxi(0, light - int(ship.mod("light_upkeep")))  # what hungry modules burn
+	_pay_upkeep()
 	jumps += 1
 	var per_jump := float(reach().hush_per_jump) + mod("hush_per_jump") + ship.mod("hush")
 	hush = Q.q(hush + per_jump + float(reach().hush_per_light) * light)
@@ -185,6 +189,17 @@ func next_reach() -> bool:
 	messages.clear()
 	state = "chart"
 	return true
+
+
+## Hungry modules burn Light each jump. Light the run doesn't have is taken
+## from the dark instead: the Hush comes on faster, so the gain is never free.
+func _pay_upkeep() -> void:
+	var upkeep := int(ship.mod("light_upkeep"))
+	var unpaid := maxi(0, upkeep - light)
+	light -= upkeep - unpaid
+	if unpaid > 0:
+		hush = Q.q(hush + UNPAID_UPKEEP_HUSH * unpaid)
+		messages.append("UI_UPKEEP_UNPAID")
 
 
 func is_swallowed(id: String) -> bool:
@@ -401,8 +416,7 @@ func _gain_scrap(n: int) -> void:
 ## else broken down for its sale price. Leaves a message naming it, as
 ## "<key>|<name key>" for the view to fill in.
 func gain(item: Dictionary) -> String:
-	var id := str(item.id)
-	var placed := Gear.fit(ship, id) if item.kind == "module" else Gear.mount(ship, id)
+	var placed := Gear.place(ship, item)
 	var key := "UI_GEAR_FITTED"
 	if not placed:
 		if hold.size() < HOLD_SIZE:
@@ -588,6 +602,7 @@ static func from_dict(d: Dictionary) -> Run:
 	r.jumps = int(d.jumps)
 	r.event_id = str(d.event)
 	r.outcome = str(d.get("outcome", ""))
+	_load_gear(r, d)
 	if r.state == "event" and not ContentDB.events.has(r.event_id):
 		# The event was removed or renamed in an update; don't strand the save
 		# on it, but keep the fight or store its beacon holds.
@@ -598,12 +613,22 @@ static func from_dict(d: Dictionary) -> Run:
 	r.fight_bonus_scrap = int(d.fight_bonus_scrap)
 	for l in d.get("messages", []):
 		r.messages.append(str(l))
+	return r
+
+
+## The hold, a store's wares and the unlocks gear is drawn from. Loaded before
+## anything that may dock the run at a store, which draws fresh wares.
+static func _load_gear(r: Run, d: Dictionary) -> void:
 	for u: Variant in d.get("unlocked", []):
 		r.unlocked.append(str(u))
 	r.hold = _gear_list(d.get("hold", []))
 	r.stock = _gear_list(d.get("stock", []))
 	r.selling = bool(d.get("selling", false)) and r.state in Market.GEAR_PAGES
-	return r
+	if not d.has("stock") and r.state in STORE_PAGES:
+		# Docked when the game updated to stores with wares: lay them out now.
+		var page := r.state
+		Market.open(r)
+		r.state = page
 
 
 ## Saved gear, keeping only items the content still has.

@@ -76,8 +76,9 @@ static func _weapon(wid: String, w: Dictionary, errors: Array[String]) -> void:
 static func _ship(sid: String, s: Dictionary, errors: Array[String]) -> void:
 	var where := "ship %s" % sid
 	for f: String in ["module_slots", "weapon_slots"]:
-		if s.has(f) and not ContentDB.is_int_in(s[f], 0, MAX_SLOTS):
-			errors.append("%s: %s must be a whole number from 0 to %d" % [where, f, MAX_SLOTS])
+		var top := Gear.MAX_MODULE_SLOTS if f == "module_slots" else MAX_SLOTS
+		if s.has(f) and not ContentDB.is_int_in(s[f], 0, top):
+			errors.append("%s: %s must be a whole number from 0 to %d" % [where, f, top])
 	var mods: Array = s.get("modules", [])
 	for m: Variant in mods:
 		if not ContentDB.modules.has(str(m)):

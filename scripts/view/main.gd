@@ -186,8 +186,8 @@ func _build_run_layout() -> void:
 		"event":
 			mode = "event"
 			count = (run.event().get("choices", []) as Array).size()
-		"store", "refit", "wares", "modules", "guns":
-			mode = run.state
+		var page when page in Run.STORE_PAGES:
+			mode = page
 			count = run.page_options().size()
 	run_layout = RunLayout.build(screen, run.chart, mode, count)
 
@@ -484,7 +484,7 @@ func music_state() -> String:
 			return "engage" if combat == null else music_director.state_for(combat)
 		"event", "outcome":
 			return "event"
-		"store", "refit", "wares", "modules", "guns":
+		var page when page in Run.STORE_PAGES:
 			return "store"
 		"lost":
 			return "defeat"
@@ -691,7 +691,7 @@ func _tap_run(p: Vector2i) -> void:
 				ui_cue("refused")
 				return
 			ui_cue("choose")
-		"store", "refit", "wares", "modules", "guns":
+		var page when page in Run.STORE_PAGES:
 			var option := run.page_options()[int(b.id)]
 			if not run.store_action(option):
 				ui_cue("refused")

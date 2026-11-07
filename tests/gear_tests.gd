@@ -276,6 +276,17 @@ static func run_costs(t: SceneTree) -> void:
 	b.jump(target)
 	_check(t, b.light == maxi(0, a.light - 1), "Wick Bellows burns a Light each jump")
 	_check(t, b.hush > a.hush, "a Lamp Siphon draws the Hush nearer")
+	var broke := Run.create(30)
+	Gear.fit(broke.ship, "wick_bellows")
+	broke.light = 1  # pays the jump, not the bellows
+	broke.jump(target)
+	var plain := Run.create(30)
+	plain.light = 1
+	plain.jump(target)
+	_check(t, broke.light == 0 and broke.hush > plain.hush, "unpaid upkeep draws the Hush instead")
+	var extra := broke.hush - plain.hush
+	_check(t, absf(extra - Run.UNPAID_UPKEEP_HUSH) < 0.01, "by a set amount per missing Light")
+	_check(t, broke.messages.has("UI_UPKEEP_UNPAID"), "and says so")
 	var s1 := Run.create(31)
 	var s2 := Run.create(31)
 	Gear.fit(s2.ship, "salvage_maw")
@@ -318,6 +329,24 @@ static func saves_keep_gear(t: SceneTree) -> void:
 	_check(t, fixed.hold == [_item("weapon", "rivet_gun")], "gear an update cut is dropped")
 	_check(t, fixed.ship.modules == ["kiln_coils"], "from slots too")
 	_check(t, not fixed.ship.weapon_ids.is_empty(), "a ship never loads with no guns")
+	# A v5 save docked at a store lays out wares on load, as arrival would have.
+	var docked: Dictionary = raw.duplicate(true)
+	docked.data.run.state = "store"
+	var at_store := Run.from_dict(SaveService.upgrade(docked).data.run)
+	_check(
+		t, at_store.state == "store" and not at_store.stock.is_empty(), "old docked save gets wares"
+	)
+	# An event cut by an update docks the run at its store with this run's unlocks.
+	var cut := _in_store(15, ["gear_rime_lance"])
+	cut.leave_store()
+	cut.chart.node(cut.at).kind = "store"
+	cut.state = "event"
+	cut.event_id = "no_such_event"
+	var cut_back := Run.from_dict(JSON.parse_string(J.s(cut.to_dict())))
+	_check(
+		t, cut_back.state == "store" and not cut_back.stock.is_empty(), "a cut event still stocks"
+	)
+	_check(t, cut_back.unlocked == ["gear_rime_lance"], "with the run's unlocks loaded first")
 	var v6 := FileAccess.get_file_as_string("res://tests/fixtures/run_save_v6.json")
 	var fx := SaveService.upgrade(JSON.parse_string(v6))
 	var loaded := Run.from_dict(fx.data.run)
@@ -355,6 +384,9 @@ static func content_checked(t: SceneTree) -> void:
 	ContentDB.events = keep_e
 	ContentDB.ships.tallow_wren["weapon_slots"] = 3
 	_check(t, _has(ContentDB.validate(), "at most 2 mounts"), "the fight bar's gun limit")
+	ContentDB.ships = keep_s.duplicate(true)
+	ContentDB.ships.ashmarket_cutter["module_slots"] = 5
+	_check(t, _has(ContentDB.validate(), "module_slots"), "the Modules page's slot limit")
 	ContentDB.ships = keep_s.duplicate(true)
 	ContentDB.ships.ashmarket_cutter["modules"] = ["no_such"]
 	_check(t, _has(ContentDB.validate(), "unknown module no_such"), "a bad hull module")

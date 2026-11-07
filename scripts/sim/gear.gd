@@ -33,6 +33,7 @@ const COSTS: Array[String] = [
 const WHOLE: Array[String] = ["reactor", "max_hull", "fight_light", "power", "light_upkeep"]
 const MAX_RESIST := 0.8  ## no stack of modules makes a ship immune to cold
 const DEFAULT_MODULE_SLOTS := 3
+const MAX_MODULE_SLOTS := 3  ## the Modules page lists the slots, the hold, Sell and Back
 const MIN_WEAPON_SLOTS := 2  ## the fight bar has room for two guns on every screen
 
 
@@ -91,6 +92,12 @@ static func mount(s: Ship, wid: String) -> bool:
 	s.weapon_charge.append(0.0)
 	s.weapon_target.append("")
 	return true
+
+
+## Fits a module or mounts a gun, {kind, id}, if there is a free space for it.
+static func place(s: Ship, item: Dictionary) -> bool:
+	var id := str(item.get("id", ""))
+	return fit(s, id) if item.get("kind") == "module" else mount(s, id)
 
 
 ## Takes gun i off its mount. A ship always keeps one gun.

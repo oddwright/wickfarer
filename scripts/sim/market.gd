@@ -92,11 +92,7 @@ static func sell_price(item: Dictionary) -> int:
 
 ## Is there anywhere aboard for this gear: a free slot or mount, or hold space?
 static func has_room(run: Run, item: Dictionary) -> bool:
-	if run.hold.size() < Run.HOLD_SIZE:
-		return true
-	if item.get("kind") == "module":
-		return Gear.free_slots(run.ship) > 0
-	return Gear.free_mounts(run.ship) > 0
+	return _hold_space(run) or _fits(run, item)
 
 
 static func can(run: Run, option: String) -> bool:
@@ -155,10 +151,8 @@ static func act(run: Run, option: String) -> bool:
 			run.hold.remove_at(i)
 			if run.selling:
 				run.scrap += sell_price(item)
-			elif item.kind == "module":
-				Gear.fit(run.ship, str(item.id))
 			else:
-				Gear.mount(run.ship, str(item.id))
+				Gear.place(run.ship, item)
 	return true
 
 

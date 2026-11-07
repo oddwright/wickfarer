@@ -62,13 +62,14 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 			# store's wares and the unlocks gear is drawn from. An older ship has
 			# no modules; its guns (missing here) are its hull's own, which
 			# Ship.from_dict fills in from the content. An older run found
-			# nothing yet and draws only from gear that needs no unlock.
+			# nothing yet and draws only from gear that needs no unlock. Its
+			# wares stay missing, so a run saved docked lays them out on load.
 			for ship: Dictionary in _saved_ships(d):
 				if not ship.has("modules"):
 					ship["modules"] = []
 			var run: Dictionary = d.get("run", {})
 			if not run.is_empty():
-				for k: String in ["hold", "stock", "unlocked"]:
+				for k: String in ["hold", "unlocked"]:
 					if not run.has(k):
 						run[k] = []
 			return d
