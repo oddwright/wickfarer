@@ -16,6 +16,7 @@ const PROGRESS_TESTS = preload("res://tests/progress_tests.gd")
 const PROFILE_TESTS = preload("res://tests/profile_tests.gd")
 const RESUME_TESTS = preload("res://tests/resume_tests.gd")
 const TUTORIAL_TESTS = preload("res://tests/tutorial_tests.gd")
+const AUTOPILOT_TESTS = preload("res://tests/autopilot_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -610,14 +611,12 @@ func test_run_saves_and_resumes_at_every_step() -> void:
 		)
 
 
+## The balance tools' players; see tests/autopilot_tests.gd for each check.
 func test_autopilot_runs_always_end() -> void:
-	var ends := {}
-	for i in 12:
-		var r := Run.create(300 + i)
-		var end := Autopilot.new().play(r)
-		ends[end] = int(ends.get(end, 0)) + 1
-		check(end in Run.ENDINGS, "run %d ended properly (got %s)" % [i, end])
-	print("  autopilot run endings: ", ends)
+	AUTOPILOT_TESTS.runs_end(self)
+	AUTOPILOT_TESTS.skilled_resumes(self)
+	AUTOPILOT_TESTS.split_aim(self)
+	AUTOPILOT_TESTS.keeps_guns_powered(self)
 
 
 func test_run_screens_on_every_screen() -> void:

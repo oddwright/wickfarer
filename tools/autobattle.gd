@@ -4,9 +4,9 @@ extends SceneTree
 ## Every hull a player can pick fights the Cutter, unless a ship id is given.
 ## Three player policies:
 ##   idle:    aims both guns at the enemy weapons room and does nothing else
-##   captain: the same AI the enemy uses, playing the player's hull
-##   tactician: aims at whichever deck the enemy ward is not covering, and
-##              sends crew to fires and repairs (a rough stand-in for a human)
+##   novice:  the Autopilot's new player (aims at the open deck, sends crew to
+##            fires and repairs)
+##   skilled: the Autopilot's practised player (see tools/autopilot.gd)
 
 const MAX_TIME := 300.0
 
@@ -30,23 +30,21 @@ func _init() -> void:
 
 
 func _report(n: int, hull: String) -> void:
-	for policy in ["idle", "captain", "tactician"]:
+	for policy in ["idle", "novice", "skilled"]:
 		var wins := 0
 		var timeouts := 0
 		var times: Array[float] = []
 		var hull_left := 0
 		for seed_value in n:
 			var c := Combat.create(seed_value + 1000, hull)
-			var pilot := CombatAI.new()
+			var auto := Autopilot.make(policy) if policy in Autopilot.PROFILES else null
 			if policy == "idle":
 				for i in c.player().weapon_ids.size():
 					c.apply({"type": "aim", "weapon": i, "room": "weapons"})
 			while c.state == "fighting" and c.time() < MAX_TIME:
+				if auto:
+					auto.combat_step(c)
 				c.tick()
-				if policy == "captain" and c.tick_count % 10 == 0:
-					pilot.think(c, 0)
-				if policy == "tactician" and c.tick_count % 10 == 0:
-					_tactician(c, pilot)
 			if c.state == "won":
 				wins += 1
 				hull_left += c.player().hull
@@ -72,19 +70,3 @@ func _report(n: int, hull: String) -> void:
 				]
 			)
 		)
-
-
-func _tactician(c: Combat, pilot: CombatAI) -> void:
-	var foe := c.enemy()
-	var open_deck := 1 - foe.ward_deck if foe.ward_layers > 0 else 1
-	var want := ""
-	for sys in ["weapons", "ember", "helm", "wards", "engines", "mend"]:
-		var r := foe.system_room(sys)
-		if r and r.deck == open_deck:
-			want = r.id
-			break
-	for i in c.player().weapon_ids.size():
-		var t := c.player().weapon_target[i]
-		if t == "" or foe.room(t).deck != open_deck:
-			c.apply({"type": "aim", "weapon": i, "room": want})
-	pilot._crew(c, c.player(), 0)
