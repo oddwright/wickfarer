@@ -278,13 +278,13 @@ func test_power_rules() -> void:
 	var c := Combat.create(1)
 	var s := c.player()
 	check(s.used_power() <= s.available_power(), "start power fits the reactor")
-	check(s.used_power() == s.available_power(), "Wren starts with all its power used")
+	check(s.used_power() == 8, "Wren starts with all 8 power used")
 	check(not s.power_up("helm"), "can't go over the reactor")
-	check(s.power_down("engines") and s.power_up("helm"), "power moves between systems")
+	check(s.power_down("mend") and s.power_up("helm"), "power moves between systems")
 	check(not s.power_up("ember"), "the Ember itself takes no power")
 	s.system_room("ember").damage = 1.0
 	s.enforce_power()
-	check(s.available_power() == s.reactor - 2, "a damaged Ember loses 2 power per level")
+	check(s.available_power() == 6, "a damaged Ember loses 2 power per level")
 	check(s.used_power() <= 6, "systems shed power when the Ember is hurt")
 	check(s.system_power("wards") == 2, "wards are the last to lose power")
 	s.system_room("ember").damage = 0.0

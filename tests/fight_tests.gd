@@ -373,6 +373,28 @@ static func ward_follows_threat(t: SceneTree) -> void:
 	var was := foe2.ward_deck
 	_captain_think(c2)
 	_check(t, foe2.ward_deck == was, "the enemy ward stays where every gun points")
+	# A rivet gun that strips the one layer opens the deck for the torch behind it.
+	var c3 := Combat.create(1, "tallow_wren")
+	var me3 := c3.player()
+	var foe3 := c3.enemy()
+	while foe3.max_ward_layers() > 1:
+		foe3.power_down("wards")
+	var deck := foe3.ward_deck
+	c3.apply({"type": "aim", "weapon": 0, "room": _system_room_on(foe3, deck)})
+	var rivet_only := CombatAI.ward_threat(foe3, me3, deck)
+	c3.apply({"type": "aim", "weapon": 1, "room": _system_room_on(foe3, deck)})
+	var both := CombatAI.ward_threat(foe3, me3, deck)
+	_check(t, both == rivet_only, "a stripped ward stops nothing of the torch behind it")
+	# With no layers to give, the ward isn't moved (and doesn't wait to settle).
+	while foe3.max_ward_layers() > 0:
+		foe3.power_down("wards")
+	c3.apply({"type": "aim", "weapon": 0, "room": _system_room_on(foe3, 1 - deck)})
+	c3.apply({"type": "aim", "weapon": 1, "room": _system_room_on(foe3, 1 - deck)})
+	_captain_think(c3)
+	_check(t, foe3.ward_deck == deck and c3.ai.ward_timer >= 0.0, "a bare ward stays put")
+	var errors: Array[String] = []
+	CombatAI.validate_tactics("test", {"ward_settle": -1}, errors)
+	_check(t, errors.size() == 1, "a negative ward_settle is refused")
 
 
 ## Only one hand stays on a repair: a second one in the room still answers a fire.

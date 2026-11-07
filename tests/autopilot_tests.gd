@@ -42,17 +42,35 @@ static func skilled_resumes(t: SceneTree) -> void:
 		)
 
 
-## Every powered gun goes on the deck the enemy ward leaves open.
+## In a real fight, once the enemy ward moves, every powered gun is back on
+## the open deck within a second (two decisions).
 static func split_aim(t: SceneTree) -> void:
-	var pilot := Autopilot.make("skilled")
 	for hull in ShipRoster.playable():
 		var c := Combat.create(1, hull)
+		var pilot := Autopilot.make("skilled")
 		var me := c.player()
 		var foe := c.enemy()
-		var decks := pilot._gun_decks(me, foe)
-		for i in me.weapon_ids.size():
-			var want := 1 - foe.ward_deck if me.weapon_powered(i) else -1
-			_check(t, decks[i] == want, "%s: gun %d aims at the open deck %s" % [hull, i, decks])
+		var moves := 0
+		var late := 0
+		var since := -1
+		for tick in 2400:
+			if c.state != "fighting":
+				break
+			var deck := foe.ward_deck
+			pilot.combat_step(c)
+			c.tick()
+			if foe.ward_deck != deck:
+				moves += 1
+				since = 0
+			elif since >= 0:
+				since += 1
+			if since == 20 and foe.ward_layers > 0:
+				for i in me.weapon_ids.size():
+					var aim := me.weapon_target[i]
+					if me.weapon_powered(i) and aim != "" and foe.room(aim).deck == foe.ward_deck:
+						late += 1
+		_check(t, moves > 0, "%s: the enemy ward moved at some point" % hull)
+		_check(t, late == 0, "%s: guns followed the open deck (%d late)" % [hull, late])
 
 
 ## When damage takes reactor power away, the skilled player moves power from
