@@ -153,7 +153,6 @@ static func text_fits(t: SceneTree, screens: Dictionary) -> void:
 		var store := RunLayout.build(scr, chart, "store", 4)
 		for f in Standing.ids():
 			var text := _longest_standing(t, f) + " " + t.tr("UI_STORE_TEXT")
-			text += " " + t.tr("UI_REP_PRICE_DOWN") % 99
 			var sl := tl._wrap(text.to_upper(), store.text_rect.size.x, 1)
 			if 6 + sl.size() * TextLayer.LINE > store.text_rect.size.y + 4:
 				probs.append("%s: the %s store's text is too long" % [name, f])

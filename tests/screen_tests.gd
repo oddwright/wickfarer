@@ -36,6 +36,17 @@ static func _font_strips(t: SceneTree, name: String, h: int) -> void:
 		bad.is_empty(),
 		"every %s outline is its glyph grown by a pixel (%s)" % [name, ", ".join(bad)]
 	)
+	# Text is drawn upper case; a character with no glyph silently vanishes (quotes did).
+	var missing: Array[String] = []
+	for key: String in ContentDB.strings:
+		for ch in str(ContentDB.strings[key]).to_upper():
+			if ch != " " and not index.has(ch) and not missing.has(ch):
+				missing.append(ch)
+	_check(
+		t,
+		missing.is_empty(),
+		"the %s font has every character the strings use: %s" % [name, missing]
+	)
 
 
 ## The finer text font: picked by scale, and never bigger than the 3x5 letters it replaces.

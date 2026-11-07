@@ -291,7 +291,7 @@ static func flow(t: SceneTree) -> void:
 	for slot in ["run", GameSettings.SLOT, Tutorial.SLOT, Profile.SLOT]:
 		SaveService.erase(slot, dir)
 	var main := _open(t, dir)
-	_check(t, main.menu_items("title") == ["new_run", "options", "quit"], "no Training yet")
+	_check(t, main.menu_items("title") == ["new_run", "help", "options", "quit"], "no Training yet")
 	main._tap_menu(_item_point(main, "new_run"))
 	_check(t, Tutorial.is_training(main.run), "a new player's New Run is the training lane")
 	main._process(0.05)

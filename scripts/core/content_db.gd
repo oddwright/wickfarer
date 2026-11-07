@@ -791,6 +791,13 @@ static func _validate_tutorial(t: Dictionary, errors: Array[String]) -> void:
 		if not str(tip.get("on", "")) in Tutorial.TIP_MOMENTS:
 			errors.append("%s: unknown moment %s" % [where, tip.get("on", "")])
 		_check_string(str(tip.get("text", "")), where, errors)
+	for h: Variant in _array(t.get("help")):
+		if not h is Dictionary or _array(h.get("text")).is_empty():
+			errors.append("tutorial: every help topic needs a title and text")
+			continue
+		_check_string(str(h.get("title", "")), "help", errors)
+		for key: Variant in h.text:
+			_check_string(str(key), "help %s" % h.get("title", "?"), errors)
 
 
 static func _validate_step(where: String, s: Dictionary, errors: Array[String]) -> void:

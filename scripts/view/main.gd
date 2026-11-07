@@ -14,8 +14,8 @@ const AUTOSAVE_EVERY := 2.0
 ## else falls back to the title.
 const RESUMABLE_PAGES := {
 	"": [""],
-	"title": ["title", "options", "confirm", "ship", "depth", "log"],
-	"pause": ["pause", "options", "confirm", "depth"],
+	"title": ["title", "options", "confirm", "ship", "depth", "log", "help"],
+	"pause": ["pause", "options", "help", "confirm", "depth"],
 }
 const CONFIRMS: Array[String] = ["abandon", "new_run"]
 const MAX_STEPS_PER_FRAME := 5
@@ -733,11 +733,11 @@ func menu_items(page: String) -> Array[String]:
 				out.append("training")  # until then, New Run is the training flight
 			if profile and int(profile.stats.runs) > 0:
 				out.append("log")  # once there is a run to log
-			out.append("options")
+			out.append_array(["help", "options"])
 			if can_quit():
 				out.append("quit")
 		"pause":
-			out.assign(["resume", "options"])
+			out.assign(["resume", "help", "options"])
 			if tutorial and tutorial.active(run):
 				out.append("skip_training")
 			if not run_over():
@@ -792,7 +792,7 @@ func back() -> void:
 		"":
 			if not roster.close() and run != null:
 				open_menu("pause")
-		"options", "confirm", "ship", "log":
+		"options", "confirm", "ship", "log", "help":
 			open_menu(menu_base)
 		"depth":
 			open_menu("ship" if menu_base == "title" else menu_base)  # after ship select
@@ -831,7 +831,7 @@ func _tap_menu(p: Vector2i) -> void:
 				_new_run()
 			else:
 				_confirm("new_run")
-		"options", "log":
+		"options", "log", "help":
 			open_menu(str(b.id))
 		"training":
 			if run == null:
