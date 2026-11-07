@@ -318,6 +318,10 @@ static func is_int_in(v: Variant, lo: int, hi: int) -> bool:
 	return _int_in(v, lo, hi)
 
 
+static func is_num_in(v: Variant, lo: float, hi: float) -> bool:
+	return _num_in(v, lo, hi)
+
+
 static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]) -> void:
 	var where := "ship %s" % ship_id
 	_check_string(s.get("name", ""), where, errors)

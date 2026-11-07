@@ -188,18 +188,23 @@ func _draw_system_icon(r: Room, rr: Rect2i) -> void:
 		draw_rect(Rect2(pos + Vector2(k * 3, 10), Vector2(2, 2)), Pixel.c("U"))
 
 
+## The canvas box around every room on one deck of a ship.
+func deck_rect(side: int, deck: int) -> Rect2i:
+	var box := Rect2i()
+	var first := true
+	for r in main.combat.ships[side].rooms:
+		if r.deck == deck:
+			var rr := room_rect(side, r)
+			box = rr if first else box.merge(rr)
+			first = false
+	return box
+
+
 func _draw_wards(side: int) -> void:
 	var s: Ship = main.combat.ships[side]
 	if s.ward_layers <= 0 and s.max_ward_layers() <= 0:
 		return
-	var box := Rect2i()
-	var first := true
-	for r in s.rooms:
-		if r.deck == s.ward_deck:
-			var rr := room_rect(side, r)
-			box = rr if first else box.merge(rr)
-			first = false
-	box = box.grow(2)
+	var box := deck_rect(side, s.ward_deck).grow(2)
 	for k in s.max_ward_layers():
 		var on := k < s.ward_layers
 		var b := box.grow(k * 2)

@@ -19,13 +19,16 @@ const KINDS: Array[String] = ["chill", "swallow"]
 var id: String
 var phase: int = 0
 var phase_ticks: int = 0  ## ticks into the current phase (counted, so phases never drift)
-var wave_timer: float = 0.0  ## seconds until the next wave starts to gather
+## Seconds until the next wave may start. It runs from one wave's start to the
+## next, so breaking a knot early never brings the next wave sooner.
+var wave_timer: float = 0.0
 var light: int = 0  ## the defender's Light, carried in from the run and back out
 var kindling: float = 0.0  ## progress to the goal; only grows in the last phase
 var done: bool = false  ## kindled: the defender has won
 ## The wave now gathering; knot is "" between waves.
 var knot: String = ""  ## the maw room it gathers in
 var gather: float = 0.0  ## seconds until it lands
+var gather_total: float = 0.0  ## the gather time it started with (its phase's, even after a change)
 var strength: int = 0  ## what is left of it; hits on the knot wear it down
 var wave_kind: String = ""  ## "chill" or "swallow"
 var target_deck: int = -1  ## the defender's deck it strikes
@@ -123,12 +126,12 @@ func _tick_phase(events: Array) -> void:
 
 
 func _tick_wave(combat: Combat, me: Ship, dt: float, events: Array) -> void:
+	wave_timer -= dt
 	if gathering():
 		gather -= dt
 		if gather <= 0.0:
 			_land(me, combat.rng.stream("siege"), events)
 		return
-	wave_timer -= dt
 	if wave_timer <= 0.0:
 		_start_wave(combat, me, events)
 
@@ -152,6 +155,8 @@ func _start_wave(combat: Combat, me: Ship, events: Array) -> void:
 		target_deck = r.randi_range(0, 1)
 	knot = _pick_knot(combat.enemy(), target_deck, r)
 	gather = float(p.gather)
+	gather_total = gather
+	wave_timer = float(p.wave_every)
 	strength = int(p.strength)
 	events.append(
 		{
@@ -267,11 +272,11 @@ func _end_wave(me: Ship) -> void:
 			me.weapon_target[i] = ""
 	knot = ""
 	gather = 0.0
+	gather_total = 0.0
 	strength = 0
 	target_room = ""
 	target_deck = -1
 	wave_kind = ""
-	wave_timer = float(phase_data().wave_every) - float(phase_data().gather)
 
 
 ## Burns one Light into the Ember for the Cradle. Only in the last phase.
@@ -295,6 +300,7 @@ func _quantize() -> void:
 	wave_timer = Q.q(wave_timer)
 	kindling = Q.q(kindling)
 	gather = Q.q(gather)
+	gather_total = Q.q(gather_total)
 
 
 # ---------------------------------------------------------------- content
@@ -311,17 +317,17 @@ static func validate(sid: String, d: Dictionary, errors: Array[String]) -> void:
 	elif not (_has_deck(maw, 0) and _has_deck(maw, 1)):
 		errors.append("%s: the maw needs knots on both decks" % where)
 	for f in ["chill_per_strength", "swallow_per_strength"]:
-		if not _num(d.get(f), 0.0, 100.0):
+		if not ContentDB.is_num_in(d.get(f), 0.0, 100.0):
 			errors.append("%s: %s must be 0 to 100" % [where, f])
 	if not ContentDB.is_int_in(d.get("hull_per_wave"), 0, 10):
 		errors.append("%s: hull_per_wave must be 0 to 10" % where)
 	var k: Dictionary = d.get("kindle", {})
-	if not _num(k.get("goal"), 1.0, 10000.0):
+	if not ContentDB.is_num_in(k.get("goal"), 1.0, 10000.0):
 		errors.append("%s: kindle.goal must be above 0" % where)
-	if not _num(k.get("per_second"), 0.01, 100.0):
+	if not ContentDB.is_num_in(k.get("per_second"), 0.01, 100.0):
 		errors.append("%s: kindle.per_second must be above 0, or it never ends" % where)
 	for f in ["per_light", "light_warmth"]:
-		if not _num(k.get(f), 0.0, 100.0):
+		if not ContentDB.is_num_in(k.get(f), 0.0, 100.0):
 			errors.append("%s: kindle.%s must be 0 to 100" % [where, f])
 	var list: Array = d.get("phases", [])
 	if list.is_empty():
@@ -335,13 +341,13 @@ static func _validate_phase(
 ) -> void:
 	for key in ["name", "hint"]:
 		ContentDB.check_string(str(p.get(key, "")), where, errors)
-	if not last and not _num(p.get("seconds"), 1.0, 600.0):
+	if not last and not ContentDB.is_num_in(p.get("seconds"), 1.0, 600.0):
 		errors.append("%s: seconds must be 1 to 600 (only the last phase runs to the end)" % where)
-	if not _num(p.get("gather"), 1.0, 30.0):
+	if not ContentDB.is_num_in(p.get("gather"), 1.0, 30.0):
 		errors.append("%s: gather must be 1 to 30 seconds, time enough to answer" % where)
-	elif not _num(p.get("wave_every"), float(p.gather), 120.0):
+	elif not ContentDB.is_num_in(p.get("wave_every"), float(p.gather), 120.0):
 		errors.append("%s: wave_every must be at least gather" % where)
-	if not _num(p.get("first_wave"), 0.0, 120.0):
+	if not ContentDB.is_num_in(p.get("first_wave"), 0.0, 120.0):
 		errors.append("%s: first_wave must be 0 to 120" % where)
 	if not ContentDB.is_int_in(p.get("strength"), 1, 20):
 		errors.append("%s: strength must be 1 to 20" % where)
@@ -367,10 +373,6 @@ static func _has_deck(ship: Dictionary, deck: int) -> bool:
 	return false
 
 
-static func _num(v: Variant, lo: float, hi: float) -> bool:
-	return (v is float or v is int) and float(v) >= lo and float(v) <= hi
-
-
 # ---------------------------------------------------------------- save
 
 
@@ -385,6 +387,7 @@ func to_dict() -> Dictionary:
 		"done": done,
 		"knot": knot,
 		"gather": gather,
+		"gather_total": gather_total,
 		"strength": strength,
 		"wave_kind": wave_kind,
 		"target_deck": target_deck,
@@ -403,6 +406,7 @@ static func from_dict(d: Dictionary) -> Siege:
 	s.done = bool(d.get("done", false))
 	s.knot = str(d.get("knot", ""))
 	s.gather = float(d.get("gather", 0.0))
+	s.gather_total = float(d.get("gather_total", s.gather))
 	s.strength = int(d.get("strength", 0))
 	s.wave_kind = str(d.get("wave_kind", ""))
 	s.target_deck = int(d.get("target_deck", -1))

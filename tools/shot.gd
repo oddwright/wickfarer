@@ -87,10 +87,7 @@ func _set_up() -> void:
 	if which == "siege":
 		run = Run.create(4242, hull, "reach_4")
 		run.light = 5
-		for n in run.chart.nodes:
-			if n.kind == "gate":
-				run.at = n.id
-		run._arrive()
+		Autopilot.arrive_at_gate(run)
 	main._set_run(run)
 	if which == "siege":
 		_play_siege(main.combat)
@@ -147,7 +144,7 @@ func _play_siege(c: Combat) -> void:
 		c.tick()
 		main._on_events(c.events)
 	for i in 400:  # on to a wave half gathered, so the shot shows the threat
-		if c.siege.gathering() and c.siege.gather < float(c.siege.phase_data().gather) * 0.6:
+		if c.siege.gathering() and c.siege.gather < c.siege.gather_total * 0.6:
 			break
 		pilot.combat_step(c)
 		c.tick()

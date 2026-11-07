@@ -17,7 +17,7 @@ static func draw_world(world: WorldView, combat: Combat) -> void:
 	if knot == null:
 		return
 	var kr := world.room_rect(1, knot)
-	var total := maxf(0.1, float(sg.phase_data().gather))
+	var total := maxf(0.1, sg.gather_total)
 	var swell := clampf(1.0 - sg.gather / total, 0.0, 1.0)
 	# The knot fills with the Hush's light as the wave swells.
 	var inner := Rect2(kr.position + Vector2i(2, 2), kr.size - Vector2i(4, 4))
@@ -34,14 +34,7 @@ static func draw_world(world: WorldView, combat: Combat) -> void:
 	if sg.wave_kind == "swallow" and me.room(sg.target_room):
 		Pixel.corners(world, world.room_rect(0, me.room(sg.target_room)).grow(1), Pixel.c("o"), 4)
 		return
-	var box := Rect2i()
-	var first := true
-	for r in me.rooms:
-		if r.deck == sg.target_deck:
-			var rr := world.room_rect(0, r)
-			box = rr if first else box.merge(rr)
-			first = false
-	Pixel.corners(world, box.grow(3), Pixel.c("o"), 5)
+	Pixel.corners(world, world.deck_rect(0, sg.target_deck).grow(3), Pixel.c("o"), 5)
 
 
 ## The kindling bar takes the enemy hull's place: the Hush has no hull to lose.
@@ -63,10 +56,6 @@ static func draw_kindle_button(world: WorldView, combat: Combat, r: Rect2i) -> v
 	var flame := Pixel.grid("..w..\n.wvw.\nwvxvw\n.wvw.\n..w..")
 	var tint := Color(1, 1, 1, 1.0 if ready else 0.35)
 	world.draw_texture(flame, Vector2(r.position + Vector2i(4, 6)), tint)
-	# One pip per Light left, so the spend is planned, not guessed.
-	for i in mini(sg.light, 10):
-		var pip := Rect2(r.position.x + 4 + i * 5, r.end.y - 6, 4, 2)
-		world.draw_rect(pip, Pixel.c("v") if ready else Pixel.c("e"))
 
 
 ## The top-right words: the siege, its phase and time, and the Light in hand.
@@ -97,13 +86,15 @@ static func _left_edge(l: HudLayout) -> int:
 
 
 ## The words on the Kindle button.
+## The words on the Kindle button, with the Light left to burn written out, so
+## the spend is planned, not guessed.
 static func draw_button_text(tl: TextLayer, combat: Combat, r: Rect2i) -> void:
 	var ready := combat.siege.can_kindle()
+	var ink := Pixel.c("w") if ready else Pixel.c("f")
+	tl._text(Vector2(r.position.x + 12, r.position.y + 13), tl.tr("UI_KINDLE"), 5.0, ink)
+	var left := tl.tr("UI_LIGHT_LEFT") % combat.siege.light
 	tl._text(
-		Vector2(r.position.x + 12, r.position.y + 13),
-		tl.tr("UI_KINDLE"),
-		5.0,
-		Pixel.c("w") if ready else Pixel.c("f")
+		Vector2(r.position.x + 4, r.position.y + 25), left, 5.0, Pixel.c("v") if ready else ink
 	)
 
 

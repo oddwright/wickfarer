@@ -6,6 +6,8 @@ extends RefCounted
 ## swallowed beacons, spends scrap on repairs and refits, and goes on
 ## through every Gate.
 
+const SIEGE_TICKS := 8000
+
 var pilot := CombatAI.new()
 
 
@@ -30,6 +32,15 @@ func combat_step(c: Combat) -> void:
 	pilot._crew(c, c.player(), 0)
 
 
+## Puts a run on its Reach's Gate and arrives there, as a jump would: for tests
+## and tools that start at the Gate (the Kindling, a Reach's end).
+static func arrive_at_gate(run: Run) -> void:
+	for n in run.chart.nodes:
+		if n.kind == "gate":
+			run.at = n.id
+	run._arrive()
+
+
 ## The Kindling: shoot the gathering knot, ward the deck it will strike, mend
 ## what it swallows, and burn every Light into the Cradle once that is allowed.
 func _siege_step(c: Combat) -> void:
@@ -47,14 +58,18 @@ func _siege_step(c: Combat) -> void:
 
 
 ## Plays the run until it ends or `max_steps` actions pass. Returns the final state.
-func play(run: Run, max_steps := 1200, max_fight_ticks := 8000) -> String:
+func play(run: Run, max_steps := 1200, max_fight_ticks := 6000) -> String:
 	for step in max_steps:
 		match run.state:
 			"chart":
 				run.jump(_pick_jump(run))
 			"fight":
 				var ticks := 0
-				while run.combat.state == "fighting" and ticks < max_fight_ticks:
+				# The Kindling runs four minutes or more: longer than a fight's cap.
+				var cap := (
+					maxi(max_fight_ticks, SIEGE_TICKS) if run.combat.siege else max_fight_ticks
+				)
+				while run.combat.state == "fighting" and ticks < cap:
 					combat_step(run.combat)
 					run.combat.tick()
 					ticks += 1

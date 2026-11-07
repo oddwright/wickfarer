@@ -28,10 +28,7 @@ func _report(hull: String, share: float, light: int, n: int) -> void:
 		var run := Run.create(7000 + i, hull, "reach_4")
 		run.light = light
 		run.ship.hull = maxi(1, int(run.ship.max_hull * share))
-		for node in run.chart.nodes:
-			if node.kind == "gate":
-				run.at = node.id
-		run._arrive()
+		Autopilot.arrive_at_gate(run)
 		var c := run.combat
 		var pilot := Autopilot.new()
 		while c.state == "fighting" and c.tick_count < 8000:

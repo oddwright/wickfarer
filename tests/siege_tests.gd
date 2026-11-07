@@ -13,10 +13,7 @@ static func _check(t: SceneTree, cond: bool, what: String) -> void:
 static func at_the_cradle(seed_value: int, light := 6) -> Run:
 	var r := Run.create(seed_value, "tallow_wren", "reach_4")
 	r.light = light
-	for n in r.chart.nodes:
-		if n.kind == "gate":
-			r.at = n.id
-	r._arrive()
+	Autopilot.arrive_at_gate(r)
 	return r
 
 
@@ -59,10 +56,7 @@ static func starts_at_the_last_gate(t: SceneTree) -> void:
 	_check(t, r.reaches_crossed == 0, "the Gate isn't crossed until the Cradle is kindled")
 	# Earlier Gates still go to the Reach's end screen with no fight.
 	var early := Run.create(1, "tallow_wren", "reach_1")
-	for n in early.chart.nodes:
-		if n.kind == "gate":
-			early.at = n.id
-	early._arrive()
+	Autopilot.arrive_at_gate(early)
 	_check(t, early.state == "reach_done" and early.combat == null, "Reach 1's Gate has no siege")
 	# An ordinary fight has no siege, and no kindling.
 	var plain := Combat.create(3)
@@ -136,11 +130,16 @@ static func wards_soak_waves(t: SceneTree) -> void:
 	_ticks(c, 1)
 	me.ward_layers = me.max_ward_layers()
 	sg.strength = me.max_ward_layers()
+	var layers_before := me.ward_layers
 	var hull := me.hull
 	var landed := _events_of(c, int(sg.gather / Combat.TICK) + 2, "wave_landed")
 	_check(t, landed.size() == 1 and int(landed[0].left) == 0, "a full ward soaks the whole wave")
 	_check(t, me.hull == hull, "a soaked wave doesn't touch the hull")
-	_check(t, me.ward_layers < me.max_ward_layers() + 1, "it costs ward layers")
+	# The soak spends a layer per point; the ward may have grown back one since.
+	var spent := layers_before - me.ward_layers
+	_check(
+		t, spent >= layers_before - 1 and layers_before >= 1, "it costs ward layers (%d)" % spent
+	)
 
 
 static func guns_break_the_knot(t: SceneTree) -> void:
