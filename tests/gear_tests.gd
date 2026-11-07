@@ -74,6 +74,9 @@ static func modules_fit(t: SceneTree) -> void:
 	# Dodge: the vanes add it while the helm works; the plating's weight takes some.
 	var a := Ship.from_content("tallow_wren", 0)
 	var b := Ship.from_content("tallow_wren", 0)
+	# The vanes draw a power: free one first so fitting them doesn't shed the engines.
+	a.power_down("wards")
+	b.power_down("wards")
 	Gear.fit(b, "gyre_vanes")
 	_check(t, b.evasion() == a.evasion() + 8.0 or b.evasion() == 45.0, "vanes add dodge")
 	var c := Ship.from_content("tallow_wren", 0)

@@ -99,6 +99,7 @@ func _skilled_step(c: Combat) -> void:
 		_spend_power(c, me)
 		_volley(c, me, c.enemy())
 		_crew(c, me)
+		CombatAI.flare_when_it_pays(c, me, 0)
 
 
 ## Shares the reactor out by plan: every gun first, then wards in pairs, then

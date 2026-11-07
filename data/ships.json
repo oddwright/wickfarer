@@ -9,8 +9,8 @@
       236,
       76
     ],
-    "hull": 20,
-    "reactor": 8,
+    "hull": 16,
+    "reactor": 7,
     "rooms": [
       {
         "id": "galley",
@@ -161,9 +161,9 @@
       "weapons": 3,
       "helm": 1,
       "engines": 1,
-      "mend": 1
+      "mend": 0
     },
-    "ward_deck": 1
+    "ward_deck": 0
   },
   "brine_cathedral": {
     "name": "SHIP_BRINE_CATHEDRAL",
@@ -416,7 +416,7 @@
           59
         ],
         "system": "ember",
-        "level": 1
+        "level": 2
       },
       {
         "id": "wards",
@@ -457,6 +457,11 @@
         "name": "CREW_THRUM",
         "species": "kith",
         "room": "engines"
+      },
+      {
+        "name": "CREW_LAUD",
+        "species": "drifter",
+        "room": "wards"
       }
     ],
     "start_power": {
@@ -475,6 +480,7 @@
       196,
       66
     ],
+    "ai": {"ward_react": 6},
     "hull": 14,
     "reactor": 8,
     "rooms": [

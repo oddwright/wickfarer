@@ -335,7 +335,10 @@ static func crew_keep_repairing(t: SceneTree) -> void:
 
 ## Lets the captain think for long enough to react to the player's aim.
 static func _captain_think(c: Combat) -> void:
-	for k in int(ceil(CombatAI.WARD_REACT / Combat.AI_THINK)):
+	var react := float(
+		CombatAI.tactics(c.enemy().content_id).get("ward_react", CombatAI.WARD_REACT)
+	)
+	for k in int(ceil(react / Combat.AI_THINK)):
 		c.ai.think(c, 1)
 
 
