@@ -1,6 +1,7 @@
 extends SceneTree
 ## Plays whole runs with the Autopilot and prints how far they get.
 ## godot --headless --path . -s tools/autorun.gd -- [runs] [ship id|all] [profile]
+## [runs] novice runs per hull; the skilled player plays half as many.
 ## With no ship id (or "all") it reports every hull a player can pick, and with
 ## no profile both of them: the novice should cross the first Gate about 60% of
 ## the time, and the skilled player should win 35-45% of whole runs.
@@ -27,7 +28,9 @@ func _init() -> void:
 		profiles.assign([args[2]])
 	for hull in hulls:
 		for profile: String in profiles:
-			_report(n, hull, profile)
+			# A skilled run goes about three times as far, so half as many keep the
+			# report's time down; the novice's Gate rate is the noisier target.
+			_report(n if profile == "novice" else maxi(1, n / 2), hull, profile)
 	quit()
 
 

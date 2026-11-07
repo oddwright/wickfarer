@@ -63,23 +63,20 @@ static func split_aim(t: SceneTree) -> void:
 			_check(
 				t, decks[strippers[0]] == foe.ward_deck, "%s: the stripper takes the ward" % hull
 			)
+		# Checked until the enemy wards or our gun deck are first hit: after that
+		# a gun can lose power and the count tip while the guns re-take decks.
 		var moved := false
 		for tick in 600:
-			if c.state != "fighting":
+			var hit := (
+				me.system_room("weapons").damage > 0.0 or foe.system_room("wards").damage > 0.0
+			)
+			if c.state != "fighting" or hit:
 				break
 			var deck := foe.ward_deck
-			var could_move := foe.max_ward_layers() > 0 and _all_powered(me)
 			pilot.combat_step(c)
 			c.tick()
-			moved = moved or (could_move and foe.ward_deck != deck)
-		_check(t, not moved, "%s: the enemy ward stayed put while every gun had power" % hull)
-
-
-static func _all_powered(me: Ship) -> bool:
-	for i in me.weapon_ids.size():
-		if not me.weapon_powered(i):
-			return false
-	return true
+			moved = moved or foe.ward_deck != deck
+		_check(t, not moved, "%s: the enemy ward stayed put" % hull)
 
 
 ## When damage takes reactor power away, the skilled player moves power from

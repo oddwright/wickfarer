@@ -103,10 +103,11 @@ jobs:
         run: |
           tools/ci_godot.sh --headless --path . -s tools/autobattle.gd -- 40
           cp godot.log balance.txt
-      - name: Run report (20 seeded whole runs per hull by each autopilot profile)
+      - name: Run report (20 novice and 10 skilled seeded whole runs per hull)
         if: steps.scope.outputs.balance == 'true'
-        # 20, not 40: there are two profiles now and skilled runs go further, so this keeps
-        # the step's minutes about where one profile at 40 had them.
+        # 20, not 40: there are two profiles now and skilled runs go about three times as far, so
+        # this keeps the step's minutes about where one profile at 40 had them. Measure a balance
+        # change locally with more runs; these numbers are only a smoke check.
         run: |
           tools/ci_godot.sh --headless --path . -s tools/autorun.gd -- 20
           cat godot.log >> balance.txt

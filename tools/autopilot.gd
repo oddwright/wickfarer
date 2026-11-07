@@ -10,12 +10,13 @@ extends RefCounted
 ##            power or its own ward. On the chart it heads straight for the
 ##            Gate, takes the first choice it can in every story, and spends
 ##            scrap on repairs and the cheapest refit.
-##   skilled: a player who has learned the game. It fires each gun the moment
-##            it is charged and then lets go of the aim, so the enemy ward never
-##            sees where it is shooting; picks the enemy room that hurts most;
-##            puts its own ward where the enemy guns point; spends spare reactor
-##            power; weighs every story choice; refits by a plan; and picks the
-##            route to the Gate with the most to gain on it.
+##   skilled: a player who has learned the game. It splits its guns across
+##            the enemy decks so the enemy ward has no busier deck to follow,
+##            picks the enemy room that hurts most, shares out reactor power so
+##            the guns keep firing, keeps crew on repairs, weighs every story
+##            choice, refits by a plan, and picks the route to the Gate with the
+##            most to gain on it. It leaves its own ward on the hull's starting
+##            deck: chasing the enemy's aim with it lost more runs than it saved.
 
 const PROFILES: Array[String] = ["novice", "skilled"]
 ## The skilled player's refits, most wanted first. Helm and engines dodge whole
@@ -35,11 +36,11 @@ const POWER_PLAN: Array = [
 	["wards", -1],
 	["mend", -1]
 ]
-## What one of each is worth to the skilled player, in scrap.
 ## Which of its own rooms the skilled player saves first from fire and damage.
 ## The Ember heats the ship and feeds the reactor, so it comes before the guns.
 const RESCUE_ORDER: Array[String] = ["ember", "weapons", "wards", "helm", "engines", "mend"]
 const STATIONS: Array[String] = ["weapons", "helm", "wards", "engines", "ember"]
+## What one of each is worth to the skilled player, in scrap.
 const LIGHT_VALUE := 5.0
 const HUSH_VALUE := 6.0  ## per unit of Hush: about two-thirds of a jump of lead lost
 const FIGHT_HULL_COST := 4.0  ## hull a fight usually costs, before the Reach's boost
@@ -112,7 +113,7 @@ func _spend_power(c: Combat, me: Ship) -> void:
 		elif int(step[1]) >= 0:
 			cap = mini(cap, int(step[1]))
 		if sys == "weapons":
-			cap = mini(cap, _gun_power(me))
+			cap = _gun_power(me, mini(cap, left))
 		var had := int(want.get(sys, 0))
 		var n := clampi(cap - had, 0, left)
 		if sys == "wards":
@@ -131,11 +132,15 @@ func _spend_power(c: Combat, me: Ship) -> void:
 			pass
 
 
-## Power that runs every gun the ship carries.
-func _gun_power(me: Ship) -> int:
+## The power that runs as many guns as `limit` allows. Guns take power in
+## order, so a level that can't run the next gun is left for other systems.
+func _gun_power(me: Ship, limit: int) -> int:
 	var total := 0
 	for wid in me.weapon_ids:
-		total += int(ContentDB.weapons[wid].power)
+		var need := int(ContentDB.weapons[wid].power)
+		if total + need > limit:
+			break
+		total += need
 	return total
 
 
@@ -154,8 +159,16 @@ func _volley(c: Combat, me: Ship, foe: Ship) -> void:
 		var best := _best_room(foe, deck)
 		if best == "":
 			continue
-		if t == "" or foe.room(t).deck != deck or (me.weapon_charge[i] < 0.5 and t != best):
+		var off_deck: bool = t != "" and deck >= 0 and foe.room(t).deck != deck
+		if t == "" or off_deck or (_just_fired(me, i) and t != best):
 			c.apply({"type": "aim", "weapon": i, "room": best})
+
+
+## A gun fired since the last decision (half a second back): re-aiming it now
+## costs nothing, as its charge is still under the re-sighting cost.
+func _just_fired(me: Ship, i: int) -> bool:
+	var rate := maxf(1.0, me.station_bonus("weapons", Ship.GUN_BOOST))
+	return me.weapon_charge[i] <= Combat.AI_THINK * rate + 0.01
 
 
 ## The deck each gun should aim at, or -1 for either. See _volley.
@@ -431,16 +444,14 @@ func _skilled_store(run: Run) -> void:
 	var safe := int(run.ship.max_hull * 0.6)
 	while run.ship.hull < safe and run.buy("repair"):
 		pass
-	var jumps_left := _jumps_to_gate(run)
+	var jumps_left := _jumps_to_gate(run) * int(run.reach().jump_light)
 	while run.light < jumps_left and run.buy("light"):
 		pass
 	run.open_refit()
 	var keep := run.price("repair") * 3
-	for sys in REFIT_PLAN:
-		var p := run.refit_price(sys)
-		if p >= 0 and run.scrap - p >= keep:
-			run.refit(sys)
-			break
+	var step := _next_refit(run)
+	while step != "" and run.scrap - run.refit_price(step) >= keep and run.refit(step):
+		step = _next_refit(run)
 	var p_stoke := run.stoke_price()
 	if p_stoke >= 0 and run.light - p_stoke >= jumps_left:
 		run.stoke()
@@ -449,7 +460,25 @@ func _skilled_store(run: Run) -> void:
 		pass
 
 
-## The fewest jumps from here to this Reach's Gate.
+## The first step of REFIT_PLAN the ship hasn't had yet: the n-th time a system
+## appears it wants n levels over the hull's own. Steps a hull can't take (no
+## such room, or at its cap) are passed over. "" once the plan is done.
+func _next_refit(run: Run) -> String:
+	var seen := {}
+	var built := {}
+	for r: Dictionary in ContentDB.ships[run.ship.content_id].rooms:
+		built[str(r.get("system", ""))] = int(r.get("level", 0))
+	for sys in REFIT_PLAN:
+		seen[sys] = int(seen.get(sys, 0)) + 1
+		var r := run.ship.system_room(sys)
+		if r == null or run.refit_price(sys) < 0:
+			continue
+		if r.level < int(built.get(sys, 0)) + int(seen[sys]):
+			return sys
+	return ""
+
+
+## The fewest jumps from here to this Reach's Gate (times jump_light: the Light they take).
 func _jumps_to_gate(run: Run) -> int:
 	return run.chart.columns - 1 - int(run.here().col)
 
@@ -480,40 +509,40 @@ func _plan_jump(run: Run) -> String:
 	step += float(run.reach().hush_per_light) * run.light
 	var best := ""
 	var best_value := -INF
+	var hull_value := _hull_value(run)
+	var values := {
+		"fight": _fight_value(run, hull_value) * 0.6,
+		"store": minf(float(run.scrap), 60.0) * 0.4 + (10.0 if run.ship.hull < 12 else 0.0),
+		"event": 4.0,
+		"swallowed": hull_value * float(run.reach().hush_hull) + 10.0,
+	}
+	var plan := {"step": step, "values": values, "max": run.chart.columns + 2}
 	for id in run.jump_targets():
-		var v := _route_value(run, id, 1, run.hush + step, step, {run.at: true})
+		var v := _route_value(run.chart, id, 1, run.hush + step, plan, {run.at: true})
 		if v > best_value:
 			best_value = v
 			best = id
 	return best
 
 
+## The most a route on from `id` can be worth. The beacon values don't change
+## along one plan, so _plan_jump works them out once.
 func _route_value(
-	run: Run, id: String, jumps: int, hush: float, step: float, seen: Dictionary
+	chart: StarChart, id: String, jumps: int, hush: float, plan: Dictionary, seen: Dictionary
 ) -> float:
-	var n := run.chart.node(id)
-	var v := _beacon_value(run, n) - 2.0  # every jump costs Light and lets the Hush in
+	var n := chart.node(id)
+	var v := float(plan.values.get(str(n.kind), 1.0)) - 2.0  # a jump costs Light, lets the Hush in
 	if float(n.col) <= hush:
-		v -= _hull_value(run) * float(run.reach().hush_hull) + 10.0
+		v -= float(plan.values.swallowed)
 	if n.kind == "gate":
 		return v
-	if jumps > run.chart.columns + 2:
+	if jumps > int(plan.max):
 		return -INF
 	var best := -INF
 	seen[id] = true
 	for nxt: String in n.links:
 		if not seen.has(nxt):
-			best = maxf(best, _route_value(run, nxt, jumps + 1, hush + step, step, seen))
+			var step := float(plan.step)
+			best = maxf(best, _route_value(chart, nxt, jumps + 1, hush + step, plan, seen))
 	seen.erase(id)
 	return v + best
-
-
-func _beacon_value(run: Run, n: Dictionary) -> float:
-	match str(n.kind):
-		"fight":
-			return _fight_value(run, _hull_value(run)) * 0.6
-		"store":
-			return minf(float(run.scrap), 60.0) * 0.4 + (10.0 if run.ship.hull < 12 else 0.0)
-		"event":
-			return 4.0
-	return 1.0
