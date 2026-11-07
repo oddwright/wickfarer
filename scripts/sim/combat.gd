@@ -10,6 +10,13 @@ const AI_THINK := 0.5
 const RESIGHT_COST := 2.0
 const HIT_CHILL := 15.0  ## warmth any hit knocks out of its room; Chill guns set their own
 const CHILL_SPREAD := 0.5  ## share of a Chill hit's cold that reaches each neighbouring room
+## A fight's one rule twist, set by the enemy hull's "rule" (the Reach Wardens).
+## Each applies to both ships alike:
+## tether: neither ship can evade. tide: every TIDE_EVERY seconds both wards
+## swap decks. hymn: every room on both ships cools HYMN_CHILL a second faster.
+const RULES: Array[String] = ["", "tether", "tide", "hymn"]
+const TIDE_EVERY := 10.0
+const HYMN_CHILL := 1.0
 
 var ships: Array[Ship] = []
 var projectiles: Array[Dictionary] = []
@@ -20,6 +27,10 @@ var events: Array = []
 var ai_timer: float = 0.0
 var ai: CombatAI
 var siege: Siege  ## the Kindling's waves and progress; null in an ordinary fight
+## Light each side lost to hits from "light_drain" weapons; the run pays it after the fight.
+var light_drained: Array[int] = [0, 0]
+## The enemy hull's rule, read once when the fight is built or loaded (see rule()).
+var _rule := ""
 
 
 static func create(
@@ -38,7 +49,38 @@ static func from_ship(seed_value: int, player_ship: Ship, enemy_ship: String) ->
 	c.ships.append(player_ship)
 	c.ships.append(Ship.from_content(enemy_ship, 1))
 	c.ai = CombatAI.new()
+	c._apply_rule()
 	return c
+
+
+## The fight's rule twist (see RULES): "" in an ordinary fight.
+func rule() -> String:
+	return _rule
+
+
+func _apply_rule() -> void:
+	_rule = str(ContentDB.ships[enemy().content_id].get("rule", ""))
+
+
+## Extra warmth every room on both ships loses a second, under the hymn.
+func rule_chill() -> float:
+	return HYMN_CHILL if _rule == "hymn" else 0.0
+
+
+static func _tide_ticks() -> int:
+	return roundi(TIDE_EVERY / TICK)
+
+
+## A ship's chance to dodge a shot, in percent, after the fight's rule.
+func evasion(side: int) -> float:
+	return 0.0 if _rule == "tether" else ships[side].evasion()
+
+
+## Seconds until the tide next turns, or -1 in a fight without one.
+func tide_eta() -> float:
+	if rule() != "tide":
+		return -1.0
+	return float(_tide_ticks() - tick_count % _tide_ticks()) * TICK
 
 
 func player() -> Ship:
@@ -98,7 +140,7 @@ func tick() -> void:
 		return
 	var combat_rng := rng.stream("combat")
 	for s in ships:
-		s.tick(TICK, combat_rng, events)
+		s.tick(TICK, combat_rng, events, rule_chill())
 	ai_timer = Q.q(ai_timer + TICK)
 	if ai_timer >= AI_THINK:
 		ai_timer = Q.q(ai_timer - AI_THINK)
@@ -108,6 +150,7 @@ func tick() -> void:
 	_fire_weapons()
 	_move_projectiles()
 	tick_count += 1
+	_tick_tide()
 	for s in ships:
 		s.quantize()  # hits after the ship ticks change values too
 	# If both ships die on the same tick the player loses: a dead ship can't
@@ -118,6 +161,13 @@ func tick() -> void:
 	elif siege.done if siege else enemy().is_dead():
 		state = "won"
 		events.append({"type": "won"})
+
+
+func _tick_tide() -> void:
+	if _rule == "tide" and tick_count % _tide_ticks() == 0:
+		for s in ships:
+			s.turn_tide()
+		events.append({"type": "tide"})
 
 
 func _fire_weapons() -> void:
@@ -176,10 +226,14 @@ func _resolve(p: Dictionary) -> void:
 			events.append(where.merged({"type": "ward_block"}))
 		return
 	var combat_rng := rng.stream("combat")
-	if combat_rng.randf() * 100.0 < target.evasion():
+	if combat_rng.randf() * 100.0 < evasion(target.side):
 		events.append(where.merged({"type": "miss"}))
 		return
 	target.hull = maxi(0, target.hull - int(w.hull_damage))
+	var drain := int(w.get("light_drain", 0))
+	if drain > 0:
+		light_drained[target.side] += drain
+		events.append(where.merged({"type": "light_drain", "amount": drain}))
 	if r.level > 0:
 		r.damage = minf(float(r.level), r.damage + float(w.system_damage))
 	_chill(target, r, float(w.get("chill", HIT_CHILL)), w.has("chill"))
@@ -215,6 +269,7 @@ func to_dict() -> Dictionary:
 		"state": state,
 		"ai_timer": ai_timer,
 		"ai_ward_timer": ai.ward_timer,
+		"light_drained": Array(light_drained),
 		"siege": siege.to_dict() if siege else {}
 	}
 
@@ -241,6 +296,10 @@ static func from_dict(d: Dictionary) -> Combat:
 	c.ai_timer = float(d.get("ai_timer", 0.0))
 	c.ai = CombatAI.new()
 	c.ai.ward_timer = float(d.get("ai_ward_timer", 0.0))
+	var drained: Array = d.get("light_drained", [0, 0])
+	for side in 2:
+		c.light_drained[side] = int(drained[side]) if side < drained.size() else 0
+	c._apply_rule()
 	var sd: Dictionary = d.get("siege", {})
 	if not sd.is_empty():
 		c.siege = Siege.from_dict(sd)

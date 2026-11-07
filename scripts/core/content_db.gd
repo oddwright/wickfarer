@@ -140,6 +140,8 @@ static func validate() -> Array[String]:
 				errors.append("weapon %s: missing %s" % [wid, field])
 		if w.get("charge", 0.0) <= 0.0:
 			errors.append("weapon %s: charge must be > 0" % wid)
+		if w.has("light_drain") and not _int_in(w.light_drain, 0, 9):
+			errors.append("weapon %s: light_drain must be a whole number from 0 to 9" % wid)
 		_check_string(w.get("name", ""), "weapon %s" % wid, errors)
 	for sid: String in species:
 		var s: Dictionary = species[sid]
@@ -309,6 +311,11 @@ static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -
 		var span: Array = reward.get(f, [])
 		if span.size() != 2 or int(span[0]) > int(span[1]):
 			errors.append("%s: fight_reward.%s must be [min, max]" % [where, f])
+	var warden := str(r.get("warden", ""))
+	if warden != "" and not ships.has(warden):
+		errors.append("%s: unknown warden ship %s" % [where, warden])
+	elif warden != "" and bool(ships[warden].get("playable", false)):
+		errors.append("%s: warden %s is a hull the player can pick" % [where, warden])
 	var boost: Dictionary = r.get("enemy_boost", {})
 	for f in ["hull", "reactor"]:
 		if int(boost.get(f, 0)) < 0:
@@ -377,6 +384,7 @@ static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]
 	elif not has_ember:
 		errors.append("%s: every ship needs an ember room" % where)
 	_validate_playable(where, s, errors)
+	_validate_enemy(where, s, errors)
 	for l: Dictionary in s.get("ladders", []):
 		if not room_ids.has(l.upper) or not room_ids.has(l.lower):
 			errors.append("%s: ladder joins unknown rooms" % where)
@@ -404,6 +412,16 @@ static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]
 		for rid: String in room_ids:
 			if rid != first and ship.find_path(first, rid).is_empty():
 				errors.append("%s: room %s can't be reached" % [where, rid])
+
+
+## An enemy hull's faction, captain's tactics and fight rule (see CombatAI and Combat.RULES).
+static func _validate_enemy(where: String, s: Dictionary, errors: Array[String]) -> void:
+	if s.has("faction") and not (factions.get("factions", {}) as Dictionary).has(str(s.faction)):
+		errors.append("%s: unknown faction %s" % [where, s.faction])
+	if s.has("rule") and (not s.rule is String or not str(s.rule) in Combat.RULES):
+		errors.append("%s: unknown fight rule %s" % [where, s.rule])
+	if s.has("ai"):
+		CombatAI.validate_tactics(where, s.ai, errors)
 
 
 ## A hull the player can pick needs words for the select screen, a valid
