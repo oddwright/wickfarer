@@ -22,6 +22,10 @@ func _draw() -> void:
 			_draw_store(run, l)
 		"refit":
 			_draw_refit(run, l)
+		"wares":
+			_draw_wares(run, l)
+		"modules", "guns":
+			_draw_gear(run, l)
 		_:
 			_draw_next(run, l)
 	_draw_status(run, l)
@@ -66,7 +70,7 @@ func _draw_chart(run: Run, l: RunLayout) -> void:
 		return  # the coach writes in the message line
 	var msg := tr("UI_JUMP")
 	if not run.messages.is_empty():
-		msg = tr(run.messages[-1])
+		msg = GearText.message(run.messages[-1])
 	_text(
 		Vector2(l.message_rect.position.x, l.message_rect.position.y + 12),
 		msg,
@@ -204,6 +208,8 @@ func _draw_store(run: Run, l: RunLayout) -> void:
 				_button(b.rect, tr("UI_STORE_REFIT"))
 			"leave":
 				_button(b.rect, tr("UI_LEAVE"))
+			"wares", "modules", "guns":
+				_button(b.rect, tr("UI_STORE_" + option.to_upper()), Market.can(run, option))
 			_:
 				var note := "%d %s" % [run.price(option), tr("UI_SCRAP")]
 				var short := run.scrap < run.price(option)
@@ -296,3 +302,71 @@ func _draw_next(run: Run, l: RunLayout) -> void:
 		_text_block(Rect2i(r.position.x, r.end.y - 20, r.size.x, 10), stats, Pixel.c("g"))
 		_text_block(Rect2i(r.position.x, r.end.y - 10, r.size.x, 10), seed_line, Pixel.c("g"))
 	_button(l.buttons[0].rect, tr(label))
+
+
+# ------------------------------------------------------------------ gear pages
+
+
+## The trader's wares: each one's numbers in the text, its price on its button.
+func _draw_wares(run: Run, l: RunLayout) -> void:
+	var lines: Array[String] = [tr("UI_WARES_TEXT"), _hold_count(run)]
+	if run.stock.is_empty():
+		lines.append(tr("UI_WARES_EMPTY"))
+	for item in run.stock:
+		lines.append(GearText.line(item) + ".")
+	_story(l, " ".join(lines))
+	var opts := run.page_options()
+	for b in l.buttons:
+		var option := opts[int(b.id)]
+		if option == "back":
+			_button(b.rect, tr("UI_MENU_BACK"))
+			continue
+		var item := Market.item_at(run, option)
+		var p := Market.price(run, item)
+		var note := "%d %s" % [p, tr("UI_SCRAP")]
+		_button(b.rect, _name(item), Market.can(run, option), note, run.scrap < p)
+
+
+## Modules or Guns: the ship's slots, then the hold, then Sell and Back. What
+## each piece does is written out above, so nothing hides behind a long press.
+func _draw_gear(run: Run, l: RunLayout) -> void:
+	var guns := run.state == "guns"
+	var head := "UI_SELL_TEXT" if run.selling else ("UI_GUNS_TEXT" if guns else "UI_MODULES_TEXT")
+	var lines: Array[String] = [tr(head), _hold_count(run)]
+	var opts := run.page_options()
+	for option in opts:
+		var item := Market.item_at(run, option)
+		if not item.is_empty():
+			var where := tr("UI_IN_HOLD") if option.begins_with("hold") else tr("UI_FITTED")
+			lines.append("%s (%s)." % [GearText.line(item), where])
+	_story(l, " ".join(lines))
+	for b in l.buttons:
+		_draw_gear_button(run, opts[int(b.id)], b.rect, guns)
+
+
+func _draw_gear_button(run: Run, option: String, r: Rect2i, guns: bool) -> void:
+	match option:
+		"back":
+			_button(r, tr("UI_MENU_BACK"))
+			return
+		"sell":
+			_button(r, tr("UI_SELL_DONE" if run.selling else "UI_SELL"))
+			return
+	var item := Market.item_at(run, option)
+	var in_hold := option.begins_with("hold")
+	if item.is_empty():
+		var free := "UI_HOLD_EMPTY" if in_hold else ("UI_MOUNT_FREE" if guns else "UI_SLOT_FREE")
+		_button(r, tr(free), false)
+		return
+	var note := tr("UI_IN_HOLD") if in_hold else tr("UI_FITTED")
+	if run.selling:
+		note = tr("UI_SOLD_FOR") % Market.sell_price(item)
+	_button(r, _name(item), Market.can(run, option), note)
+
+
+func _hold_count(run: Run) -> String:
+	return tr("UI_HOLD_COUNT") % [run.hold.size(), Run.HOLD_SIZE]
+
+
+func _name(item: Dictionary) -> String:
+	return tr(str(Gear.entry(item).get("name", "")))

@@ -1,7 +1,7 @@
 {
   "ember":   {"name": "SYS_EMBER",   "powered": false, "role": "ROLE_STOKER", "stoke_light": [3, 3, 4, 4, 5, 5]},
   "wards":   {"name": "SYS_WARDS",   "powered": true,  "role": "ROLE_WARDEN", "upgrade_scrap": [20, 30, 40, 55, 70]},
-  "weapons": {"name": "SYS_WEAPONS", "powered": true,  "role": "ROLE_GUNNER"},
+  "weapons": {"name": "SYS_WEAPONS", "powered": true,  "role": "ROLE_GUNNER", "upgrade_scrap": [20, 30, 40, 55, 70]},
   "helm":    {"name": "SYS_HELM",    "powered": true,  "role": "ROLE_PILOT", "upgrade_scrap": [15, 30, 50]},
   "engines": {"name": "SYS_ENGINES", "powered": true,  "role": "ROLE_ENGINEER", "upgrade_scrap": [15, 30, 50]},
   "mend":    {"name": "SYS_MEND",    "powered": true,  "role": "ROLE_MEDIC", "upgrade_scrap": [15, 30]}

@@ -36,7 +36,7 @@ func _words(r: Rect2i, d: Dictionary) -> void:
 	if main.combat == null and not main.run.messages.is_empty():
 		# The coach has the message line, so it carries the last jump's news first,
 		# or only the news where both don't fit (a short chart): the news is what hurt.
-		var news := tr(main.run.messages[-1])
+		var news := GearText.message(main.run.messages[-1])
 		s = news + " " + s
 		if not fits(s, r):
 			s = news

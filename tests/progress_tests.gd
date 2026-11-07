@@ -104,7 +104,7 @@ static func refit_and_stoke(t: SceneTree) -> void:
 	_check(t, r.refit_price("helm") == -1, "a capped system has no price")
 	r.scrap = 0
 	_check(t, not r.refit("mend"), "no refit without the scrap")
-	_check(t, r.refit_price("weapons") == -1, "weapons aren't sold as refits yet")
+	_check(t, r.refit_price("weapons") > 0, "stores sell guns, so the weapons system is a refit")
 	# Stoking: Light for reactor.
 	var reactor := r.ship.reactor
 	var light_price := int(ContentDB.systems.ember.stoke_light[0])
@@ -228,7 +228,7 @@ static func content_checked(t: SceneTree) -> void:
 	ContentDB.reaches.reach_3.enemy_boost = {"systems": ["lasers"]}
 	_check(t, _has(ContentDB.validate(), "unknown system lasers"), "a bad enemy boost is caught")
 	ContentDB.reaches = keep.duplicate(true)
-	ContentDB.reaches.reach_3.enemy_boost = {"systems": ["weapons"]}
+	ContentDB.reaches.reach_3.enemy_boost = {"systems": ["ember"]}
 	_check(t, _has(ContentDB.validate(), "no levels to buy"), "a boost that can't rise is caught")
 	ContentDB.reaches = keep
 	ContentDB.systems.helm.upgrade_scrap = [10, 0]
