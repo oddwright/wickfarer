@@ -179,6 +179,8 @@ static func validate() -> Array[String]:
 static func _validate_system(sys_id: String, sys: Dictionary, errors: Array[String]) -> void:
 	var where := "system %s" % sys_id
 	_check_string(sys.get("name", ""), where, errors)
+	if sys.has("upgrade_scrap") or sys.has("stoke_light"):  # the refit page shows its card
+		_check_string(sys.get("desc", ""), where + " desc", errors)
 	for f in ["upgrade_scrap", "stoke_light"]:
 		if not sys.has(f):
 			continue

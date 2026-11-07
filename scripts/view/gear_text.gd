@@ -24,7 +24,7 @@ static func effects(item: Dictionary) -> String:
 			var fx: Dictionary = e.get(part, {})
 			for k: String in fx:
 				var key := "GEAR_%s_%s" % [part.to_upper(), k.to_upper()]
-				parts.append(tr_key(key) % _number(k, float(fx[k])))
+				parts.append(tr_key(key) % number(k, float(fx[k])))
 		return ", ".join(parts)
 	parts.append(
 		(
@@ -48,7 +48,7 @@ static func message(m: String) -> String:
 
 
 ## Fractions read as percentages; everything else as a plain number.
-static func _number(effect: String, v: float) -> String:
+static func number(effect: String, v: float) -> String:
 	if effect in Gear.WHOLE:
 		return str(int(v))
 	if effect in PERCENT:

@@ -18,6 +18,7 @@ const RESUME_TESTS = preload("res://tests/resume_tests.gd")
 const TUTORIAL_TESTS = preload("res://tests/tutorial_tests.gd")
 const FACTION_TESTS = preload("res://tests/faction_tests.gd")
 const GEAR_TESTS = preload("res://tests/gear_tests.gd")
+const CARD_TESTS = preload("res://tests/card_tests.gd")
 const SIEGE_TESTS = preload("res://tests/siege_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
@@ -88,6 +89,7 @@ func _init() -> void:
 		"test_options_adjust_settings",
 		"test_progression",
 		"test_gear",
+		"test_cards_and_chart_key",
 		"test_tutorial",
 		"test_kindling_siege",
 	]:
@@ -698,6 +700,14 @@ func test_gear() -> void:
 	GEAR_TESTS.run_costs(self)
 	GEAR_TESTS.saves_keep_gear(self)
 	GEAR_TESTS.content_checked(self)
+
+
+## Item cards, tap to look, and the chart's key (tests/card_tests.gd).
+func test_cards_and_chart_key() -> void:
+	CARD_TESTS.every_option_has_a_card(self)
+	CARD_TESTS.cards_explain_refusals(self)
+	CARD_TESTS.tap_to_look(self)
+	CARD_TESTS.chart_key(self, SCREEN_TESTS.variants(SCREENS))
 
 
 func _test_gear_pages() -> void:

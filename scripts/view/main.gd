@@ -692,6 +692,9 @@ func _tap_run(p: Vector2i) -> void:
 			ui_cue("choose")
 		var page when page in Run.STORE_PAGES:
 			var option := run.page_options()[int(b.id)]
+			if not run_view.focus.tap(run, option):
+				ui_cue("select")  # the first tap opens its card
+				return
 			if not run.store_action(option):
 				ui_cue("refused")
 				return

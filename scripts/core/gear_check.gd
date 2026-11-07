@@ -28,6 +28,7 @@ static func validate(errors: Array[String]) -> void:
 static func _module(id: String, m: Dictionary, errors: Array[String]) -> void:
 	var where := "module %s" % id
 	ContentDB.check_string(str(m.get("name", "")), where, errors)
+	ContentDB.check_string(str(m.get("desc", "")), where + " desc", errors)
 	_shop_fields(where, m, errors)
 	for part: String in ["gain", "cost"]:
 		var fx: Variant = m.get(part, {})
@@ -61,6 +62,8 @@ static func _shop_fields(where: String, e: Dictionary, errors: Array[String]) ->
 static func _weapon(wid: String, w: Dictionary, errors: Array[String]) -> void:
 	var where := "weapon %s" % wid
 	_shop_fields(where, w, errors)
+	if w.has("price"):  # a gun a store can sell gets a card, so it needs its words
+		ContentDB.check_string(str(w.get("desc", "")), where + " desc", errors)
 	if not str(w.get("family", "")) in FAMILIES:
 		errors.append("%s: family must be one of %s" % [where, FAMILIES])
 	if w.has("chill") and not _positive(w.chill, false):
