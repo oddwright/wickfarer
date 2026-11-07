@@ -1417,6 +1417,126 @@
       }
     ]
   },
+  "rime_rack": {
+    "text": "EV_RIME_RACK",
+    "weight": 8,
+    "choices": [
+      {
+        "text": "EV_RIME_RACK_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 6,
+            "text": "EV_RIME_RACK_C1_O1",
+            "effects": {
+              "weapon": "frost_needle"
+            }
+          },
+          {
+            "weight": 4,
+            "text": "EV_RIME_RACK_C1_O2",
+            "effects": {
+              "fight": "ashmarket_skiff"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_RIME_RACK_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RIME_RACK_C2_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "kiln_wreck": {
+    "text": "EV_KILN_WRECK",
+    "weight": 8,
+    "choices": [
+      {
+        "text": "EV_KILN_WRECK_C1",
+        "requires": {
+          "light": 2
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_KILN_WRECK_C1_O1",
+            "effects": {
+              "light": -2,
+              "module": "kiln_coils"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_KILN_WRECK_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_KILN_WRECK_C2_O1",
+            "effects": {
+              "scrap": 10
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "tinker_barge": {
+    "text": "EV_TINKER_BARGE",
+    "weight": 8,
+    "choices": [
+      {
+        "text": "EV_TINKER_BARGE_C1",
+        "requires": {
+          "scrap": 25
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_TINKER_BARGE_C1_O1",
+            "effects": {
+              "scrap": -25,
+              "module": "any"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_TINKER_BARGE_C2",
+        "requires": {
+          "species": "oru"
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_TINKER_BARGE_C2_O1",
+            "effects": {
+              "module": "any"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_TINKER_BARGE_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_TINKER_BARGE_C3_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
   "rival_first": {
     "text": "EV_RIVAL_FIRST",
     "weight": 10,

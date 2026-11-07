@@ -249,10 +249,10 @@ static func content_checked(t: SceneTree) -> void:
 	_check(t, bad.is_empty(), "factions.json is valid: %s" % [bad])
 
 
-## A real version 6 save, kept as a fixture: docked at a Tidewarden store.
+## A real version 7 save, kept as a fixture: docked at a Tidewarden store.
 static func fixture_keeps_standing(t: SceneTree) -> void:
 	var raw: Variant = JSON.parse_string(
-		FileAccess.get_file_as_string("res://tests/fixtures/run_save_v6.json")
+		FileAccess.get_file_as_string("res://tests/fixtures/run_save_v7.json")
 	)
 	var up := SaveService.upgrade(raw)
 	var r := Run.from_dict(up.get("data", {}).get("run", {}))

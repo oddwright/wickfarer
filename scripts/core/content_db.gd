@@ -17,6 +17,7 @@ const FILES := {
 	"unlocks": "res://data/unlocks.json",
 	"depths": "res://data/depths.json",
 	"factions": "res://data/factions.json",
+	"modules": "res://data/modules.json",
 }
 ## What a Hush Depth's rules may change, and the sign each must have (+1: only
 ## harder when positive, -1: only harder when negative).
@@ -43,6 +44,8 @@ const EVENT_EFFECTS := [
 	"rep",
 	"flag",
 	"fight_faction",
+	"module",
+	"weapon",
 ]
 const BEACON_KINDS := ["fight", "event", "store", "empty"]  ## the Gate has no story
 const MAX_CHOICES := 3  ## what the Square layout's right page has room for
@@ -67,6 +70,7 @@ static var tutorial: Dictionary = {}  ## the training flight's lessons and the o
 static var unlocks: Dictionary = {}  ## unlock id -> {name, hint, stat, at_least}
 static var depths: Dictionary = {}  ## {"depths": [{name, text, effects}]}, depth 1 first
 static var factions: Dictionary = {}  ## standing range, tiers, and each faction
+static var modules: Dictionary = {}  ## module id -> {name, price, weight, gain, cost, unlock}
 static var loaded := false
 
 
@@ -86,6 +90,7 @@ static func load_all() -> void:
 	unlocks = _read(FILES.unlocks)
 	depths = _read(FILES.depths)
 	factions = _read(FILES.factions)
+	modules = _read(FILES.modules)
 	_install_translation()
 	loaded = true
 
@@ -161,6 +166,7 @@ static func validate() -> Array[String]:
 	_validate_depths(errors)
 	_validate_feedback(feedback, errors)
 	Skills.validate(errors)
+	GearCheck.validate(errors)
 	_validate_tutorial(tutorial, errors)
 	return errors
 

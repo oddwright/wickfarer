@@ -1,6 +1,8 @@
 {
-  "rivet_gun":   {"name": "WPN_RIVET_GUN",   "family": "kinetic", "power": 1, "charge": 9.0,  "shots": 2, "hull_damage": 1, "system_damage": 1, "crew_damage": 10, "fire_chance": 0.0, "strips_ward": true},
-  "heavy_rivet": {"name": "WPN_HEAVY_RIVET", "family": "kinetic", "power": 2, "charge": 12.0, "shots": 1, "hull_damage": 2, "system_damage": 2, "crew_damage": 15, "fire_chance": 0.1, "strips_ward": true},
-  "torch_lance": {"name": "WPN_TORCH_LANCE", "family": "torch",   "power": 2, "charge": 12.0, "shots": 1, "hull_damage": 1, "system_damage": 2, "crew_damage": 25, "fire_chance": 0.5, "strips_ward": false},
-  "kiln_brand":  {"name": "WPN_KILN_BRAND",  "family": "torch",   "power": 1, "charge": 8.0,  "shots": 1, "hull_damage": 1, "system_damage": 1, "crew_damage": 15, "fire_chance": 0.35, "strips_ward": false}
+  "rivet_gun":    {"name": "WPN_RIVET_GUN",    "family": "kinetic", "power": 1, "charge": 9.0,  "shots": 2, "hull_damage": 1, "system_damage": 1, "crew_damage": 10, "fire_chance": 0.0,  "strips_ward": true,  "price": 30},
+  "heavy_rivet":  {"name": "WPN_HEAVY_RIVET",  "family": "kinetic", "power": 2, "charge": 12.0, "shots": 1, "hull_damage": 2, "system_damage": 2, "crew_damage": 15, "fire_chance": 0.1,  "strips_ward": true,  "price": 55},
+  "torch_lance":  {"name": "WPN_TORCH_LANCE",  "family": "torch",   "power": 2, "charge": 12.0, "shots": 1, "hull_damage": 1, "system_damage": 2, "crew_damage": 25, "fire_chance": 0.5,  "strips_ward": false, "price": 55},
+  "kiln_brand":   {"name": "WPN_KILN_BRAND",   "family": "torch",   "power": 1, "charge": 8.0,  "shots": 1, "hull_damage": 1, "system_damage": 1, "crew_damage": 15, "fire_chance": 0.35, "strips_ward": false, "price": 40},
+  "frost_needle": {"name": "WPN_FROST_NEEDLE", "family": "chill",   "power": 1, "charge": 9.0,  "shots": 2, "hull_damage": 0, "system_damage": 0, "crew_damage": 0,  "fire_chance": 0.0,  "strips_ward": false, "price": 45, "chill": 16.0, "pierces_ward": true},
+  "rime_lance":   {"name": "WPN_RIME_LANCE",   "family": "chill",   "power": 2, "charge": 13.0, "shots": 1, "hull_damage": 0, "system_damage": 1, "crew_damage": 5,  "fire_chance": 0.0,  "strips_ward": false, "price": 65, "chill": 50.0, "pierces_ward": true, "unlock": "gear_rime_lance"}
 }

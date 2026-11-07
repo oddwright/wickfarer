@@ -11,8 +11,12 @@ const STORE_ITEMS: Array[String] = ["repair", "light"]  ## each needs a "<item>_
 const REACH_ENEMY := "reach"  ## an event "fight" that picks from the Reach's enemy pool
 const ENDINGS: Array[String] = ["lost", "won"]  ## states a run never leaves
 ## Systems the refit page offers, in order; "stoke" (reactor for Light) comes after them.
-## Weapons join once stores sell guns, since a bigger weapons system has nothing to power yet.
-const REFIT_SYSTEMS: Array[String] = ["wards", "helm", "engines", "mend"]
+const REFIT_SYSTEMS: Array[String] = ["weapons", "wards", "helm", "engines", "mend"]
+const HOLD_SIZE := 2  ## spare gear the hold carries, besides what is fitted
+## Run states that are a store's pages: the price board, the refit, and Market's.
+const STORE_PAGES: Array[String] = ["store", "refit", "wares", "modules", "guns"]
+## Hush a module's unpaid Light upkeep draws instead, per missing Light.
+const UNPAID_UPKEEP_HUSH := 0.35
 
 var reach_id: String
 var depth: int = 0  ## Hush Depth: every depth's rule up to this one applies
@@ -42,15 +46,25 @@ var standing: Standing  ## each faction's view of the ship
 var flags: Array[String] = []  ## story beats this run has reached, set by event outcomes
 var store_faction: String = ""  ## whose store the ship is docked at; "" for an independent one
 var fight_faction: String = ""  ## whose ship the current fight is against; "" for nobody's
+## Profile unlocks open when the run began: they decide which gear can turn up.
+var unlocked: Array[String] = []
+var hold: Array[Dictionary] = []  ## spare gear, {kind: "module"|"weapon", id}
+var stock: Array[Dictionary] = []  ## this store's wares; bought ones leave the list
+var selling := false  ## the Modules and Guns pages sell what is tapped
 var _mods := {}  ## the depth rules summed for _mods_depth
 var _mods_depth := -1  ## the depth _mods was summed for; -1 before the first sum
 
 
 static func create(
-	seed_value: int, ship_id := "tallow_wren", reach := "reach_1", depth_value := 0
+	seed_value: int,
+	ship_id := "tallow_wren",
+	reach := "reach_1",
+	depth_value := 0,
+	unlocked_ids: Array[String] = []
 ) -> Run:
 	ContentDB.load_all()
 	var r := Run.new()
+	r.unlocked = unlocked_ids.duplicate()
 	r.reach_id = reach
 	r.rng = RngStreams.new(seed_value)
 	r.chart = StarChart.generate(r.reach(), r.rng.stream("map"))
@@ -115,8 +129,9 @@ func jump(target: String) -> bool:
 	else:
 		ship.hull = maxi(0, ship.hull - int(reach().dark_jump_hull) - int(mod("dark_jump_hull")))
 		messages.append("UI_DARK_JUMP")
+	_pay_upkeep()
 	jumps += 1
-	var per_jump := float(reach().hush_per_jump) + mod("hush_per_jump")
+	var per_jump := float(reach().hush_per_jump) + mod("hush_per_jump") + ship.mod("hush")
 	hush = Q.q(hush + per_jump + float(reach().hush_per_light) * light)
 	at = target
 	if not visited.has(at):
@@ -152,7 +167,7 @@ func _skip_story(kind: String) -> void:
 		"fight":
 			_start_fight(REACH_ENEMY)
 		"store":
-			state = "store"
+			Market.open(self)
 		_:
 			state = "chart"
 
@@ -179,6 +194,17 @@ func next_reach() -> bool:
 	messages.clear()
 	state = "chart"
 	return true
+
+
+## Hungry modules burn Light each jump. Light the run doesn't have is taken
+## from the dark instead: the Hush comes on faster, so the gain is never free.
+func _pay_upkeep() -> void:
+	var upkeep := int(ship.mod("light_upkeep"))
+	var unpaid := maxi(0, upkeep - light)
+	light -= upkeep - unpaid
+	if unpaid > 0:
+		hush = Q.q(hush + UNPAID_UPKEEP_HUSH * unpaid)
+		messages.append("UI_UPKEEP_UNPAID")
 
 
 func is_swallowed(id: String) -> bool:
@@ -230,13 +256,20 @@ func finish_fight() -> bool:
 	var loot := rng.stream("loot")
 	var reward: Dictionary = reach().fight_reward
 	var won_scrap := loot.randi_range(int(reward.scrap[0]), int(reward.scrap[1]))
+	won_scrap = int(won_scrap * (1.0 + ship.mod("salvage")))
 	_gain_scrap(maxi(0, won_scrap + int(mod("fight_scrap"))) + fight_bonus_scrap)
 	light += loot.randi_range(int(reward.light[0]), int(reward.light[1]))
+	light += int(ship.mod("fight_light"))
 	fights_won += 1
 	fight_bonus_scrap = 0
 	messages.clear()
 	messages.append_array(standing.fight_won(fight_faction))
 	fight_faction = ""
+	var gear_roll := rng.stream("gear")
+	if gear_roll.randf() < float(reward.get("gear_chance", 0.0)):
+		var found := Gear.pick(gear_roll, unlocked)
+		if not found.is_empty():
+			gain(found)
 	ship.recover_after_fight()
 	combat = null
 	state = "chart"
@@ -332,6 +365,14 @@ func _apply(fx: Dictionary, faction := "") -> void:
 	if ship.hull <= 0:
 		state = "lost"
 		return
+	for kind: String in ["module", "weapon"]:
+		if fx.has(kind):
+			var id := str(fx[kind])
+			var item := {"kind": kind, "id": id}
+			if id == "any":
+				item = Gear.pick(rng.stream("gear"), unlocked, kind)
+			if not item.is_empty():
+				gain(item)
 	if fx.has("fight"):
 		fight_bonus_scrap = int(fx.get("fight_bonus_scrap", 0))
 		# A fight an event starts is the event's faction's, unless it names another.
@@ -339,7 +380,7 @@ func _apply(fx: Dictionary, faction := "") -> void:
 		_start_fight(str(fx.fight), int(fx.get("enemy_hull", 0)), whose)
 	elif fx.get("store", false):
 		store_faction = faction
-		state = "store"
+		Market.open(self)
 
 
 ## The player has read the event's result; the run moves on.
@@ -368,7 +409,7 @@ func store_items() -> Array[String]:
 func price(item: String) -> int:
 	var prices: Dictionary = reach().store
 	var p := int(prices.get(item + "_scrap", -1)) if item in STORE_ITEMS else -1
-	return _marked_up(p)
+	return marked_up(p)
 
 
 func can_buy(item: String) -> bool:
@@ -395,6 +436,8 @@ func leave_store() -> bool:
 		return false
 	messages.clear()
 	store_faction = ""
+	stock.clear()
+	selling = false
 	state = "chart"
 	return true
 
@@ -404,16 +447,46 @@ func _gain_scrap(n: int) -> void:
 	scrap_earned += maxi(0, n)
 
 
+## New gear: fitted or mounted if there is a free space, else into the hold,
+## else broken down for its sale price. Leaves a message naming it, as
+## "<key>|<name key>" for the view to fill in.
+func gain(item: Dictionary) -> String:
+	var placed := Gear.place(ship, item)
+	var key := "UI_GEAR_FITTED"
+	if not placed:
+		if hold.size() < HOLD_SIZE:
+			hold.append(item)
+			key = "UI_GEAR_HELD"
+		else:
+			_gain_scrap(Market.sell_price(item))
+			key = "UI_GEAR_SCRAPPED"
+	messages.append("%s|%s" % [key, str(Gear.entry(item).name)])
+	return key
+
+
 # ---------------------------------------------------------------- refit
 
 
 ## The store's refit page, and back. It is a run state so a save made on it
 ## reopens on it.
-## What the store's buttons do, top to bottom: its items, then Refit, then Leave.
+## What the store's buttons do, top to bottom: its items, the pages, then Leave.
+## Wares shows only where the Reach's stores carry stock.
 func store_options() -> Array[String]:
 	var out := store_items()
-	out.append_array(["refit", "leave"])
+	if int(reach().store.get("stock", 0)) > 0:
+		out.append("wares")
+	out.append_array(["refit", "modules", "guns", "leave"])
 	return out
+
+
+## The buttons of whichever store page is open, or [] off the store.
+func page_options() -> Array[String]:
+	match state:
+		"store":
+			return store_options()
+		"refit":
+			return refit_options()
+	return Market.options(self)
 
 
 ## What the refit page's buttons do: one per system, then Stoke, then Back.
@@ -433,10 +506,12 @@ func store_action(option: String) -> bool:
 		"stoke":
 			return stoke()
 		"back":
-			return close_refit()
+			return close_refit() if state == "refit" else Market.act(self, option)
 	if option in REFIT_SYSTEMS:
 		return refit(option)
-	return buy(option)
+	if option in STORE_ITEMS:
+		return buy(option)
+	return Market.act(self, option)
 
 
 func open_refit() -> bool:
@@ -458,13 +533,13 @@ func refit_price(sys: String) -> int:
 	if not ship.can_upgrade(sys):
 		return -1
 	var prices: Array = ContentDB.systems[sys].get("upgrade_scrap", [])
-	return _marked_up(int(prices[ship.system_room(sys).level - 1]))
+	return marked_up(int(prices[ship.system_room(sys).level - 1]))
 
 
 ## A store or refit price with the Hush Depth's markup and the store's faction's
 ## view of the ship. Only a real price changes: -1 (not for sale) and 0 (dropped
 ## by the Reach) stay as they are, and a friendly discount never makes one free.
-func _marked_up(p: int) -> int:
+func marked_up(p: int) -> int:
 	if p <= 0:
 		return p
 	return maxi(1, p + int(mod("store_markup")) + standing.price_delta(store_faction))
@@ -536,6 +611,10 @@ func to_dict() -> Dictionary:
 		"flags": Array(flags),
 		"store_faction": store_faction,
 		"fight_faction": fight_faction,
+		"unlocked": Array(unlocked),
+		"hold": hold.duplicate(true),
+		"stock": stock.duplicate(true),
+		"selling": selling,
 	}
 
 
@@ -570,6 +649,7 @@ static func from_dict(d: Dictionary) -> Run:
 		r.flags.append(str(f))
 	r.store_faction = str(d.get("store_faction", ""))
 	r.fight_faction = str(d.get("fight_faction", ""))
+	_load_gear(r, d)
 	if r.state == "event" and not ContentDB.events.has(r.event_id):
 		# The event was removed or renamed in an update; don't strand the save
 		# on it, but keep the fight or store its beacon holds.
@@ -581,3 +661,29 @@ static func from_dict(d: Dictionary) -> Run:
 	for l in d.get("messages", []):
 		r.messages.append(str(l))
 	return r
+
+
+## The hold, a store's wares and the unlocks gear is drawn from. Loaded before
+## anything that may dock the run at a store, which draws fresh wares.
+static func _load_gear(r: Run, d: Dictionary) -> void:
+	for u: Variant in d.get("unlocked", []):
+		r.unlocked.append(str(u))
+	r.hold = _gear_list(d.get("hold", []))
+	r.stock = _gear_list(d.get("stock", []))
+	r.selling = bool(d.get("selling", false)) and r.state in Market.GEAR_PAGES
+	if not d.has("stock") and r.state in STORE_PAGES:
+		# Docked when the game updated to stores with wares: lay them out now.
+		var page := r.state
+		Market.open(r)
+		r.state = page
+
+
+## Saved gear, keeping only items the content still has.
+static func _gear_list(saved: Variant) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if not saved is Array:
+		return out
+	for item: Variant in saved:
+		if Gear.is_item(item):
+			out.append({"kind": str(item.kind), "id": str(item.id)})
+	return out

@@ -5,7 +5,9 @@ extends RefCounted
 ## RNG state is a 64-bit int, so it is saved as a string: JSON numbers are
 ## doubles and would silently lose precision.
 
-const NAMES: Array[String] = ["map", "encounters", "events", "combat", "loot", "ai"]
+const NAMES: Array[String] = [
+	"map", "encounters", "events", "combat", "loot", "ai", "gear", "store"
+]
 
 var run_seed: int = 0
 var _streams: Dictionary = {}
