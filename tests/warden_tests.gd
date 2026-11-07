@@ -214,11 +214,11 @@ static func _to_gate(r: Run) -> void:
 ## A Warden holds each Gate it is set for: the Gate is crossed only once it is beaten.
 static func warden_holds_the_gate(t: SceneTree) -> void:
 	var r := Run.create(12)
-	r.ship.hull = 5
+	r.ship.hull = 2
 	_to_gate(r)
 	_check(t, r.state == "fight" and r.is_warden_fight(), "the Gate opens with its Warden")
 	var repair := int(r.reach().gate_repair)
-	_check(t, r.ship.hull == 5 + repair, "the Gate's dock patches the hull before the Warden")
+	_check(t, r.ship.hull == 2 + repair, "the Gate's dock patches the hull before the Warden")
 	_check(t, r.combat.enemy().content_id == "warden_tollkeeper", "Reach 1's Warden")
 	_check(t, r.reaches_crossed == 0, "the Gate isn't crossed yet")
 	var hull := r.combat.enemy().max_hull
@@ -241,13 +241,13 @@ static func warden_holds_the_gate(t: SceneTree) -> void:
 	# a Gate with no Warden still patches on the way through
 	var warden: String = back.reach().warden
 	back.reach().erase("warden")
-	back.ship.hull = 5
+	back.ship.hull = 2
 	var patch := int(back.reach().gate_repair)
 	_to_gate(back)
 	_check(t, back.state == "reach_done", "a Gate with no Warden is open")
-	_check(t, back.ship.hull == 5 + patch, "and patches the hull on arrival too")
+	_check(t, back.ship.hull == 2 + patch, "and patches the hull on arrival too")
 	back.next_reach()
-	_check(t, back.ship.hull == 5 + patch, "once")
+	_check(t, back.ship.hull == 2 + patch, "once")
 	ContentDB.reaches.reach_2["warden"] = warden
 	var lost := Run.create(12)
 	_to_gate(lost)
