@@ -2,7 +2,8 @@ extends SceneTree
 ## Screenshot one screen at a given window size (needs a display; use xvfb-run).
 ## godot --path . -s tools/shot.gd -- <width> <height> <out.png> [ticks] [screen] [ui size]
 ## screen is fight (default), fight:<player ship id>, chart, event, event:<event id>, store,
-## refit, reach_done, won or lost, roster or roster_pick (the crew roster over a fight,
+## refit, wares, modules, guns or selling (store gear pages with some gear aboard), reach_done,
+## won or lost, roster or roster_pick (the crew roster over a fight,
 ## picker shut or open), or a menu over a fight: title, pause, options, confirm, depth or
 ## log, or ship select from the title: ship or ship:<ship id> (shown unlocked). ui size is the
 ## options setting, a step from auto (-2 to 1); it is not saved.
@@ -65,9 +66,11 @@ func _set_up() -> void:
 			run.state = "event"
 			run.event_id = "ash_toll"
 		"store":
-			run.state = "store"
+			Market.open(run)
 		"refit":
 			run.state = "refit"
+		"wares", "modules", "guns", "selling":
+			_gear_page(run, which)
 		"lost", "won", "reach_done":
 			run.state = which
 		"fight":
@@ -143,3 +146,15 @@ func _open_roster(picking: bool) -> void:
 	if picking:
 		main.roster.pick = 0
 		main.roster.rebuild()
+
+
+## A store with wares out, a module fitted and gear in the hold, on one of its pages.
+func _gear_page(run: Run, page: String) -> void:
+	run.scrap = 120
+	Market.open(run)
+	run.gain({"kind": "module", "id": "gyre_vanes"})
+	run.gain({"kind": "module", "id": "kiln_coils"})
+	run.gain({"kind": "weapon", "id": "frost_needle"})
+	run.state = "guns" if page == "selling" else page
+	run.selling = page == "selling"
+	run.messages.clear()
