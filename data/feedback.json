@@ -57,6 +57,8 @@
     "ward_block.them": {"sound": "ward_chime", "priority": 1, "cooldown": 0.08},
     "ward_hit.us": {"sound": "ward_crack", "haptic": "tap", "shake": 0.15, "priority": 2, "cooldown": 0.08},
     "ward_hit.them": {"sound": "ward_crack", "haptic": "tick", "priority": 1, "cooldown": 0.08},
+    "tide": {"sound": "ward_chime", "haptic": "double_tick", "priority": 2, "cooldown": 0.5},
+    "light_drain.us": {"sound": "skill_chime", "haptic": "heartbeat", "priority": 2, "cooldown": 0.3},
     "fire_start.us": {"sound": "blaze", "haptic": "rumble", "shake": 0.15, "priority": 2, "cooldown": 0.3},
     "fire_start.them": {"sound": "blaze", "priority": 1, "cooldown": 0.3},
     "fire_spread.us": {"sound": "blaze", "priority": 1, "cooldown": 0.5},

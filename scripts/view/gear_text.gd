@@ -20,11 +20,8 @@ static func effects(item: Dictionary) -> String:
 	var e := Gear.entry(item)
 	var parts: Array[String] = []
 	if item.get("kind") == "module":
-		for part: String in ["gain", "cost"]:
-			var fx: Dictionary = e.get(part, {})
-			for k: String in fx:
-				var key := "GEAR_%s_%s" % [part.to_upper(), k.to_upper()]
-				parts.append(tr_key(key) % number(k, float(fx[k])))
+		for fx: Array in module_effects(item):
+			parts.append(fx[0])
 		return ", ".join(parts)
 	parts.append(
 		(
@@ -37,6 +34,18 @@ static func effects(item: Dictionary) -> String:
 	if float(e.get("fire_chance", 0.0)) > 0.0:
 		parts.append(tr_key("GEAR_WPN_FIRE"))
 	return ", ".join(parts)
+
+
+## A module's gains then costs, each [words, "gain" or "cost"].
+static func module_effects(item: Dictionary) -> Array[Array]:
+	var out: Array[Array] = []
+	var e := Gear.entry(item)
+	for part: String in ["gain", "cost"]:
+		var fx: Dictionary = e.get(part, {})
+		for k: String in fx:
+			var key := "GEAR_%s_%s" % [part.to_upper(), k.to_upper()]
+			out.append([tr_key(key) % number(k, float(fx[k])), part])
+	return out
 
 
 ## A run message: a plain translation key, or "<key>|<name key>" for one

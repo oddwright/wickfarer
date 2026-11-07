@@ -54,10 +54,10 @@ static func starts_at_the_last_gate(t: SceneTree) -> void:
 	_check(t, r.combat.enemy().content_id == "hush_maw", "against the Hush maw, not a hull")
 	_check(t, r.combat.siege.light == 5, "the run's Light goes into the siege")
 	_check(t, r.reaches_crossed == 0, "the Gate isn't crossed until the Cradle is kindled")
-	# Earlier Gates still go to the Reach's end screen with no fight.
+	# Earlier Gates hold a Warden (or open straight on), never the siege.
 	var early := Run.create(1, "tallow_wren", "reach_1")
 	Autopilot.arrive_at_gate(early)
-	_check(t, early.state == "reach_done" and early.combat == null, "Reach 1's Gate has no siege")
+	_check(t, early.combat == null or early.combat.siege == null, "Reach 1's Gate has no siege")
 	# An ordinary fight has no siege, and no kindling.
 	var plain := Combat.create(3)
 	_check(t, plain.siege == null, "ordinary fights have no siege")

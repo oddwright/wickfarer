@@ -103,22 +103,33 @@ static func can(run: Run, option: String) -> bool:
 		return run.state in SUB_PAGES
 	if verb == "sell":
 		return run.state in GEAR_PAGES
+	return refusal(run, option) == ""
+
+
+## Why a ware or a piece of gear can't be bought, moved or sold, as a string key
+## the store's card shows; "" when it can. can() and the card share it, so the
+## reason given is always the rule that refused.
+static func refusal(run: Run, option: String) -> String:
 	if not run.state in SUB_PAGES or not option in options(run):
-		return false
+		return "UI_CARD_CANT"
 	var item := item_at(run, option)
 	if item.is_empty():
-		return false
-	match verb:
+		return "UI_CARD_CANT"
+	match _verb(option):
 		"buy":
-			return run.scrap >= price(run, item) and has_room(run, item)
+			if run.scrap < price(run, item):
+				return "UI_CARD_SHORT"
+			return "" if has_room(run, item) else "UI_CARD_NO_ROOM"
 		"wpn":
 			# The last gun stays: a ship with none could never end a fight.
-			return run.ship.weapon_ids.size() > 1 and (run.selling or _hold_space(run))
+			if run.ship.weapon_ids.size() <= 1:
+				return "UI_CARD_LAST_GUN"
+			return "" if run.selling or _hold_space(run) else "UI_CARD_HOLD_FULL"
 		"mod":
-			return run.selling or _hold_space(run)
+			return "" if run.selling or _hold_space(run) else "UI_CARD_HOLD_FULL"
 		"hold":
-			return run.selling or _fits(run, item)
-	return false
+			return "" if run.selling or _fits(run, item) else "UI_CARD_NO_SLOT"
+	return "UI_CARD_CANT"
 
 
 static func act(run: Run, option: String) -> bool:

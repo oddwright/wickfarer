@@ -90,27 +90,21 @@ static func _gear(run: Run, option: String, item: Dictionary) -> Dictionary:
 	var gun: bool = item.get("kind") == "weapon"
 	c.lines = _gun_lines(e) if gun else _module_lines(item)
 	var kind := _t("UI_CARD_GUN" if gun else "UI_CARD_MODULE")
-	var can := Market.can(run, option)
-	if option.begins_with("buy"):
-		var p := Market.price(run, item)
-		c.note = "%s, %d %s" % [kind, p, _t("UI_SCRAP")]
-		if run.scrap < p:
-			_refuse(c, _t("UI_CARD_SHORT") % [p - run.scrap, _t("UI_SCRAP")])
-		elif not can:
-			_refuse(c, _t("UI_CARD_NO_ROOM"))
-		else:
-			c.hint = _t("UI_CARD_BUY")
-		return c
 	var in_hold := option.begins_with("hold")
-	c.note = "%s, %s" % [kind, _t("UI_IN_HOLD" if in_hold else "UI_FITTED")]
-	if run.selling:
-		c.hint = _t("UI_CARD_SELL") % Market.sell_price(item)
-		if not can:
-			_refuse(c, _t("UI_CARD_LAST_GUN"))
-	elif can:
-		c.hint = _t("UI_CARD_FIT" if in_hold else "UI_CARD_UNFIT")
+	var p := Market.price(run, item)
+	if option.begins_with("buy"):
+		c.note = "%s, %d %s" % [kind, p, _t("UI_SCRAP")]
+		c.hint = _t("UI_CARD_BUY")
 	else:
-		_refuse(c, _t("UI_CARD_NO_SLOT" if in_hold else "UI_CARD_HOLD_FULL"))
+		c.note = "%s, %s" % [kind, _t("UI_IN_HOLD" if in_hold else "UI_FITTED")]
+		c.hint = _t("UI_CARD_FIT" if in_hold else "UI_CARD_UNFIT")
+		if run.selling:
+			c.hint = _t("UI_CARD_SELL") % Market.sell_price(item)
+	var why := Market.refusal(run, option)
+	if why == "UI_CARD_SHORT":
+		_refuse(c, _t(why) % [p - run.scrap, _t("UI_SCRAP")])
+	elif why != "":
+		_refuse(c, _t(why))
 	return c
 
 
@@ -143,14 +137,8 @@ static func _gun_lines(e: Dictionary) -> Array:
 ## The same words as the old one-line summary, a line each: gains, then costs.
 static func _module_lines(item: Dictionary) -> Array:
 	var out: Array = []
-	var e := Gear.entry(item)
-	for part: String in ["gain", "cost"]:
-		var fx: Dictionary = e.get(part, {})
-		for k: String in fx:
-			var key := "GEAR_%s_%s" % [part.to_upper(), k.to_upper()]
-			out.append(
-				[_t(key) % GearText.number(k, float(fx[k])), GAIN if part == "gain" else COST]
-			)
+	for fx: Array in GearText.module_effects(item):
+		out.append([fx[0], GAIN if fx[1] == "gain" else COST])
 	return out
 
 
@@ -164,4 +152,4 @@ static func _num(v: float) -> String:
 
 
 static func _t(key: String) -> String:
-	return TranslationServer.translate(key)
+	return GearText.tr_key(key)

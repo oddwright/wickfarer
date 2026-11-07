@@ -78,11 +78,23 @@ static func tap_to_look(t: SceneTree) -> void:
 	r.state = "wares"
 	_check(t, f.current(r) == "", "a new page has no card open")
 	_check(t, not f.tap(r, "buy:0"), "a ware opens its card")
-	_check(t, f.tap(r, "buy:0") and f.current(r) == "", "buying closes it")
+	_check(t, f.tap(r, "buy:0"), "a second tap buys it")
+	r.store_action("buy:0")
+	_check(t, f.current(r) != "buy:0" or r.stock.is_empty(), "the next ware needs its own look")
+	r.state = "guns"
+	r.ship.weapon_ids.resize(1)
+	_check(t, not f.tap(r, "wpn:0"), "the last gun opens its card")
+	var c := ItemCard.build(r, "wpn:0")
+	_check(t, not c.ok and c.hint == GearText.tr_key("UI_CARD_LAST_GUN"), "it says why it stays")
+	_check(t, f.tap(r, "wpn:0") and f.current(r) == "wpn:0", "a refused tap keeps the card")
 	r.state = "store"
 	f.tap(r, "repair")
 	r.at = "elsewhere"
 	_check(t, f.current(r) == "", "the next store opens with no card")
+	var again: Run = GEAR_TESTS._in_store(3)
+	f.tap(again, "repair")
+	again = GEAR_TESTS._in_store(3)
+	_check(t, f.current(again) == "", "a new run opens with no card")
 
 
 ## Beacons show what the player knows of them, and the key fits every screen

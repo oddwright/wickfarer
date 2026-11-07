@@ -10,6 +10,9 @@ const ICON := 7
 const GAP := 8  ## between key entries
 const ENTRIES: Array[String] = ["you", "next", "unknown", "store", "gate", "been", "hush"]
 
+## The palette key each kind of beacon wears, on the chart and in the key alike.
+const COLORS := {"store": "y", "gate": "w", "been": "e", "unknown": "f"}
+
 ## 7x7 grids; "k" pixels take the colour they are drawn in.
 const GRIDS := {
 	"you": ".......\nhh.....\n.hhh...\n.hvhhhh\n.hhh...\nhh.....\n.......",
@@ -32,14 +35,11 @@ static func icon_for(run: Run, n: Dictionary) -> String:
 static func color_for(run: Run, n: Dictionary, target: bool) -> Color:
 	if run.is_swallowed(n.id):
 		return Pixel.c("n")
-	match str(n.kind):
-		"store":
-			return Pixel.c("y")
-		"gate":
-			return Pixel.c("w")
+	if n.kind in ["store", "gate"]:
+		return key_color(str(n.kind))
 	if run.visited.has(n.id):
-		return Pixel.c("e")
-	return Pixel.c("h") if target else Pixel.c("f")
+		return key_color("been")
+	return Pixel.c("h") if target else key_color("unknown")
 
 
 ## Draws a key icon centred on c. "you" keeps its own colours.
@@ -58,14 +58,7 @@ static func draw_icon(ci: CanvasItem, key: String, c: Vector2i, col: Color) -> v
 
 ## The colour an icon wears in the key, matching the chart.
 static func key_color(key: String) -> Color:
-	match key:
-		"store":
-			return Pixel.c("y")
-		"gate":
-			return Pixel.c("w")
-		"been":
-			return Pixel.c("e")
-	return Pixel.c("f")
+	return Pixel.c(COLORS.get(key, COLORS.unknown))
 
 
 ## Lays the key out left to right in rows inside r, never across the fold.
