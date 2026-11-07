@@ -1,0 +1,46 @@
+{
+  "kindling": {
+    "name": "SIEGE_KINDLING",
+    "intro": "SIEGE_KINDLING_INTRO",
+    "maw": "hush_maw",
+    "chill_per_strength": 5.0,
+    "hull_per_wave": 1,
+    "swallow_per_strength": 0.5,
+    "kindle": {"goal": 100.0, "per_second": 1.0, "per_light": 8.0, "light_warmth": 25.0},
+    "phases": [
+      {
+        "name": "SIEGE_PHASE_TENDRILS",
+        "hint": "SIEGE_PHASE_TENDRILS_HINT",
+        "seconds": 70.0,
+        "first_wave": 4.0,
+        "wave_every": 9.0,
+        "gather": 5.0,
+        "strength": 3,
+        "kinds": {"chill": 1},
+        "targets": []
+      },
+      {
+        "name": "SIEGE_PHASE_SWALLOW",
+        "hint": "SIEGE_PHASE_SWALLOW_HINT",
+        "seconds": 80.0,
+        "first_wave": 3.0,
+        "wave_every": 9.0,
+        "gather": 6.0,
+        "strength": 3,
+        "kinds": {"chill": 1, "swallow": 2},
+        "targets": ["wards", "weapons", "helm", "engines", "mend"]
+      },
+      {
+        "name": "SIEGE_PHASE_KINDLING",
+        "hint": "SIEGE_PHASE_KINDLING_HINT",
+        "seconds": 0.0,
+        "first_wave": 5.0,
+        "wave_every": 8.0,
+        "gather": 5.0,
+        "strength": 4,
+        "kinds": {"chill": 1, "swallow": 1},
+        "targets": ["ember", "wards", "weapons", "mend"]
+      }
+    ]
+  }
+}

@@ -125,32 +125,16 @@ func _draw() -> void:
 				me.used_power(),
 				me.available_power(),
 				tr("UI_EVASION"),
-				me.evasion()
+				combat.evasion(0)
 			]
 		),
 		5.0,
 		quiet
 	)
-	_text(
-		Vector2(l.native.x - 34 - 200, 11),
-		(
-			"%s   %s %d/%d"
-			% [tr(ContentDB.ships[foe.content_id].name), tr("UI_HULL"), foe.hull, foe.max_hull]
-		),
-		6.5,
-		ink,
-		HORIZONTAL_ALIGNMENT_RIGHT,
-		200
-	)
-	var ev := foe.evasion()
-	_text(
-		Vector2(l.native.x - 34 - 200, 37),
-		"%s %d%%" % [tr("UI_EVASION"), ev],
-		5.0,
-		quiet,
-		HORIZONTAL_ALIGNMENT_RIGHT,
-		200
-	)
+	if combat.siege:
+		SiegeView.draw_text(self, combat, l)
+	else:
+		_draw_foe(combat, l)
 	for b in l.buttons:
 		var r: Rect2i = b.rect
 		match b.kind:
@@ -175,6 +159,8 @@ func _draw() -> void:
 					HORIZONTAL_ALIGNMENT_CENTER,
 					r.size.x
 				)
+			"kindle":
+				SiegeView.draw_button_text(self, combat, r)
 			"ward":
 				_text(Vector2(r.position.x + 17, r.position.y + 25), tr("UI_WARD_UP"), 4.5, quiet)
 				_text(Vector2(r.position.x + 17, r.position.y + 35), tr("UI_WARD_LOW"), 4.5, quiet)
@@ -204,8 +190,12 @@ func _draw() -> void:
 		msg = tr("UI_MOVE_PROMPT")
 	elif main.paused:
 		msg = tr(main.pause_reason) if main.pause_reason != "" else tr("UI_PAUSED")
+	elif combat.siege:
+		msg = SiegeView.hint(combat)
 	elif combat.time() < 15.0:
 		msg = tr("UI_HINT")
+	else:
+		msg = rule_text(combat)  # a Warden's twist, once the hint has gone
 	if msg != "" and combat.state == "fighting" and not main.coach_speaking():
 		var mr := l.message_rect
 		_text(
@@ -230,6 +220,8 @@ func _draw() -> void:
 		)
 	if combat.state != "fighting":
 		var title := tr("UI_WON") if combat.state == "won" else tr("UI_LOST")
+		if combat.siege and combat.state == "won":
+			title = tr("UI_KINDLED")
 		_text(
 			Vector2(0, l.native.y / 2 - 12),
 			title,
@@ -259,6 +251,33 @@ func _draw() -> void:
 			_draw_promotions(me, Vector2i(0, ar.end.y + 22), l.native.x)
 
 
+## The enemy's name, hull and evasion, top right.
+func _draw_foe(combat: Combat, l: HudLayout) -> void:
+	var foe := combat.enemy()
+	var ink := Pixel.c("h")
+	var quiet := Pixel.c("g")
+	_text(
+		Vector2(l.native.x - 34 - 200, 11),
+		(
+			"%s   %s %d/%d"
+			% [tr(ContentDB.ships[foe.content_id].name), tr("UI_HULL"), foe.hull, foe.max_hull]
+		),
+		6.5,
+		ink,
+		HORIZONTAL_ALIGNMENT_RIGHT,
+		200
+	)
+	var ev := combat.evasion(1)
+	_text(
+		Vector2(l.native.x - 34 - 200, 37),
+		"%s %d%%" % [tr("UI_EVASION"), ev],
+		5.0,
+		quiet,
+		HORIZONTAL_ALIGNMENT_RIGHT,
+		200
+	)
+
+
 ## The crew who earned a rank this fight; it is theirs once the player continues.
 func _draw_promotions(me: Ship, at: Vector2i, width: int) -> void:
 	var y := at.y
@@ -270,3 +289,16 @@ func _draw_promotions(me: Ship, at: Vector2i, width: int) -> void:
 		)
 		_text(Vector2(at.x, y), line, 5.0, Pixel.c("v"), HORIZONTAL_ALIGNMENT_CENTER, width)
 		y += 8
+
+
+## The Warden's rule, for the message line; "" in an ordinary fight. Each rule's
+## line is RULE_<RULE>; the tide's counts down to its next turn.
+static func rule_text(combat: Combat) -> String:
+	if combat.rule() == "":
+		return ""
+	var line := TranslationServer.translate(rule_key(combat.rule()))
+	return line % ceili(combat.tide_eta()) if combat.rule() == "tide" else line
+
+
+static func rule_key(rule: String) -> String:
+	return "RULE_" + rule.to_upper()

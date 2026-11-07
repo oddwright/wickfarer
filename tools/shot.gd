@@ -1,12 +1,15 @@
 extends SceneTree
 ## Screenshot one screen at a given window size (needs a display; use xvfb-run).
 ## godot --path . -s tools/shot.gd -- <width> <height> <out.png> [ticks] [screen] [ui size]
-## screen is fight (default), fight:<player ship id>, chart, event, event:<event id>, store,
-## refit, wares, modules, guns or selling (store gear pages with some gear aboard), reach_done,
+## screen is fight (default), fight:<player ship id>, vs:<enemy ship id> (the Tallow
+## Wren against any enemy or Warden), chart, event, event:<event id>, store,
+## refit, wares, modules, guns or selling (store gear pages with some gear aboard),
+## store:<faction>:<standing>, reach_done,
 ## won or lost, roster or roster_pick (the crew roster over a fight,
 ## picker shut or open), or a menu over a fight: title, pause, options, confirm, depth or
-## log, or ship select from the title: ship or ship:<ship id> (shown unlocked). ui size is the
-## options setting, a step from auto (-2 to 1); it is not saved.
+## log, or ship select from the title: ship or ship:<ship id> (shown unlocked), or siege (the
+## Kindling, played by the autopilot for [ticks], then on to the next gathering wave). ui size
+## is the options setting, a step from auto (-2 to 1); it is not saved.
 
 var frames := 0
 var main: Node
@@ -75,8 +78,14 @@ func _set_up() -> void:
 			run.state = which
 		"fight":
 			run._start_fight("ashmarket_cutter")
+	if which.begins_with("store:"):  # store:<faction>:<standing>
+		run.state = "store"
+		run.store_faction = which.get_slice(":", 1)
+		run.standing.change(run.store_faction, int(which.get_slice(":", 2)))
 	if which.begins_with("fight:"):
 		run._start_fight("ashmarket_cutter")
+	if which.begins_with("vs:"):  # unboosted, as the hull is in ships.json
+		run._start_fight(which.trim_prefix("vs:"), 0, "", false)
 	if which in ["title", "pause", "options", "confirm", "depth", "log", "roster", "roster_pick"]:
 		run._start_fight("ashmarket_cutter")
 	if which.begins_with("ship"):
@@ -86,8 +95,14 @@ func _set_up() -> void:
 			main.profile.unlocked.append(str(ContentDB.ships[id].unlock))
 		main.open_menu("ship")
 		return
+	if which == "siege":
+		run = Run.create(4242, hull, "reach_4")
+		run.light = 5
+		Autopilot.arrive_at_gate(run)
 	main._set_run(run)
-	if main.combat:
+	if which == "siege":
+		_play_siege(main.combat)
+	elif main.combat:
 		_play_fight(main.combat)
 	match which:
 		"title", "pause":
@@ -131,6 +146,20 @@ func _play_fight(c: Combat) -> void:
 	for i in 12:
 		c.tick()
 	main.selected_weapon = 1
+
+
+func _play_siege(c: Combat) -> void:
+	var pilot := Autopilot.new()
+	for i in ticks:
+		pilot.combat_step(c)
+		c.tick()
+		main._on_events(c.events)
+	for i in 400:  # on to a wave half gathered, so the shot shows the threat
+		if c.siege.gathering() and c.siege.gather < c.siege.gather_total * 0.6:
+			break
+		pilot.combat_step(c)
+		c.tick()
+		main._on_events(c.events)
 
 
 func _open_roster(picking: bool) -> void:

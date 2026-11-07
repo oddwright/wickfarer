@@ -175,15 +175,33 @@ func _button(r: Rect2i, label: String, enabled := true, note := "", short := fal
 
 func _draw_event(run: Run, l: RunLayout) -> void:
 	var ev := run.event()
-	_story(l, tr(str(ev.get("text", ""))))
+	var story := tr(str(ev.get("text", "")))
+	var faction := str(ev.get("faction", ""))
+	if faction != "":
+		story = _standing_line(run, faction) + " " + story
+	_story(l, story)
 	var choices: Array = ev.get("choices", [])
 	for b in l.buttons:
 		var i := int(b.id)
 		if i >= choices.size():
 			continue
 		var ok := run.can_choose(i)
-		var needs := _needs(choices[i].get("requires", {}))
-		_button(b.rect, tr(str(choices[i].text)), ok, needs, not ok)
+		var note := _needs(choices[i].get("requires", {}))
+		var pct := run.check_chance(i)
+		if pct >= 0:  # the odds are shown, never hidden
+			var skill := tr(str(Skills.spec(str(choices[i].check.skill)).name))
+			note = _join(note, tr("UI_CHECK") % [skill, pct])
+		_button(b.rect, tr(str(choices[i].text)), ok, note, not ok)
+
+
+## "Ashmarket: Wary." for the faction an event or store belongs to.
+func _standing_line(run: Run, faction: String) -> String:
+	var fac := tr(str(Standing.spec(faction).name))
+	return tr("UI_REP_LINE") % [fac, tr(str(run.standing.tier(faction).get("name", "")))]
+
+
+static func _join(a: String, b: String) -> String:
+	return b if a == "" else a + ", " + b
 
 
 ## A short note of what a choice needs, so locked choices explain themselves.
@@ -195,11 +213,18 @@ func _needs(req: Dictionary) -> String:
 		parts.append("%d %s" % [int(req.light), tr("UI_LIGHT")])
 	if req.has("species"):
 		parts.append(tr(str(ContentDB.species[str(req.species)].name)))
+	if req.has("skill"):
+		var rank := tr(Skills.rank_name(int(req.get("rank", 1))))
+		parts.append(tr("UI_NEED_SKILL") % [rank, tr(str(Skills.spec(str(req.skill)).name))])
+	var rep: Dictionary = req.get("rep", {})
+	for f: String in rep:
+		var tier := tr(str(Standing.tier_for(int(rep[f])).get("name", "")))
+		parts.append(tr("UI_NEED_REP") % [tier, tr(str(Standing.spec(f).name))])
 	return ", ".join(parts)
 
 
 func _draw_store(run: Run, l: RunLayout) -> void:
-	_story(l, tr("UI_STORE_TEXT"))
+	_story(l, _store_text(run))
 	var opts := run.store_options()
 	for b in l.buttons:
 		var option := opts[int(b.id)]
@@ -216,6 +241,22 @@ func _draw_store(run: Run, l: RunLayout) -> void:
 				_button(
 					b.rect, tr("UI_STORE_" + option.to_upper()), run.can_buy(option), note, short
 				)
+
+
+## The price board, and if the store is a faction's, how that faction's view
+## of the ship moves its prices.
+func _store_text(run: Run) -> String:
+	var text := tr("UI_STORE_TEXT")
+	var f := run.store_faction
+	if f == "":
+		return text
+	text = _standing_line(run, f) + " " + text
+	var delta := run.standing.price_delta(f)
+	if delta > 0:
+		text += " " + tr("UI_REP_PRICE_UP") % delta
+	elif delta < 0:
+		text += " " + tr("UI_REP_PRICE_DOWN") % -delta
+	return text
 
 
 ## One button per system the dock can raise, then Stoke the Ember, then Back.
@@ -256,6 +297,18 @@ func _draw_stoke(run: Run, r: Rect2i) -> void:
 	_button(r, tr("UI_STOKE"), run.can_stoke(), "%d %s" % [p, tr("UI_LIGHT")], run.light < p)
 
 
+## Every line the last fight left (standing, sung-away Light, gear found), each
+## read as a sentence, ahead of the Gate screen's own text.
+static func _fight_news(run: Run) -> String:
+	var out := ""
+	for m in run.messages:
+		var line := GearText.message(m)
+		if not line.ends_with(".") and not line.ends_with("!"):
+			line += "."
+		out += line + " "
+	return out
+
+
 func _draw_next(run: Run, l: RunLayout) -> void:
 	var title := ""
 	var body := ""
@@ -263,10 +316,13 @@ func _draw_next(run: Run, l: RunLayout) -> void:
 	match main.run_screen():
 		"outcome":
 			body = tr(run.outcome)
+			for m in run.messages:  # how the factions took it
+				body += " " + tr(m)
 		"reach_done":
 			title = tr("UI_REACH_DONE_TITLE")
 			var ahead := tr(str(ContentDB.reaches[str(run.reach().next)].name))
 			body = tr("UI_REACH_DONE") + " " + tr("UI_REACH_NEXT") % ahead
+			body = _fight_news(run) + body  # what the Warden fight cost or brought
 			label = "UI_JUMP_THROUGH"
 		"won":
 			title = tr("UI_RUN_WON_TITLE")

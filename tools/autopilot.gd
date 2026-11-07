@@ -45,6 +45,8 @@ const LIGHT_VALUE := 5.0
 const HUSH_VALUE := 6.0  ## per unit of Hush: about two-thirds of a jump of lead lost
 const FIGHT_HULL_COST := 4.0  ## hull a fight usually costs, before the Reach's boost
 
+const SIEGE_TICKS := 8000
+
 var profile := "novice"
 var pilot := CombatAI.new()
 
@@ -65,7 +67,10 @@ func is_skilled() -> bool:
 
 ## One fight tick's worth of decisions. Call it before every Combat.tick().
 func combat_step(c: Combat) -> void:
-	if is_skilled():
+	if c.siege != null:
+		if c.tick_count % 10 == 0:
+			_siege_step(c)  # both profiles play the Kindling the same way for now
+	elif is_skilled():
 		_skilled_step(c)
 	elif c.tick_count % 10 == 0:
 		_novice_step(c)
@@ -323,6 +328,31 @@ func _nearest(me: Ship, crew: Array[Crew], room_id: String) -> Crew:
 	return best
 
 
+## Puts a run on its Reach's Gate and arrives there, as a jump would: for tests
+## and tools that start at the Gate (the Kindling, a Reach's end).
+static func arrive_at_gate(run: Run) -> void:
+	for n in run.chart.nodes:
+		if n.kind == "gate":
+			run.at = n.id
+	run._arrive()
+
+
+## The Kindling: shoot the gathering knot, ward the deck it will strike, mend
+## what it swallows, and burn every Light into the Cradle once that is allowed.
+func _siege_step(c: Combat) -> void:
+	var sg := c.siege
+	var me := c.player()
+	if sg.gathering():
+		for i in me.weapon_ids.size():
+			if me.weapon_target[i] != sg.knot:
+				c.apply({"type": "aim", "weapon": i, "room": sg.knot})
+		if me.ward_deck != sg.target_deck and me.max_ward_layers() > 0:
+			c.apply({"type": "ward_deck", "deck": sg.target_deck})
+	while sg.can_kindle():
+		c.apply({"type": "kindle"})
+	pilot._crew(c, me, 0)
+
+
 # ---------------------------------------------------------------- runs
 
 
@@ -334,7 +364,11 @@ func play(run: Run, max_steps := 1200, max_fight_ticks := 6000) -> String:
 				run.jump(_pick_jump(run))
 			"fight":
 				var ticks := 0
-				while run.combat.state == "fighting" and ticks < max_fight_ticks:
+				# The Kindling runs four minutes or more: longer than a fight's cap.
+				var cap := (
+					maxi(max_fight_ticks, SIEGE_TICKS) if run.combat.siege else max_fight_ticks
+				)
+				while run.combat.state == "fighting" and ticks < cap:
 					combat_step(run.combat)
 					run.combat.tick()
 					ticks += 1

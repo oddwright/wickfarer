@@ -17,7 +17,10 @@ const PROFILE_TESTS = preload("res://tests/profile_tests.gd")
 const RESUME_TESTS = preload("res://tests/resume_tests.gd")
 const TUTORIAL_TESTS = preload("res://tests/tutorial_tests.gd")
 const AUTOPILOT_TESTS = preload("res://tests/autopilot_tests.gd")
+const FACTION_TESTS = preload("res://tests/faction_tests.gd")
 const GEAR_TESTS = preload("res://tests/gear_tests.gd")
+const WARDEN_TESTS = preload("res://tests/warden_tests.gd")
+const SIEGE_TESTS = preload("res://tests/siege_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -57,6 +60,7 @@ func _init() -> void:
 		"test_events_apply_and_respect_requirements",
 		"test_store_and_fight_rewards",
 		"test_beacon_openers",
+		"test_faction_standing_and_skill_checks",
 		"test_both_ships_dying_together_is_a_loss",
 		"test_event_results_and_messages_survive_saves",
 		"test_run_saves_and_resumes_at_every_step",
@@ -87,6 +91,8 @@ func _init() -> void:
 		"test_progression",
 		"test_gear",
 		"test_tutorial",
+		"test_enemy_factions_and_wardens",
+		"test_kindling_siege",
 	]:
 		current = t
 		call(t)
@@ -540,7 +546,7 @@ func test_event_results_and_messages_survive_saves() -> void:
 	f.combat.enemy().hull = 0
 	f.combat.tick()
 	f.finish_fight()
-	check(f.messages.is_empty(), "old jump news doesn't come back after a fight")
+	check(not f.messages.has("UI_HUSH_HIT"), "old jump news doesn't come back after a fight")
 	check(f.store_items() == ["repair", "light"], "the Reach lists what its stores sell")
 
 
@@ -594,6 +600,19 @@ func test_beacon_openers() -> void:
 	STORY_TESTS.lead_in(self)
 	STORY_TESTS.effects_checked(self)
 	STORY_TESTS.text_fits(self, SCREEN_TESTS.variants(SCREENS))
+
+
+## Reputation, story flags and crew skill checks; see tests/faction_tests.gd.
+func test_faction_standing_and_skill_checks() -> void:
+	FACTION_TESTS.standing_rules(self)
+	FACTION_TESTS.store_prices(self)
+	FACTION_TESTS.events_and_fights(self)
+	FACTION_TESTS.ambush_weights(self)
+	FACTION_TESTS.story_gates(self)
+	FACTION_TESTS.skill_checks(self)
+	FACTION_TESTS.saves_keep_standing(self)
+	FACTION_TESTS.content_checked(self)
+	FACTION_TESTS.fixture_keeps_standing(self)
 
 
 func test_run_saves_and_resumes_at_every_step() -> void:
@@ -650,6 +669,20 @@ func test_run_screens_on_every_screen() -> void:
 				if mode != "next" and (b.rect as Rect2i).intersects(l.text_rect):
 					probs.append("%s button covers the text" % mode)
 		check(probs.is_empty(), "%s run screens: %s" % [name, probs.slice(0, 4)])
+
+
+## Faction hulls, captains' tactics, Reach Wardens and the intent readout:
+## see tests/warden_tests.gd.
+func test_enemy_factions_and_wardens() -> void:
+	WARDEN_TESTS.factions_in_the_reaches(self)
+	WARDEN_TESTS.weapon_eta(self)
+	WARDEN_TESTS.volley_tactic(self)
+	WARDEN_TESTS.focus_tactic(self)
+	WARDEN_TESTS.warden_rules(self)
+	WARDEN_TESTS.light_drain(self)
+	WARDEN_TESTS.warden_holds_the_gate(self)
+	WARDEN_TESTS.intent_readout(self)
+	WARDEN_TESTS.enemy_crew_drawn_in_place(self)
 
 
 ## Reaches, refits and stoking (tests/progress_tests.gd), and the profile
@@ -929,3 +962,18 @@ func _test_tutorial_flow() -> void:
 ## The crew roster, driven through the real scene. Private like the tutorial flow.
 func _test_crew_roster_flow() -> void:
 	CREW_TESTS.roster_flow(self)
+
+
+## The Kindling boss siege; see tests/siege_tests.gd for each check.
+func test_kindling_siege() -> void:
+	SIEGE_TESTS.starts_at_the_last_gate(self)
+	SIEGE_TESTS.phases_follow_the_clock(self)
+	SIEGE_TESTS.waves_telegraph_and_land(self)
+	SIEGE_TESTS.wards_soak_waves(self)
+	SIEGE_TESTS.guns_break_the_knot(self)
+	SIEGE_TESTS.swallow_knocks_out_a_system(self)
+	SIEGE_TESTS.kindling_wins_the_run(self)
+	SIEGE_TESTS.ember_share_slows_kindling(self)
+	SIEGE_TESTS.siege_resumes_identically(self)
+	SIEGE_TESTS.autopilot_finishes_sieges(self)
+	SIEGE_TESTS.content_is_checked(self)

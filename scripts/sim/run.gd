@@ -42,6 +42,10 @@ var seen_events: Array[String] = []
 var fight_bonus_scrap: int = 0
 var messages: Array[String] = []  ## translation keys of what the last jump did, newest last
 var outcome: String = ""  ## an event result the player hasn't read yet (a translation key)
+var standing: Standing  ## each faction's view of the ship
+var flags: Array[String] = []  ## story beats this run has reached, set by event outcomes
+var store_faction: String = ""  ## whose store the ship is docked at; "" for an independent one
+var fight_faction: String = ""  ## whose ship the current fight is against; "" for nobody's
 ## Profile unlocks open when the run began: they decide which gear can turn up.
 var unlocked: Array[String] = []
 var hold: Array[Dictionary] = []  ## spare gear, {kind: "module"|"weapon", id}
@@ -71,6 +75,7 @@ static func create(
 	r.scrap = maxi(0, int(r.reach().start.scrap) + int(r.mod("start_scrap")))
 	r.light = maxi(0, int(r.reach().start.light) + int(r.mod("start_light")))
 	r.hush = float(r.reach().hush_start)
+	r.standing = Standing.fresh()
 	return r
 
 
@@ -145,15 +150,39 @@ func jump(target: String) -> bool:
 ## this beacon's kind. Its choices lead into, or around, the fight or store.
 func _arrive() -> void:
 	var kind := str(here().kind)
+	if kind == "gate" and str(reach().get("boss", "")) != "":
+		_start_siege(str(reach().boss))
+		return
 	if kind == "gate":
-		reaches_crossed += 1
-		state = "reach_done" if str(reach().get("next", "")) != "" else "won"
+		# The Gate's dock patches the hull on arrival, so a Warden meets a ship fit to
+		# fight. A Reach with a Warden holds its Gate: it is crossed once it is beaten.
+		_patch_at_gate()
+		var warden := str(reach().get("warden", ""))
+		if warden != "":
+			_start_fight(warden, 0, "", false)
+			return
+		_cross_gate()
 		return
 	event_id = _pick_event(kind)
 	if event_id != "":
 		state = "event"
 		return
 	_skip_story(kind)
+
+
+## The Gate's dock patches some hull.
+func _patch_at_gate() -> void:
+	ship.hull = mini(ship.max_hull, ship.hull + int(reach().get("gate_repair", 0)))
+
+
+func _cross_gate() -> void:
+	reaches_crossed += 1
+	state = "reach_done" if str(reach().get("next", "")) != "" else "won"
+
+
+## The fight under way is this Reach's Warden, at the Gate.
+func is_warden_fight() -> bool:
+	return state == "fight" and str(here().kind) == "gate"
 
 
 ## No story for this beacon: fall straight into what's there.
@@ -179,8 +208,6 @@ func next_reach() -> bool:
 	var next := str(reach().get("next", ""))
 	if state != "reach_done" or next == "":
 		return false
-	# The Gate's dock patches some hull on the way through.
-	ship.hull = mini(ship.max_hull, ship.hull + int(reach().get("gate_repair", 0)))
 	reach_id = next
 	chart = StarChart.generate(reach(), rng.stream("map"))
 	at = chart.start_id()
@@ -209,15 +236,45 @@ func is_swallowed(id: String) -> bool:
 # ---------------------------------------------------------------- fights
 
 
-func _start_fight(enemy: String, enemy_hull := 0) -> void:
+## faction "" means the enemy ship's own faction, if it has one. A Warden is
+## built for its Reach, so it skips the Reach's enemy boost (boosted false); the
+## Hush Depth's extra hull still applies to every enemy.
+func _start_fight(enemy: String, enemy_hull := 0, faction := "", boosted := true) -> void:
 	if enemy == REACH_ENEMY:
-		var pool: Array = reach().enemies
-		enemy = str(pool[rng.stream("encounters").randi_range(0, pool.size() - 1)])
+		enemy = _pick_enemy(faction)
+	fight_faction = faction if faction != "" else str(ContentDB.ships[enemy].get("faction", ""))
 	combat = Combat.from_ship(rng.stream("combat").randi(), ship, enemy)
 	var foe := combat.enemy()
-	foe.boost(reach().get("enemy_boost", {}))
+	if boosted:
+		foe.boost(reach().get("enemy_boost", {}))
 	foe.boost({"hull": int(mod("enemy_hull"))})
 	foe.hull = clampi(foe.hull + enemy_hull, 1, foe.max_hull)
+	state = "fight"
+
+
+## A ship from the Reach's pool. A faction that dislikes the ship sends its
+## hulls more often, and one that trusts it sends them less. A fight an event
+## gives to a faction draws only that faction's hulls, if the Reach has any.
+func _pick_enemy(faction := "") -> String:
+	var pool: Array = reach().enemies
+	if faction != "":
+		var own := pool.filter(
+			func(id: Variant) -> bool:
+				return str(ContentDB.ships[str(id)].get("faction", "")) == faction
+		)
+		pool = own if not own.is_empty() else pool
+	var weights: Array[int] = []
+	for id: Variant in pool:
+		weights.append(standing.ambush(str(ContentDB.ships[str(id)].get("faction", ""))))
+	return str(pool[maxi(0, RngStreams.weighted_pick(weights, rng.stream("encounters")))])
+
+
+## The last Reach's Gate opens on the Kindling: the Hush itself, not a ship to
+## beat. The run's Light goes into the fight, to be burned there for the Cradle.
+func _start_siege(siege_id: String) -> void:
+	var sd: Dictionary = ContentDB.sieges[siege_id]
+	combat = Combat.from_ship(rng.stream("combat").randi(), ship, str(sd.maw))
+	combat.siege = Siege.create(siege_id, light)
 	state = "fight"
 
 
@@ -226,9 +283,20 @@ func finish_fight() -> bool:
 	if state != "fight" or combat == null or combat.state == "fighting":
 		return false
 	ship = combat.player()
+	if combat.siege:
+		light = combat.siege.light  # whatever wasn't burned for the Cradle
 	if combat.state == "lost" or ship.is_dead():
 		state = "lost"
 		combat = null
+		return true
+	if combat.siege:
+		# Kindled: the Gate is crossed and the run is won. No loot past the end.
+		reaches_crossed += 1
+		fights_won += 1
+		ship.recover_after_fight()
+		combat = null
+		messages.clear()
+		state = "won"
 		return true
 	var loot := rng.stream("loot")
 	var reward: Dictionary = reach().fight_reward
@@ -237,17 +305,27 @@ func finish_fight() -> bool:
 	_gain_scrap(maxi(0, won_scrap + int(mod("fight_scrap"))) + fight_bonus_scrap)
 	light += loot.randi_range(int(reward.light[0]), int(reward.light[1]))
 	light += int(ship.mod("fight_light"))
+	# What the Choir sang out of the Ember is gone once the fight ends.
+	var sung := clampi(combat.light_drained[0], 0, maxi(0, light))
+	light -= sung
 	fights_won += 1
 	fight_bonus_scrap = 0
 	messages.clear()
+	messages.append_array(standing.fight_won(fight_faction))
+	fight_faction = ""
+	if sung > 0:
+		messages.append("UI_LIGHT_SUNG")
 	var gear_roll := rng.stream("gear")
 	if gear_roll.randf() < float(reward.get("gear_chance", 0.0)):
 		var found := Gear.pick(gear_roll, unlocked)
 		if not found.is_empty():
 			gain(found)
 	ship.recover_after_fight()
+	var gate := is_warden_fight()
 	combat = null
 	state = "chart"
+	if gate:
+		_cross_gate()
 	return true
 
 
@@ -262,7 +340,8 @@ func _pick_event(kind: String) -> String:
 	var ids: Array[String] = []
 	var seen: Array[String] = []
 	for eid: String in ContentDB.events:
-		if str(ContentDB.events[eid].get("beacon", "event")) == kind:
+		var e: Dictionary = ContentDB.events[eid]
+		if str(e.get("beacon", "event")) == kind and EventRules.is_open(self, e):
 			(seen if seen_events.has(eid) else ids).append(eid)
 	if ids.is_empty() and not seen.is_empty():
 		var last := ""
@@ -291,23 +370,20 @@ func can_choose(i: int) -> bool:
 	var choices: Array = event().get("choices", [])
 	if state != "event" or i < 0 or i >= choices.size():
 		return false
-	var req: Dictionary = choices[i].get("requires", {})
-	if scrap < int(req.get("scrap", 0)) or light < int(req.get("light", 0)):
-		return false
-	if req.has("species"):
-		var found := false
-		for c in ship.alive_crew():
-			if c.species == req.species:
-				found = true
-		if not found:
-			return false
-	return true
+	return EventRules.meets(self, choices[i].get("requires", {}))
+
+
+## The percent chance choice i's crew skill check passes, or -1 if it has none.
+func check_chance(i: int) -> int:
+	var choices: Array = event().get("choices", [])
+	return EventRules.chance(self, choices[i]) if i >= 0 and i < choices.size() else -1
 
 
 func choose(i: int) -> bool:
 	if not can_choose(i):
 		return false
-	var outcomes: Array = event().choices[i].outcomes
+	var ev := event()
+	var outcomes := EventRules.outcomes_for(self, ev.choices[i])
 	var weights: Array[int] = []
 	for o: Dictionary in outcomes:
 		weights.append(int(o.weight))
@@ -318,11 +394,12 @@ func choose(i: int) -> bool:
 	outcome = str(picked.text)
 	event_id = ""
 	state = "chart"
-	_apply(picked.get("effects", {}))
+	_apply(picked.get("effects", {}), str(ev.get("faction", "")))
 	return true
 
 
-func _apply(fx: Dictionary) -> void:
+## faction is the event's own: a store or fight the event opens is that faction's.
+func _apply(fx: Dictionary, faction := "") -> void:
 	_gain_scrap(int(fx.get("scrap", 0)))
 	light = maxi(0, light + int(fx.get("light", 0)))
 	ship.hull = clampi(ship.hull + int(fx.get("hull", 0)), 0, ship.max_hull)
@@ -332,6 +409,12 @@ func _apply(fx: Dictionary) -> void:
 		for c in ship.alive_crew():
 			# Events can hurt crew but never kill them outright.
 			c.hp = Q.q(clampf(c.hp + heal, 1.0, c.max_hp))
+	var rep: Dictionary = fx.get("rep", {})
+	for f: String in rep:
+		messages.append_array(Standing.news_for(f, standing.change(f, int(rep[f]))))
+	for f in EventRules.names(fx.get("flag", [])):
+		if not flags.has(f):
+			flags.append(f)
 	if ship.hull <= 0:
 		state = "lost"
 		return
@@ -345,8 +428,11 @@ func _apply(fx: Dictionary) -> void:
 				gain(item)
 	if fx.has("fight"):
 		fight_bonus_scrap = int(fx.get("fight_bonus_scrap", 0))
-		_start_fight(str(fx.fight), int(fx.get("enemy_hull", 0)))
+		# A fight an event starts is the event's faction's, unless it names another.
+		var whose := str(fx.get("fight_faction", faction))
+		_start_fight(str(fx.fight), int(fx.get("enemy_hull", 0)), whose)
 	elif fx.get("store", false):
+		store_faction = faction
 		Market.open(self)
 
 
@@ -355,6 +441,7 @@ func read_outcome() -> bool:
 	if outcome == "":
 		return false
 	outcome = ""
+	messages.clear()  # its standing news was on the result screen; the chart starts fresh
 	return true
 
 
@@ -401,6 +488,7 @@ func leave_store() -> bool:
 	if state != "store":
 		return false
 	messages.clear()
+	store_faction = ""
 	stock.clear()
 	selling = false
 	state = "chart"
@@ -501,10 +589,13 @@ func refit_price(sys: String) -> int:
 	return marked_up(int(prices[ship.system_room(sys).level - 1]))
 
 
-## A store or refit price with the Hush Depth's markup. Only a real price is
-## marked up: -1 (not for sale) and 0 (dropped by the Reach) stay as they are.
+## A store or refit price with the Hush Depth's markup and the store's faction's
+## view of the ship. Only a real price changes: -1 (not for sale) and 0 (dropped
+## by the Reach) stay as they are, and a friendly discount never makes one free.
 func marked_up(p: int) -> int:
-	return p + int(mod("store_markup")) if p > 0 else p
+	if p <= 0:
+		return p
+	return maxi(1, p + int(mod("store_markup")) + standing.price_delta(store_faction))
 
 
 func can_refit(sys: String) -> bool:
@@ -569,6 +660,10 @@ func to_dict() -> Dictionary:
 		"seen_events": Array(seen_events),
 		"fight_bonus_scrap": fight_bonus_scrap,
 		"messages": Array(messages),
+		"standing": standing.to_dict(),
+		"flags": Array(flags),
+		"store_faction": store_faction,
+		"fight_faction": fight_faction,
 		"unlocked": Array(unlocked),
 		"hold": hold.duplicate(true),
 		"stock": stock.duplicate(true),
@@ -602,6 +697,11 @@ static func from_dict(d: Dictionary) -> Run:
 	r.jumps = int(d.jumps)
 	r.event_id = str(d.event)
 	r.outcome = str(d.get("outcome", ""))
+	r.standing = Standing.from_dict(d.get("standing", {}))
+	for f in d.get("flags", []):
+		r.flags.append(str(f))
+	r.store_faction = str(d.get("store_faction", ""))
+	r.fight_faction = str(d.get("fight_faction", ""))
 	_load_gear(r, d)
 	if r.state == "event" and not ContentDB.events.has(r.event_id):
 		# The event was removed or renamed in an update; don't strand the save

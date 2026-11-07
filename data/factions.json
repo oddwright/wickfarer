@@ -1,0 +1,66 @@
+{
+  "range": [
+    -5,
+    5
+  ],
+  "tiers": [
+    {
+      "at_least": -5,
+      "name": "REP_HOSTILE",
+      "price": 2,
+      "ambush": 4
+    },
+    {
+      "at_least": -2,
+      "name": "REP_WARY",
+      "price": 1,
+      "ambush": 3
+    },
+    {
+      "at_least": 0,
+      "name": "REP_NEUTRAL",
+      "price": 0,
+      "ambush": 2
+    },
+    {
+      "at_least": 2,
+      "name": "REP_TRUSTED",
+      "price": -1,
+      "ambush": 1
+    },
+    {
+      "at_least": 4,
+      "name": "REP_SWORN",
+      "price": -2,
+      "ambush": 1
+    }
+  ],
+  "fight_won": -1,
+  "rival_won": 1,
+  "factions": {
+    "tidewarden": {
+      "name": "FAC_TIDEWARDEN",
+      "start": 0,
+      "rival": "ashmarket",
+      "up": "REP_UP_TIDEWARDEN",
+      "down": "REP_DOWN_TIDEWARDEN",
+      "beaten": "REP_BEATEN_TIDEWARDEN"
+    },
+    "ashmarket": {
+      "name": "FAC_ASHMARKET",
+      "start": 0,
+      "rival": "tidewarden",
+      "up": "REP_UP_ASHMARKET",
+      "down": "REP_DOWN_ASHMARKET",
+      "beaten": "REP_BEATEN_ASHMARKET"
+    },
+    "choir": {
+      "name": "FAC_CHOIR",
+      "start": 0,
+      "rival": "",
+      "up": "REP_UP_CHOIR",
+      "down": "REP_DOWN_CHOIR",
+      "beaten": "REP_BEATEN_CHOIR"
+    }
+  }
+}

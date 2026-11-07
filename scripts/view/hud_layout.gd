@@ -13,8 +13,11 @@ const SMALL_W := 54
 const CREW_W := 34  ## the Crew and Muster buttons
 const CREW_H := 30
 const CREW_X := 128  ## clear of the longest ship name and hull count in the top bar
+const KINDLE_W := 54
 const BAR_H := 40  ## a ship's status lines: name and hull, hull pips, reactor, power
 const MSG_H := 24  ## Tall: three lines of the hint between the player ship and the buttons
+const INTENT_LINE := 7  ## one line of the enemy's intent, under its status lines
+const INTENT_W := 200
 
 var kind: String
 var native: Vector2i
@@ -32,6 +35,9 @@ var message_rect: Rect2i  ## where prompts and hints are written
 var player_bar_y := 0
 ## Opens the pause menu; kept out of buttons, which are the fight controls.
 var menu_rect: Rect2i
+## Where the enemy's intent is listed (one line per gun, and the fight's rule): under
+## its status lines and over its hull, as many lines as fit. Drawn by IntentLayer.
+var intent_rect: Rect2i
 
 
 static func build(
@@ -41,7 +47,8 @@ static func build(
 	systems: Array[String],
 	weapon_count: int,
 	player_used := Rect2i(),
-	enemy_used := Rect2i()
+	enemy_used := Rect2i(),
+	siege := false
 ) -> HudLayout:
 	## player_used and enemy_used are the non-empty part of each frame; empty means all of it.
 	var pu := player_used if player_used.has_area() else Rect2i(Vector2i.ZERO, player_frame)
@@ -105,7 +112,38 @@ static func build(
 		l.message_rect = Rect2i(4, msg_top, w - 8, row2 - msg_top - 4)
 	l.player_body = Rect2i(l.player_origin + pu.position, pu.size)
 	l.enemy_body = Rect2i(l.enemy_origin + eu.position, eu.size)
+	var top := BAR_H + 1
+	var x := maxi(4, w - 34 - INTENT_W)  # a Tall canvas is narrower than a full line
+	var floor_y := l.enemy_body.position.y
+	if l.player_body.end.x > x:  # on a narrow canvas the player's hull reaches under it too
+		floor_y = mini(floor_y, l.player_body.position.y)
+	var lines := maxi(0, (floor_y - 1 - top) / INTENT_LINE)
+	if lines > 0 and not siege:  # an empty rect still "intersects" what it sits in
+		l.intent_rect = Rect2i(x, top, w - 34 - x, lines * INTENT_LINE)
+	if siege:
+		l._add_kindle()
 	return l
+
+
+## How many lines of the enemy's intent fit.
+func intent_lines() -> int:
+	return intent_rect.size.y / INTENT_LINE
+
+
+## The Kindling's one extra order. The bottom rows are full on the narrowest
+## canvases, so it sits in the top bar beside the crew buttons in Wide, at the
+## top bar just right of the fold in Square (its crew buttons are down by the ward), and
+## beside the crew buttons over the guns in Tall.
+func _add_kindle() -> void:
+	var crew: Rect2i = button("crew").rect
+	var size := Vector2i(KINDLE_W, CREW_H)
+	match kind:
+		"wide":
+			_add("kindle", 0, Rect2i(crew.position + Vector2i((CREW_W + 4) * 2, 0), size))
+		"tall":
+			_add("kindle", 0, Rect2i(crew.position - Vector2i(KINDLE_W + 4, 0), size))
+		_:
+			_add("kindle", 0, Rect2i(Vector2i(hinge.end.x + 4, 4), size))
 
 
 ## Tall (a phone held upright): the enemy under the top bar, the player's status lines
@@ -197,8 +235,15 @@ func problems() -> Array[String]:
 			out.append("ship outside the canvas %s" % r)
 	if player_rect.intersects(enemy_rect):
 		out.append("ships overlap")
+	var listed := intent_rect.has_area()
+	if listed and (intent_rect.intersects(enemy_rect) or intent_rect.intersects(player_rect)):
+		out.append("the enemy's intent lines cover a ship")
+	if listed and not canvas.encloses(intent_rect):
+		out.append("the enemy's intent lines run off the canvas")
 	for b in buttons + [{"kind": "menu", "rect": menu_rect}]:
 		var r: Rect2i = b.rect
+		if listed and r.intersects(intent_rect):
+			out.append("%s button covers the enemy's intent lines" % b.kind)
 		if not canvas.encloses(r):
 			out.append("%s button outside the canvas" % b.kind)
 		if r.intersects(player_rect) or r.intersects(enemy_rect):

@@ -7,6 +7,7 @@ extends RefCounted
 ##   kill          their hull is low and ours isn't: up a key, four on the floor
 ##   danger        our hull is low: half-time, a heartbeat for a kick
 ##   victory, defeat
+## The Kindling siege follows its phases instead (see _siege_state).
 ## Hull never comes back mid-fight, so a fight only climbs these stages; the
 ## escalation flags never drop, so the music doesn't flap back and forth.
 
@@ -34,6 +35,8 @@ func state_for(combat: Combat) -> String:
 	var theirs := float(them.hull) / them.max_hull
 	if mine <= DANGER_HULL:
 		return "danger"
+	if combat.siege:
+		return _siege_state(combat.siege)
 	if theirs <= KILL_HULL:
 		return "kill"
 	var t := combat.time()
@@ -45,6 +48,14 @@ func state_for(combat: Combat) -> String:
 	if _full:
 		return "engage_full"
 	return "engage_theme" if _theme else "engage"
+
+
+## The Kindling climbs with its phases, not with a hull it never loses: the
+## theme for the tendrils, the full band for the swallow, the kill for the kindling.
+static func _siege_state(siege: Siege) -> String:
+	if siege.is_last_phase():
+		return "kill"
+	return "engage_full" if siege.phase > 0 else "engage_theme"
 
 
 func _begin(combat: Combat) -> void:

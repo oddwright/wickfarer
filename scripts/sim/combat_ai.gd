@@ -6,8 +6,49 @@ extends RefCounted
 const TARGET_WEIGHTS := {"weapons": 3, "wards": 2, "helm": 2, "ember": 2, "engines": 1, "mend": 1}
 const STATIONS: Array[String] = ["weapons", "helm", "wards", "engines"]
 const WARD_REACT := 3.0
+## How each hull's captain fights comes from its "ai" block in ships.json:
+## "targets" (room weights by system), "ward_react" (seconds between ward checks),
+## "volley" (hold every gun until all are charged, then fire together) and
+## "focus" (every gun on the first gun's room). A hull without one fights like
+## an Ashmarket raider.
+const TACTICS: Array[String] = ["targets", "ward_react", "volley", "focus"]
 
 var ward_timer := 0.0
+
+
+static func tactics(ship_id: String) -> Dictionary:
+	return ContentDB.ships.get(ship_id, {}).get("ai", {})
+
+
+static func validate_tactics(where: String, ai: Variant, errors: Array[String]) -> void:
+	if not ai is Dictionary:
+		errors.append("%s: ai must be an object" % where)
+		return
+	for k: String in ai:
+		if not k in TACTICS:
+			errors.append("%s: unknown ai tactic %s" % [where, k])
+	var weights: Variant = ai.get("targets", {})
+	if not weights is Dictionary:
+		errors.append("%s: ai.targets must map systems to weights" % where)
+	else:
+		var total := 0
+		for sys: String in weights:
+			if not ContentDB.systems.has(sys):
+				errors.append("%s: ai.targets names unknown system %s" % [where, sys])
+			if not ContentDB.is_int_in(weights[sys], 0, 20):
+				errors.append(
+					"%s: ai.targets.%s must be a whole number from 0 to 20" % [where, sys]
+				)
+			else:
+				total += int(weights[sys])
+		if ai.has("targets") and total <= 0:
+			errors.append("%s: ai.targets must weigh at least one system above 0" % where)
+	var react: Variant = ai.get("ward_react", WARD_REACT)
+	if not (react is float or react is int) or float(react) < Combat.AI_THINK:
+		errors.append("%s: ai.ward_react must be at least %s seconds" % [where, Combat.AI_THINK])
+	for flag in ["volley", "focus"]:
+		if ai.has(flag) and not ai[flag] is bool:
+			errors.append("%s: ai.%s must be true or false" % [where, flag])
 
 
 func think(combat: Combat, side: int) -> void:
@@ -16,24 +57,56 @@ func think(combat: Combat, side: int) -> void:
 	if me.is_dead():
 		return
 	var r := combat.rng.stream("ai")
-	_aim(combat, me, foe, side, r)
-	_wards(combat, me, foe, side)
+	var t := tactics(me.content_id)
+	if bool(t.get("volley", false)) and not _volley_ready(me):
+		_hold(combat, me, side)
+	else:
+		_aim(combat, me, foe, side, r, t)
+	_wards(combat, me, foe, side, float(t.get("ward_react", WARD_REACT)))
 	_crew(combat, me, side)
 
 
-func _aim(combat: Combat, me: Ship, foe: Ship, side: int, r: RandomNumberGenerator) -> void:
+## A volley captain fires only when every powered gun is charged.
+static func _volley_ready(me: Ship) -> bool:
+	var any := false
+	for i in me.weapon_ids.size():
+		if me.weapon_powered(i):
+			any = true
+			if me.weapon_eta(i) > 0.0:
+				return false
+	return any
+
+
+## Holding is an order any captain can give: aim at nothing, so the gun keeps its charge.
+func _hold(combat: Combat, me: Ship, side: int) -> void:
+	for i in me.weapon_ids.size():
+		if me.weapon_target[i] != "":
+			combat.apply({"type": "aim", "weapon": i, "room": ""}, side)
+
+
+func _aim(
+	combat: Combat, me: Ship, foe: Ship, side: int, r: RandomNumberGenerator, t: Dictionary
+) -> void:
 	# With nothing that strips a ward, only the deck the ward leaves open can be hurt.
 	var shut := foe.ward_deck if foe.ward_layers > 0 and not _strips_wards(me) else -1
+	var weights: Dictionary = t.get("targets", TARGET_WEIGHTS)
+	var focus := bool(t.get("focus", false))
 	for i in me.weapon_ids.size():
 		# A gun that passes wards (Chill) can hit the warded deck as well.
 		var skip := -1 if ContentDB.weapons[me.weapon_ids[i]].get("pierces_ward", false) else shut
 		var aimed := me.weapon_target[i]
 		var wasted := aimed != "" and foe.room(aimed).deck == skip
+		# A focused gun follows the first gun wherever it goes.
+		var lead := me.weapon_target[0] if focus and i > 0 else ""
+		if lead != "" and not wasted:
+			if aimed != lead:
+				combat.apply({"type": "aim", "weapon": i, "room": lead}, side)
+			continue
 		if aimed != "" and me.weapon_charge[i] > 0.0 and not wasted:
 			continue
-		var pool := _targets(foe, skip)
+		var pool := _targets(foe, skip, weights)
 		if pool.is_empty():
-			pool = _targets(foe, -1)
+			pool = _targets(foe, -1, weights)
 		if pool.is_empty():
 			continue
 		# Kinetics go wherever; a torch follows the first gun so it lands on a stripped ward.
@@ -44,11 +117,11 @@ func _aim(combat: Combat, me: Ship, foe: Ship, side: int, r: RandomNumberGenerat
 		combat.apply({"type": "aim", "weapon": i, "room": pick}, side)
 
 
-func _targets(foe: Ship, skip_deck: int) -> Array[String]:
+func _targets(foe: Ship, skip_deck: int, weights: Dictionary) -> Array[String]:
 	var pool: Array[String] = []
 	for room in foe.rooms:
 		if room.deck != skip_deck:
-			for k in TARGET_WEIGHTS.get(room.system, 0):
+			for k in int(weights.get(room.system, 0)):
 				pool.append(room.id)
 	return pool
 
@@ -62,9 +135,9 @@ func _strips_wards(me: Ship) -> bool:
 
 ## Watches where the player is aiming and moves its ward to the busier deck.
 ## It reacts on a delay so a quick player can catch it out.
-func _wards(combat: Combat, me: Ship, foe: Ship, side: int) -> void:
+func _wards(combat: Combat, me: Ship, foe: Ship, side: int, react: float) -> void:
 	ward_timer += Combat.AI_THINK
-	if ward_timer < WARD_REACT:
+	if ward_timer < react:
 		return
 	ward_timer = 0.0
 	var counts := [0, 0]

@@ -16,7 +16,9 @@ const FILES := {
 	"tutorial": "res://data/tutorial.json",
 	"unlocks": "res://data/unlocks.json",
 	"depths": "res://data/depths.json",
+	"factions": "res://data/factions.json",
 	"modules": "res://data/modules.json",
+	"sieges": "res://data/sieges.json",
 }
 ## What a Hush Depth's rules may change, and the sign each must have (+1: only
 ## harder when positive, -1: only harder when negative).
@@ -40,12 +42,15 @@ const EVENT_EFFECTS := [
 	"fight_bonus_scrap",
 	"enemy_hull",
 	"store",
+	"rep",
+	"flag",
+	"fight_faction",
 	"module",
 	"weapon",
 ]
 const BEACON_KINDS := ["fight", "event", "store", "empty"]  ## the Gate has no story
 const MAX_CHOICES := 3  ## what the Square layout's right page has room for
-const EVENT_REQUIRES := ["scrap", "light", "species"]
+const EVENT_REQUIRES := ["scrap", "light", "species", "skill", "rank", "rep"]
 const SOUND_BUSES: Array[String] = ["Music", "SFX", "UI"]  ## every bus a sound can play on
 const MUSIC_ENTRIES: Array[String] = ["now", "beat", "bar"]  ## when a music clip may cut in
 const PHONE_LOW_HZ := 150  ## phone speakers barely play anything lower
@@ -65,7 +70,9 @@ static var skills: Dictionary = {}  ## crew skills, ranks and how practice grows
 static var tutorial: Dictionary = {}  ## the training flight's lessons and the one-time tips
 static var unlocks: Dictionary = {}  ## unlock id -> {name, hint, stat, at_least}
 static var depths: Dictionary = {}  ## {"depths": [{name, text, effects}]}, depth 1 first
+static var factions: Dictionary = {}  ## standing range, tiers, and each faction
 static var modules: Dictionary = {}  ## module id -> {name, price, weight, gain, cost, unlock}
+static var sieges: Dictionary = {}  ## boss sieges (the Kindling); see Siege
 static var loaded := false
 
 
@@ -84,7 +91,9 @@ static func load_all() -> void:
 	tutorial = _read(FILES.tutorial)
 	unlocks = _read(FILES.unlocks)
 	depths = _read(FILES.depths)
+	factions = _read(FILES.factions)
 	modules = _read(FILES.modules)
+	sieges = _read(FILES.sieges)
 	_install_translation()
 	loaded = true
 
@@ -131,6 +140,8 @@ static func validate() -> Array[String]:
 				errors.append("weapon %s: missing %s" % [wid, field])
 		if w.get("charge", 0.0) <= 0.0:
 			errors.append("weapon %s: charge must be > 0" % wid)
+		if w.has("light_drain") and not _int_in(w.light_drain, 0, 9):
+			errors.append("weapon %s: light_drain must be a whole number from 0 to 9" % wid)
 		_check_string(w.get("name", ""), "weapon %s" % wid, errors)
 	for sid: String in species:
 		var s: Dictionary = species[sid]
@@ -151,11 +162,15 @@ static func validate() -> Array[String]:
 		errors.append("ships: at least one playable hull must be open from the start")
 	for eid: String in events:
 		_validate_event(eid, events[eid], errors)
+	Standing.validate(errors)
+	EventRules.validate(events, errors)
 	for rid: String in reaches:
 		_validate_reach(rid, reaches[rid], errors)
 	_validate_reach_chain(errors)
 	_validate_unlocks(errors)
 	_validate_depths(errors)
+	for sid: String in sieges:
+		Siege.validate(sid, sieges[sid], errors)
 	_validate_feedback(feedback, errors)
 	Skills.validate(errors)
 	GearCheck.validate(errors)
@@ -258,6 +273,13 @@ static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -
 	for e: String in enemies:
 		if not ships.has(e):
 			errors.append("%s: unknown enemy ship %s" % [where, e])
+		elif bool(ships[e].get("siege_only", false)):
+			errors.append("%s: %s is a siege's maw, not a ship to fight" % [where, e])
+	if r.has("boss"):
+		if not sieges.has(str(r.boss)):
+			errors.append("%s: unknown boss siege %s" % [where, r.boss])
+		elif str(r.get("next", "")) != "":
+			errors.append("%s: a boss ends the run, so its Reach can't have a next" % where)
 	var kinds: Dictionary = r.get("kinds", {})
 	var kind_total := 0
 	for k: String in kinds:
@@ -289,6 +311,11 @@ static func _validate_reach(rid: String, r: Dictionary, errors: Array[String]) -
 		var span: Array = reward.get(f, [])
 		if span.size() != 2 or int(span[0]) > int(span[1]):
 			errors.append("%s: fight_reward.%s must be [min, max]" % [where, f])
+	var warden := str(r.get("warden", ""))
+	if warden != "" and not ships.has(warden):
+		errors.append("%s: unknown warden ship %s" % [where, warden])
+	elif warden != "" and bool(ships[warden].get("playable", false)):
+		errors.append("%s: warden %s is a hull the player can pick" % [where, warden])
 	var boost: Dictionary = r.get("enemy_boost", {})
 	for f in ["hull", "reactor"]:
 		if int(boost.get(f, 0)) < 0:
@@ -320,6 +347,10 @@ static func is_int_in(v: Variant, lo: int, hi: int) -> bool:
 	return _int_in(v, lo, hi)
 
 
+static func is_num_in(v: Variant, lo: float, hi: float) -> bool:
+	return _num_in(v, lo, hi)
+
+
 static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]) -> void:
 	var where := "ship %s" % ship_id
 	_check_string(s.get("name", ""), where, errors)
@@ -341,9 +372,19 @@ static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]
 		var rect: Array = r.get("rect", [])
 		if rect.size() != 4 or rect[2] <= rect[0] or rect[3] <= rect[1]:
 			errors.append("%s: room %s has a bad rect" % [where, r.id])
-	if not has_ember:
+	var siege_only: Variant = s.get("siege_only", false)
+	if not siege_only is bool:
+		errors.append("%s: siege_only must be true or false" % where)
+	elif siege_only:
+		# A siege's maw is the Hush itself: no Ember, crew, guns or helm.
+		if has_ember or not s.get("crew", []).is_empty() or not s.get("weapons", []).is_empty():
+			errors.append("%s: a siege maw has no ember, crew or weapons" % where)
+		if bool(s.get("playable", false)):
+			errors.append("%s: a siege maw can't be playable" % where)
+	elif not has_ember:
 		errors.append("%s: every ship needs an ember room" % where)
 	_validate_playable(where, s, errors)
+	_validate_enemy(where, s, errors)
 	for l: Dictionary in s.get("ladders", []):
 		if not room_ids.has(l.upper) or not room_ids.has(l.lower):
 			errors.append("%s: ladder joins unknown rooms" % where)
@@ -371,6 +412,16 @@ static func _validate_ship(ship_id: String, s: Dictionary, errors: Array[String]
 		for rid: String in room_ids:
 			if rid != first and ship.find_path(first, rid).is_empty():
 				errors.append("%s: room %s can't be reached" % [where, rid])
+
+
+## An enemy hull's faction, captain's tactics and fight rule (see CombatAI and Combat.RULES).
+static func _validate_enemy(where: String, s: Dictionary, errors: Array[String]) -> void:
+	if s.has("faction") and not (factions.get("factions", {}) as Dictionary).has(str(s.faction)):
+		errors.append("%s: unknown faction %s" % [where, s.faction])
+	if s.has("rule") and (not s.rule is String or not str(s.rule) in Combat.RULES):
+		errors.append("%s: unknown fight rule %s" % [where, s.rule])
+	if s.has("ai"):
+		CombatAI.validate_tactics(where, s.ai, errors)
 
 
 ## A hull the player can pick needs words for the select screen, a valid
