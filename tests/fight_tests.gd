@@ -5,6 +5,22 @@ extends RefCounted
 const J = preload("res://scripts/core/json_util.gd")
 
 
+## Every rents and flare check, in order; screens are the layout variants.
+static func run_all(t: SceneTree, screens: Dictionary) -> void:
+	rents_tear_and_drain(t)
+	crew_seal_rents(t)
+	flare_burns_then_cracks(t)
+	enemies_use_them(t)
+	resume_mid_flare(t)
+	fixtures_load(t)
+	crew_keep_repairing(t)
+	spare_hands_answer_fires(t)
+	hazard_edges(t)
+	siege_lines_fit(t, screens)
+	content_is_checked(t)
+	foe_line_clears_buttons(t, screens)
+
+
 static func _check(t: SceneTree, cond: bool, what: String) -> void:
 	t.call("check", cond, what)
 

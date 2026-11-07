@@ -16,8 +16,10 @@ const PROGRESS_TESTS = preload("res://tests/progress_tests.gd")
 const PROFILE_TESTS = preload("res://tests/profile_tests.gd")
 const RESUME_TESTS = preload("res://tests/resume_tests.gd")
 const TUTORIAL_TESTS = preload("res://tests/tutorial_tests.gd")
+const AUTOPILOT_TESTS = preload("res://tests/autopilot_tests.gd")
 const FACTION_TESTS = preload("res://tests/faction_tests.gd")
 const GEAR_TESTS = preload("res://tests/gear_tests.gd")
+const CARD_TESTS = preload("res://tests/card_tests.gd")
 const WARDEN_TESTS = preload("res://tests/warden_tests.gd")
 const SIEGE_TESTS = preload("res://tests/siege_tests.gd")
 const FIGHT_TESTS = preload("res://tests/fight_tests.gd")
@@ -90,6 +92,7 @@ func _init() -> void:
 		"test_options_adjust_settings",
 		"test_progression",
 		"test_gear",
+		"test_cards_and_chart_key",
 		"test_tutorial",
 		"test_enemy_factions_and_wardens",
 		"test_kindling_siege",
@@ -635,14 +638,12 @@ func test_run_saves_and_resumes_at_every_step() -> void:
 		)
 
 
+## The balance tools' players; see tests/autopilot_tests.gd for each check.
 func test_autopilot_runs_always_end() -> void:
-	var ends := {}
-	for i in 12:
-		var r := Run.create(300 + i)
-		var end := Autopilot.new().play(r)
-		ends[end] = int(ends.get(end, 0)) + 1
-		check(end in Run.ENDINGS, "run %d ended properly (got %s)" % [i, end])
-	print("  autopilot run endings: ", ends)
+	AUTOPILOT_TESTS.runs_end(self)
+	AUTOPILOT_TESTS.skilled_resumes(self)
+	AUTOPILOT_TESTS.split_aim(self)
+	AUTOPILOT_TESTS.keeps_guns_powered(self)
 
 
 func test_run_screens_on_every_screen() -> void:
@@ -716,6 +717,14 @@ func test_gear() -> void:
 	GEAR_TESTS.run_costs(self)
 	GEAR_TESTS.saves_keep_gear(self)
 	GEAR_TESTS.content_checked(self)
+
+
+## Item cards, tap to look, and the chart's key (tests/card_tests.gd).
+func test_cards_and_chart_key() -> void:
+	CARD_TESTS.every_option_has_a_card(self)
+	CARD_TESTS.cards_explain_refusals(self)
+	CARD_TESTS.tap_to_look(self)
+	CARD_TESTS.chart_key(self, SCREEN_TESTS.variants(SCREENS))
 
 
 func _test_gear_pages() -> void:
@@ -983,15 +992,4 @@ func test_kindling_siege() -> void:
 
 
 func test_rents_and_flare() -> void:
-	FIGHT_TESTS.rents_tear_and_drain(self)
-	FIGHT_TESTS.crew_seal_rents(self)
-	FIGHT_TESTS.flare_burns_then_cracks(self)
-	FIGHT_TESTS.enemies_use_them(self)
-	FIGHT_TESTS.resume_mid_flare(self)
-	FIGHT_TESTS.fixtures_load(self)
-	FIGHT_TESTS.crew_keep_repairing(self)
-	FIGHT_TESTS.spare_hands_answer_fires(self)
-	FIGHT_TESTS.hazard_edges(self)
-	FIGHT_TESTS.siege_lines_fit(self, SCREEN_TESTS.variants(SCREENS))
-	FIGHT_TESTS.content_is_checked(self)
-	FIGHT_TESTS.foe_line_clears_buttons(self, SCREEN_TESTS.variants(SCREENS))
+	FIGHT_TESTS.run_all(self, SCREEN_TESTS.variants(SCREENS))

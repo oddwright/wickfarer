@@ -20,11 +20,8 @@ static func effects(item: Dictionary) -> String:
 	var e := Gear.entry(item)
 	var parts: Array[String] = []
 	if item.get("kind") == "module":
-		for part: String in ["gain", "cost"]:
-			var fx: Dictionary = e.get(part, {})
-			for k: String in fx:
-				var key := "GEAR_%s_%s" % [part.to_upper(), k.to_upper()]
-				parts.append(tr_key(key) % _number(k, float(fx[k])))
+		for fx: Array in module_effects(item):
+			parts.append(fx[0])
 		return ", ".join(parts)
 	parts.append(
 		(
@@ -36,7 +33,21 @@ static func effects(item: Dictionary) -> String:
 		parts.append(tr_key("GEAR_WPN_CHILL") % int(e.chill))
 	if float(e.get("fire_chance", 0.0)) > 0.0:
 		parts.append(tr_key("GEAR_WPN_FIRE"))
+	if float(e.get("rent_chance", 0.0)) > 0.0:
+		parts.append(tr_key("GEAR_WPN_RENT"))
 	return ", ".join(parts)
+
+
+## A module's gains then costs, each [words, "gain" or "cost"].
+static func module_effects(item: Dictionary) -> Array[Array]:
+	var out: Array[Array] = []
+	var e := Gear.entry(item)
+	for part: String in ["gain", "cost"]:
+		var fx: Dictionary = e.get(part, {})
+		for k: String in fx:
+			var key := "GEAR_%s_%s" % [part.to_upper(), k.to_upper()]
+			out.append([tr_key(key) % number(k, float(fx[k])), part])
+	return out
 
 
 ## A run message: a plain translation key, or "<key>|<name key>" for one
@@ -48,7 +59,7 @@ static func message(m: String) -> String:
 
 
 ## Fractions read as percentages; everything else as a plain number.
-static func _number(effect: String, v: float) -> String:
+static func number(effect: String, v: float) -> String:
 	if effect in Gear.WHOLE:
 		return str(int(v))
 	if effect in PERCENT:

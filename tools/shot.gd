@@ -11,6 +11,7 @@ extends SceneTree
 ## log, or ship select from the title: ship or ship:<ship id> (shown unlocked), or siege (the
 ## Kindling, played by the autopilot for [ticks], then on to the next gathering wave). ui size
 ## is the options setting, a step from auto (-2 to 1); it is not saved.
+## A store page may end in @<option> (wares@buy:0, refit@helm) to show that option's card.
 
 var frames := 0
 var main: Node
@@ -51,6 +52,8 @@ func _process(_delta: float) -> bool:
 
 
 func _set_up() -> void:
+	var card := which.get_slice("@", 1) if "@" in which else ""
+	which = which.get_slice("@", 0)
 	main.settings.ui_size = ui_size
 	main._on_resize()
 	var hull := which.get_slice(":", 1) if which.begins_with("fight:") else "tallow_wren"
@@ -101,6 +104,8 @@ func _set_up() -> void:
 		run.light = 5
 		Autopilot.arrive_at_gate(run)
 	main._set_run(run)
+	if card != "":
+		main.run_view.focus.tap(run, card)
 	if which == "siege":
 		_play_siege(main.combat)
 	elif main.combat:

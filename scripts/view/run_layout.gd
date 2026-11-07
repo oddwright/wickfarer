@@ -29,6 +29,9 @@ var message_rect: Rect2i  ## a one or two line note at the bottom
 var buttons: Array[Dictionary] = []  ## {kind, id, rect}
 ## Opens the pause menu; it sits in the status bar, so it is kept out of buttons.
 var menu_rect: Rect2i
+## The chart's key, above the message line: [{key, at}] (see ChartKey.flow).
+var key: Array[Dictionary] = []
+var key_rect: Rect2i
 ## Where each beacon sits across its column (its height; left to right in Tall), by
 ## node id, nudged so a column's beacons never touch on a short canvas.
 var _beacon_across: Dictionary = {}
@@ -59,6 +62,7 @@ static func build(
 	l.menu_rect = MenuLayout.menu_button(l.native)
 	match mode:
 		"chart":
+			l._place_key()
 			l._spread_columns(chart)
 			for n in chart.nodes:
 				var c := l.beacon_pos(n)
@@ -74,6 +78,16 @@ static func build(
 	if l.kind == "tall" and not l.buttons.is_empty() and mode != "chart":
 		l.text_rect.end = Vector2i(l.text_rect.end.x, l.buttons[0].rect.position.y - 8)
 	return l
+
+
+## The key sits just above the message line, on as many rows as the width needs,
+## and the chart gives up that height so no beacon's hit box reaches it.
+func _place_key() -> void:
+	var across := Rect2i(10, 0, native.x - 20, 0)
+	var h := ChartKey.rows(across, hinge) * ChartKey.ROW
+	key_rect = Rect2i(10, message_rect.position.y - h, native.x - 20, h)
+	key = ChartKey.flow(key_rect, hinge)
+	chart_rect.size.y -= h + 1
 
 
 ## Spreads beacons over the chart area, skipping the fold in the Square layout.
@@ -223,6 +237,13 @@ func problems() -> Array[String]:
 				out.append("%s %s and %s %s overlap" % [b.kind, b.id, o.kind, o.id])
 		if r.grow(1).intersects(menu_rect):
 			out.append("%s %s covers the menu button" % [b.kind, b.id])
+	for k in key:
+		var kr := Rect2i(k.at, Vector2i(ChartKey.ICON, ChartKey.ICON))
+		if not canvas.encloses(kr) or (hinge.size.x > 0 and kr.intersects(hinge)):
+			out.append("chart key %s is off the canvas or on the fold" % k.key)
+		for b in buttons:
+			if kr.intersects(b.rect):
+				out.append("chart key %s is under %s %s" % [k.key, b.kind, b.id])
 	if not canvas.encloses(menu_rect) or (hinge.size.x > 0 and menu_rect.intersects(hinge)):
 		out.append("the menu button is off the canvas or on the fold")
 	return out
