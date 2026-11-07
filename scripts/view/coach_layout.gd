@@ -18,14 +18,19 @@ static func text_rect(hud: HudLayout, run_l: RunLayout) -> Rect2i:
 
 
 ## Wide: the line between the ships and the buttons. Square: that line can be a
-## sliver on a squat tablet, but the left page of the second button row is always
-## empty (the ward and pause sit on the right page), so the coach writes there.
+## sliver on a squat tablet, but the left page of the second button row is empty
+## past the Flare button (the ward and pause sit on the right page), so the coach
+## writes there.
 static func _fight_rect(hud: HudLayout) -> Rect2i:
 	var ward := hud.button("ward")
 	if hud.kind == "wide" or ward.is_empty() or hud.hinge.size.x == 0:
 		return hud.message_rect
 	var row: Rect2i = ward.rect
-	return Rect2i(4, row.position.y, hud.hinge.position.x - 8, row.size.y)
+	var left := 4
+	var flare := hud.button("flare")
+	if not flare.is_empty():
+		left = (flare.rect as Rect2i).end.x + 4  # the Flare button sits at the page's left end
+	return Rect2i(left, row.position.y, hud.hinge.position.x - 4 - left, row.size.y)
 
 
 ## The bottom line, moved down below any button that reaches into it: on a short

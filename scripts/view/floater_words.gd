@@ -14,6 +14,14 @@ static func for_event(e: Dictionary) -> Dictionary:
 			return _say(_tr("UI_MISS"), "h")
 		"ward_hit", "ward_block":
 			return _say(_tr("UI_WARDED"), "j")
+		"rent_open":
+			return _say(_tr("UI_RENT_OPEN"), "j")
+		"rent_sealed":
+			return _say(_tr("UI_RENT_SEALED") % int(e.get("hull", 0)), "H")
+		"flare":
+			return _say(_tr("UI_FLARE_LIT"), "w")
+		"flare_spent":
+			return _say(_tr("UI_FLARE_SPENT"), "U")
 		"wave_gather":
 			# The threat, named on the knot it gathers in.
 			return _say(_tr("UI_WAVE_" + str(e.kind).to_upper()), "o")

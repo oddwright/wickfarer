@@ -33,6 +33,8 @@ static func effects(item: Dictionary) -> String:
 		parts.append(tr_key("GEAR_WPN_CHILL") % int(e.chill))
 	if float(e.get("fire_chance", 0.0)) > 0.0:
 		parts.append(tr_key("GEAR_WPN_FIRE"))
+	if float(e.get("rent_chance", 0.0)) > 0.0:
+		parts.append(tr_key("GEAR_WPN_RENT"))
 	return ", ".join(parts)
 
 

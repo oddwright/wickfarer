@@ -94,7 +94,14 @@ static func validate(errors: Array[String]) -> void:
 		errors.append("skills: one rank name per rank")
 	for n in names:
 		ContentDB.check_string(str(n), "skills rank", errors)
-	for k in ["fight_cap", "learn_warmth", "mentor", "patch_xp_per_damage", "patch_xp_per_fire"]:
+	for k in [
+		"fight_cap",
+		"learn_warmth",
+		"mentor",
+		"patch_xp_per_damage",
+		"patch_xp_per_fire",
+		"patch_xp_per_rent"
+	]:
 		if not _is_num(d.get(k)) or float(d[k]) < 0.0:
 			errors.append("skills: %s must be a number >= 0" % k)
 	var seen := {}

@@ -90,6 +90,7 @@ func _novice_step(c: Combat) -> void:
 		if t == "" or foe.room(t).deck != open_deck:
 			c.apply({"type": "aim", "weapon": i, "room": want})
 	pilot._crew(c, c.player(), 0)
+	CombatAI.flare_when_it_pays(c, c.player(), 0)
 
 
 func _skilled_step(c: Combat) -> void:

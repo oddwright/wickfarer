@@ -116,6 +116,8 @@ func apply(cmd: Dictionary, side := 0) -> bool:
 			return true
 		"kindle":
 			return siege != null and siege.kindle(s)
+		"flare":
+			return EmberFlare.light(s)
 	return false
 
 
@@ -242,7 +244,19 @@ func _resolve(p: Dictionary) -> void:
 	if combat_rng.randf() < float(w.fire_chance):
 		r.fire = maxf(r.fire, 30.0)
 		events.append(where.merged({"type": "fire_start"}))
+	_tear(r, w, where)
 	events.append(where.merged({"type": "hit", "damage": int(w.hull_damage)}))
+
+
+## A hit from a gun with a rent chance can tear the room open. It rolls on its
+## own stream, so adding rents left every other combat roll where it was.
+func _tear(r: Room, w: Dictionary, where: Dictionary) -> void:
+	var chance := float(w.get("rent_chance", 0.0))
+	if chance <= 0.0:  # validation keeps rent chances to guns that hurt the hull
+		return
+	if rng.stream("rents").randf() < chance:
+		r.rent = 100.0  # a half-sealed rent torn again starts over, and says so
+		events.append(where.merged({"type": "rent_open"}))
 
 
 ## Every hit lets some cold in; a Chill gun lets in far more, and half of it

@@ -11,6 +11,7 @@ var wanted_power: int = 0  ## what the captain asked for; power returns to it af
 var damage: float = 0.0  ## 0..level; each whole point removes one level
 var warmth: float = 60.0  ## 0..100
 var fire: float = 0.0  ## 0..100
+var rent: float = 0.0  ## 0..100: a hole to the void still to seal; 0 means none
 
 
 func effective_level() -> int:
@@ -29,7 +30,8 @@ func to_dict() -> Dictionary:
 		"wanted_power": wanted_power,
 		"damage": damage,
 		"warmth": warmth,
-		"fire": fire
+		"fire": fire,
+		"rent": rent
 	}
 
 
@@ -40,3 +42,4 @@ func load_dict(d: Dictionary) -> void:
 	damage = float(d.get("damage", 0.0))
 	warmth = float(d.get("warmth", 60.0))
 	fire = float(d.get("fire", 0.0))
+	rent = float(d.get("rent", 0.0))

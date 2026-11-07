@@ -120,6 +120,7 @@ static func build(
 	var lines := maxi(0, (floor_y - 1 - top) / INTENT_LINE)
 	if lines > 0 and not siege:  # an empty rect still "intersects" what it sits in
 		l.intent_rect = Rect2i(x, top, w - 34 - x, lines * INTENT_LINE)
+	l._add_flare()
 	if siege:
 		l._add_kindle()
 	return l
@@ -130,18 +131,33 @@ func intent_lines() -> int:
 	return intent_rect.size.y / INTENT_LINE
 
 
-## The Kindling's one extra order. The bottom rows are full on the narrowest
-## canvases, so it sits in the top bar beside the crew buttons in Wide, at the
-## top bar just right of the fold in Square (its crew buttons are down by the ward), and
-## beside the crew buttons over the guns in Tall.
-func _add_kindle() -> void:
+## Flare the Ember: one more small button beside Crew and Muster, after them in
+## the top bar (Wide) and before them over the guns (Tall). Square puts it over
+## the systems, left of the fold, level with the crew buttons on the right.
+func _add_flare() -> void:
+	var size := Vector2i(CREW_W, CREW_H)
 	var crew: Rect2i = button("crew").rect
+	match kind:
+		"tall":
+			_add("flare", 0, Rect2i(crew.position - Vector2i(CREW_W + 4, 0), size))
+		"wide":
+			_add("flare", 0, Rect2i(crew.position + Vector2i((CREW_W + 4) * 2, 0), size))
+		_:  # the right of the fold is full on a narrow Fold: left of it, level with Crew
+			_add("flare", 0, Rect2i(Vector2i(4, crew.position.y), size))
+
+
+## The Kindling's one extra order. The bottom rows are full on the narrowest
+## canvases, so it sits in the top bar after the Flare button in Wide, at the
+## top bar just right of the fold in Square (its crew buttons are down by the ward), and
+## before the Flare button over the guns in Tall.
+func _add_kindle() -> void:
+	var flare: Rect2i = button("flare").rect
 	var size := Vector2i(KINDLE_W, CREW_H)
 	match kind:
 		"wide":
-			_add("kindle", 0, Rect2i(crew.position + Vector2i((CREW_W + 4) * 2, 0), size))
+			_add("kindle", 0, Rect2i(flare.position + Vector2i(CREW_W + 4, 0), size))
 		"tall":
-			_add("kindle", 0, Rect2i(crew.position - Vector2i(KINDLE_W + 4, 0), size))
+			_add("kindle", 0, Rect2i(flare.position - Vector2i(KINDLE_W + 4, 0), size))
 		_:
 			_add("kindle", 0, Rect2i(Vector2i(hinge.end.x + 4, 4), size))
 

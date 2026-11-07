@@ -64,6 +64,31 @@ func think(combat: Combat, side: int) -> void:
 		_aim(combat, me, foe, side, r, t)
 	_wards(combat, me, foe, side, float(t.get("ward_react", WARD_REACT)))
 	_crew(combat, me, side)
+	flare_when_it_pays(combat, me, side)
+
+
+## Flares when it pays: guns aimed and still charging, or the ship going cold,
+## and never with the Ember already hurt or burning (the crack would stack).
+static func flare_when_it_pays(combat: Combat, me: Ship, side: int) -> void:
+	if not EmberFlare.can(me):
+		return
+	var ember := me.system_room("ember")
+	if ember.damage > 0.0 or ember.fire > 0.0:
+		return
+	# A one-level Ember goes dark when it cracks: only flare one with a hand there to patch it.
+	if ember.level <= 1 and me.crew_in(ember.id).is_empty():
+		return
+	var charging := 0
+	for i in me.weapon_ids.size():
+		var full := float(ContentDB.weapons[me.weapon_ids[i]].charge)
+		if me.weapon_target[i] != "" and me.weapon_powered(i) and me.weapon_charge[i] < full - 3.0:
+			charging += 1
+	var cold := false
+	for st in STATIONS:
+		var r := me.system_room(st)
+		cold = cold or (r != null and r.warmth < Ship.COLD and not me.crew_in(r.id).is_empty())
+	if charging >= 2 or cold:
+		combat.apply({"type": "flare"}, side)
 
 
 ## A volley captain fires only when every powered gun is charged.
@@ -164,15 +189,34 @@ func _crew(combat: Combat, me: Ship, side: int) -> void:
 		if mend and mend.power > 0 and c.hp < c.max_hp * 0.35 and c.room != mend.id:
 			combat.apply({"type": "move", "crew": c.uid, "room": mend.id}, side)
 			idle.erase(c)
-	# Emergencies next: fires, then broken systems.
+	# One hand already fighting a fire, sealing a rent or repairing stays at it:
+	# pulling the last one off to fill a station left broken guns broken for good
+	# (crew bounced between the two). Anyone else in the room is free for jobs.
+	var held := {}
+	for c in idle.duplicate():
+		var here := me.room(c.room)
+		if (here.fire > 0.0 or here.rent > 0.0 or here.damage > 0.0) and not held.has(c.room):
+			held[c.room] = true
+			idle.erase(c)
+	# Emergencies next: fires, then rents, then broken systems.
 	var jobs: Array[String] = []
 	for room in me.rooms:
 		if room.fire > 0.0 and me.crew_in(room.id).is_empty() and not busy.has(room.id):
 			jobs.append(room.id)
 	for room in me.rooms:
 		if (
+			room.rent > 0.0
+			and room.fire <= 0.0
+			and not held.has(room.id)
+			and me.crew_in(room.id).is_empty()
+			and not busy.has(room.id)
+		):
+			jobs.append(room.id)
+	for room in me.rooms:
+		if (
 			room.damage > 0.0
 			and room.fire <= 0.0
+			and room.rent <= 0.0
 			and me.crew_in(room.id).is_empty()
 			and not busy.has(room.id)
 		):

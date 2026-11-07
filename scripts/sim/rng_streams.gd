@@ -6,7 +6,7 @@ extends RefCounted
 ## doubles and would silently lose precision.
 
 const NAMES: Array[String] = [
-	"map", "encounters", "events", "combat", "loot", "ai", "gear", "store", "siege"
+	"map", "encounters", "events", "combat", "loot", "ai", "gear", "store", "siege", "rents"
 ]
 
 var run_seed: int = 0
