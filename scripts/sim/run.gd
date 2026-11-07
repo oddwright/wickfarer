@@ -191,7 +191,7 @@ func is_swallowed(id: String) -> bool:
 ## faction "" means the enemy ship's own faction, if it has one.
 func _start_fight(enemy: String, enemy_hull := 0, faction := "") -> void:
 	if enemy == REACH_ENEMY:
-		enemy = _pick_enemy()
+		enemy = _pick_enemy(faction)
 	fight_faction = faction if faction != "" else str(ContentDB.ships[enemy].get("faction", ""))
 	combat = Combat.from_ship(rng.stream("combat").randi(), ship, enemy)
 	var foe := combat.enemy()
@@ -202,9 +202,16 @@ func _start_fight(enemy: String, enemy_hull := 0, faction := "") -> void:
 
 
 ## A ship from the Reach's pool. A faction that dislikes the ship sends its
-## hulls more often, and one that trusts it sends them less.
-func _pick_enemy() -> String:
+## hulls more often, and one that trusts it sends them less. A fight an event
+## gives to a faction draws only that faction's hulls, if the Reach has any.
+func _pick_enemy(faction := "") -> String:
 	var pool: Array = reach().enemies
+	if faction != "":
+		var own := pool.filter(
+			func(id: Variant) -> bool:
+				return str(ContentDB.ships[str(id)].get("faction", "")) == faction
+		)
+		pool = own if not own.is_empty() else pool
 	var weights: Array[int] = []
 	for id: Variant in pool:
 		weights.append(standing.ambush(str(ContentDB.ships[str(id)].get("faction", ""))))
@@ -305,7 +312,7 @@ func choose(i: int) -> bool:
 	return true
 
 
-## faction is the event's own: a store the event opens is that faction's.
+## faction is the event's own: a store or fight the event opens is that faction's.
 func _apply(fx: Dictionary, faction := "") -> void:
 	_gain_scrap(int(fx.get("scrap", 0)))
 	light = maxi(0, light + int(fx.get("light", 0)))
@@ -327,7 +334,9 @@ func _apply(fx: Dictionary, faction := "") -> void:
 		return
 	if fx.has("fight"):
 		fight_bonus_scrap = int(fx.get("fight_bonus_scrap", 0))
-		_start_fight(str(fx.fight), int(fx.get("enemy_hull", 0)), str(fx.get("fight_faction", "")))
+		# A fight an event starts is the event's faction's, unless it names another.
+		var whose := str(fx.get("fight_faction", faction))
+		_start_fight(str(fx.fight), int(fx.get("enemy_hull", 0)), whose)
 	elif fx.get("store", false):
 		store_faction = faction
 		state = "store"
@@ -338,6 +347,7 @@ func read_outcome() -> bool:
 	if outcome == "":
 		return false
 	outcome = ""
+	messages.clear()  # its standing news was on the result screen; the chart starts fresh
 	return true
 
 

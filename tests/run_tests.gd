@@ -537,7 +537,7 @@ func test_event_results_and_messages_survive_saves() -> void:
 	f.combat.enemy().hull = 0
 	f.combat.tick()
 	f.finish_fight()
-	check(f.messages.is_empty(), "old jump news doesn't come back after a fight")
+	check(not f.messages.has("UI_HUSH_HIT"), "old jump news doesn't come back after a fight")
 	check(f.store_items() == ["repair", "light"], "the Reach lists what its stores sell")
 
 

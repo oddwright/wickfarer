@@ -34,11 +34,7 @@ static func standing_rules(t: SceneTree) -> void:
 	_check(t, s.change("nobody", 3) == 0 and s.price_delta("") == 0, "no faction, no change")
 	var news := s.fight_won("ashmarket")
 	_check(t, s.of("ashmarket") == 3 and s.of("tidewarden") == 1, "a win angers, the rival likes")
-	_check(
-		t,
-		Array(news) == ["REP_DOWN_ASHMARKET", "REP_UP_TIDEWARDEN"],
-		"a win says which factions moved"
-	)
+	_check(t, Array(news) == ["REP_BEATEN_ASHMARKET"], "a win says so in one line")
 	_check(t, Standing.from_dict({"choir": 99, "gone": 2}).of("choir") == 5, "a save is clamped")
 
 
@@ -68,6 +64,15 @@ static func events_and_fights(t: SceneTree) -> void:
 	r.choose(0)
 	_check(t, r.standing.of("tidewarden") == 1, "showing the Ember pleases the wardens")
 	_check(t, r.messages.has("REP_UP_TIDEWARDEN"), "the result says the wardens noticed")
+	r.read_outcome()
+	_check(t, r.messages.is_empty(), "once read, the news leaves the chart's message line")
+	var b := _at_event("buoy_toll")
+	b.ship.crew[0].species = "kith"
+	while b.state == "event" or b.state == "chart":  # until the trick turns into a fight
+		b = _at_event("buoy_toll", b.rng.run_seed + 1)
+		b.ship.crew[0].species = "kith"
+		b.choose(2)
+	_check(t, b.fight_faction == "ashmarket", "an event's fight is its faction's by default")
 	var f := _at_event("ash_toll")
 	f.choose(2)
 	_check(t, f.state == "fight" and f.fight_faction == "ashmarket", "refusing fights the market")
@@ -75,15 +80,15 @@ static func events_and_fights(t: SceneTree) -> void:
 	f.finish_fight()
 	_check(t, f.standing.of("ashmarket") == -1, "beating the market's cutter angers it")
 	_check(t, f.standing.of("tidewarden") == 1, "and pleases its rival")
-	_check(t, f.messages.has("REP_DOWN_ASHMARKET"), "the chart says so")
+	_check(t, Array(f.messages) == ["REP_BEATEN_ASHMARKET"], "the chart says so")
 	_check(t, f.fight_faction == "", "the fight's faction is cleared")
 
 
 ## A Reach's pool sends more of a faction's hulls the less it likes the ship.
 static func ambush_weights(t: SceneTree) -> void:
-	var skiff: Dictionary = ContentDB.ships.ashmarket_skiff
-	var before := skiff.duplicate()
-	skiff["faction"] = "ashmarket"  # the cutter stays factionless (neutral weight)
+	var cutter: Dictionary = ContentDB.ships.ashmarket_cutter
+	var before := cutter.duplicate()
+	cutter["faction"] = ""  # the skiff stays the market's; the cutter is nobody's here
 	var counts := {}
 	for rep in [-5, 5]:
 		var r := Run.create(11)
@@ -100,10 +105,13 @@ static func ambush_weights(t: SceneTree) -> void:
 	_check(t, f.fight_faction == "ashmarket", "a fight takes its faction from the hull")
 	f._start_fight("ashmarket_cutter")
 	_check(t, f.fight_faction == "", "a hull with no faction is nobody's")
-	f._start_fight("ashmarket_cutter", 0, "choir")
-	_check(t, f.fight_faction == "choir", "an event can name whose fight it is")
-	skiff.clear()
-	skiff.merge(before)
+	var own := 0
+	for i in 40:
+		own += 1 if f._pick_enemy("ashmarket") == "ashmarket_skiff" else 0
+	_check(t, own == 40, "a faction's fight draws only its own hulls")
+	_check(t, f._pick_enemy("choir") != "", "a faction with no hulls in the Reach gets any")
+	cutter.clear()
+	cutter.merge(before)
 
 
 ## Stories wait on flags, Gates and standing; a chain plays in order.
@@ -233,6 +241,7 @@ static func content_checked(t: SceneTree) -> void:
 		"at most 3",
 		"fight_faction is a known faction, with a fight",
 		"pass and fail outcomes need a check",
+		"requires rep is where a tier starts",
 	]:
 		_check(t, all.contains(want), "the story check catches: %s" % want)
 	bad.clear()

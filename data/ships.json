@@ -468,6 +468,7 @@
     "ward_deck": 1
   },
   "ashmarket_cutter": {
+    "faction": "ashmarket",
     "name": "SHIP_ASHMARKET_CUTTER",
     "sprite": "res://art/ship_ashmarket_cutter.png",
     "frame_size": [
@@ -608,6 +609,7 @@
     "ward_deck": 1
   },
   "ashmarket_skiff": {
+    "faction": "ashmarket",
     "name": "SHIP_ASHMARKET_SKIFF",
     "sprite": "res://art/ship_ashmarket_cutter.png",
     "frame_size": [

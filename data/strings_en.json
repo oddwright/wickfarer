@@ -435,8 +435,8 @@
   "REP_SWORN": "Sworn",
   "REP_UP_TIDEWARDEN": "The Tidewardens think better of you.",
   "REP_DOWN_TIDEWARDEN": "The Tidewardens will remember this.",
-  "REP_UP_ASHMARKET": "Word spreads through the Ashmarket that you are good for business.",
-  "REP_DOWN_ASHMARKET": "The Ashmarket marks your name in its ledger.",
+  "REP_UP_ASHMARKET": "The Ashmarket calls you good for business.",
+  "REP_DOWN_ASHMARKET": "The Ashmarket marks your name.",
   "REP_UP_CHOIR": "Somewhere, the Hollow Choir sings your name.",
   "REP_DOWN_CHOIR": "The Hollow Choir goes quiet when you pass.",
   "UI_REP_LINE": "%s: %s.",
@@ -610,5 +610,8 @@
   "EV_LAMP_CENSUS_C1": "Report what you have seen.",
   "EV_LAMP_CENSUS_C1_O1": "The buoy pays a small fee for every beacon. Somewhere, a hymn falters.",
   "EV_LAMP_CENSUS_C2": "Say nothing.",
-  "EV_LAMP_CENSUS_C2_O1": "The buoy blinks at you, waiting, then gives up."
+  "EV_LAMP_CENSUS_C2_O1": "The buoy blinks at you, waiting, then gives up.",
+  "REP_BEATEN_TIDEWARDEN": "The Tidewardens will remember this. The Ashmarket approves.",
+  "REP_BEATEN_ASHMARKET": "The Ashmarket marks your name. The Tidewardens approve.",
+  "REP_BEATEN_CHOIR": "The Hollow Choir goes quiet when you pass."
 }

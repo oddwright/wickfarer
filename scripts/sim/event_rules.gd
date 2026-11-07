@@ -130,8 +130,7 @@ static func _validate_when(
 		for f in names(w.get(k, [])):
 			if not set_flags.has(f):
 				errors.append("%s: no outcome sets the flag %s" % [where, f])
-	var gates: Variant = w.get("gates_at_least", 0)
-	if not (gates is float or gates is int) or int(gates) < 0 or float(gates) != int(gates):
+	if not ContentDB.is_int_in(w.get("gates_at_least", 0), 0, 99):
 		errors.append("%s: gates_at_least is a whole number of 0 or more" % where)
 	for k in ["rep_at_least", "rep_at_most"]:
 		if w.has(k) and not Standing.valid_map(w[k], Standing.floor_rep(), Standing.ceil_rep()):
@@ -151,6 +150,9 @@ static func _validate_choice(where: String, c: Dictionary, errors: Array[String]
 		and not Standing.valid_map(req.rep, Standing.floor_rep(), Standing.ceil_rep())
 	):
 		errors.append("%s: requires rep maps factions to standings in the range" % where)
+	for f: String in req.get("rep", {}) if req.get("rep") is Dictionary else {}:
+		if not Standing.is_tier_start(int(req.rep[f])):
+			errors.append("%s: requires rep is where a tier starts" % where)
 	var check: Dictionary = c.get("check", {})
 	var sides := {}
 	for o: Dictionary in c.get("outcomes", []):
