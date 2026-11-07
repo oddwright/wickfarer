@@ -51,7 +51,10 @@
             "weight": 1,
             "text": "EV_ASH_TOLL_C1_O1",
             "effects": {
-              "scrap": -10
+              "scrap": -10,
+              "rep": {
+                "ashmarket": 1
+              }
             }
           }
         ]
@@ -79,12 +82,14 @@
             "weight": 1,
             "text": "EV_ASH_TOLL_C3_O1",
             "effects": {
-              "fight": "ashmarket_cutter"
+              "fight": "ashmarket_cutter",
+              "fight_faction": "ashmarket"
             }
           }
         ]
       }
-    ]
+    ],
+    "faction": "ashmarket"
   },
   "frozen_hauler": {
     "text": "EV_FROZEN_HAULER",
@@ -144,7 +149,10 @@
             "text": "EV_TIDEWARDEN_PATROL_C1_O1",
             "effects": {
               "light": -1,
-              "hull": 4
+              "hull": 4,
+              "rep": {
+                "tidewarden": 1
+              }
             }
           }
         ]
@@ -157,12 +165,16 @@
             "weight": 1,
             "text": "EV_TIDEWARDEN_PATROL_C2_O1",
             "effects": {
-              "hull": -2
+              "hull": -2,
+              "rep": {
+                "tidewarden": -1
+              }
             }
           }
         ]
       }
-    ]
+    ],
+    "faction": "tidewarden"
   },
   "choir_signal": {
     "text": "EV_CHOIR_SIGNAL",
@@ -176,7 +188,10 @@
             "weight": 1,
             "text": "EV_CHOIR_SIGNAL_C1_O1",
             "effects": {
-              "light": 2
+              "light": 2,
+              "rep": {
+                "choir": 1
+              }
             }
           },
           {
@@ -199,7 +214,10 @@
             "text": "EV_CHOIR_SIGNAL_C2_O1",
             "effects": {
               "light": 1,
-              "scrap": 6
+              "scrap": 6,
+              "rep": {
+                "choir": 1
+              }
             }
           }
         ]
@@ -211,11 +229,16 @@
           {
             "weight": 1,
             "text": "EV_CHOIR_SIGNAL_C3_O1",
-            "effects": {}
+            "effects": {
+              "rep": {
+                "choir": -1
+              }
+            }
           }
         ]
       }
-    ]
+    ],
+    "faction": "choir"
   },
   "debris_field": {
     "text": "EV_DEBRIS_FIELD",
@@ -309,7 +332,11 @@
             "text": "EV_SALVAGE_DISPUTE_C1_O1",
             "effects": {
               "fight": "ashmarket_cutter",
-              "fight_bonus_scrap": 12
+              "fight_bonus_scrap": 12,
+              "fight_faction": "ashmarket",
+              "rep": {
+                "tidewarden": 1
+              }
             }
           }
         ]
@@ -495,7 +522,8 @@
             "weight": 1,
             "text": "EV_BUOY_TOLL_C1_O1",
             "effects": {
-              "fight": "reach"
+              "fight": "reach",
+              "fight_faction": "ashmarket"
             }
           }
         ]
@@ -510,7 +538,10 @@
             "weight": 1,
             "text": "EV_BUOY_TOLL_C2_O1",
             "effects": {
-              "scrap": -10
+              "scrap": -10,
+              "rep": {
+                "ashmarket": 1
+              }
             }
           }
         ]
@@ -536,7 +567,8 @@
           }
         ]
       }
-    ]
+    ],
+    "faction": "ashmarket"
   },
   "dark_beacon": {
     "text": "EV_DARK_BEACON",
@@ -703,7 +735,8 @@
             "weight": 1,
             "text": "EV_HEAT_HUNTERS_C1_O1",
             "effects": {
-              "fight": "reach"
+              "fight": "reach",
+              "fight_faction": "ashmarket"
             }
           }
         ]
@@ -718,12 +751,31 @@
             "weight": 1,
             "text": "EV_HEAT_HUNTERS_C2_O1",
             "effects": {
-              "scrap": -12
+              "scrap": -12,
+              "rep": {
+                "ashmarket": 1
+              }
             }
           }
         ]
+      },
+      {
+        "text": "EV_HEAT_HUNTERS_C3",
+        "requires": {
+          "rep": {
+            "ashmarket": 2
+          }
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_HEAT_HUNTERS_C3_O1",
+            "effects": {}
+          }
+        ]
       }
-    ]
+    ],
+    "faction": "ashmarket"
   },
   "iced_dock": {
     "text": "EV_ICED_DOCK",
@@ -809,7 +861,8 @@
             "weight": 1,
             "text": "EV_DECOY_SCREEN_C1_O1",
             "effects": {
-              "fight": "reach"
+              "fight": "reach",
+              "fight_faction": "ashmarket"
             }
           }
         ]
@@ -985,14 +1038,21 @@
             "text": "EV_CHAINED_BAZAAR_C2_O1",
             "effects": {
               "scrap": 5,
-              "store": true
+              "store": true,
+              "rep": {
+                "ashmarket": -1
+              }
             }
           },
           {
             "weight": 1,
             "text": "EV_CHAINED_BAZAAR_C2_O2",
             "effects": {
-              "fight": "reach"
+              "fight": "reach",
+              "fight_faction": "ashmarket",
+              "rep": {
+                "ashmarket": -1
+              }
             }
           }
         ]
@@ -1008,7 +1068,8 @@
           }
         ]
       }
-    ]
+    ],
+    "faction": "ashmarket"
   },
   "warden_depot": {
     "text": "EV_WARDEN_DEPOT",
@@ -1040,12 +1101,34 @@
             "effects": {
               "light": -1,
               "hull": 2,
+              "store": true,
+              "rep": {
+                "tidewarden": 1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_WARDEN_DEPOT_C3",
+        "requires": {
+          "rep": {
+            "tidewarden": 2
+          }
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_WARDEN_DEPOT_C3_O1",
+            "effects": {
+              "hull": 4,
               "store": true
             }
           }
         ]
       }
-    ]
+    ],
+    "faction": "tidewarden"
   },
   "old_oru_shop": {
     "text": "EV_OLD_ORU_SHOP",
@@ -1334,7 +1417,1449 @@
       }
     ]
   },
-  "rime_rack": {"text": "EV_RIME_RACK", "weight": 8, "choices": [{"text": "EV_RIME_RACK_C1", "requires": {}, "outcomes": [{"weight": 6, "text": "EV_RIME_RACK_C1_O1", "effects": {"weapon": "frost_needle"}}, {"weight": 4, "text": "EV_RIME_RACK_C1_O2", "effects": {"fight": "ashmarket_skiff"}}]}, {"text": "EV_RIME_RACK_C2", "requires": {}, "outcomes": [{"weight": 1, "text": "EV_RIME_RACK_C2_O1", "effects": {}}]}]},
-  "kiln_wreck": {"text": "EV_KILN_WRECK", "weight": 8, "choices": [{"text": "EV_KILN_WRECK_C1", "requires": {"light": 2}, "outcomes": [{"weight": 1, "text": "EV_KILN_WRECK_C1_O1", "effects": {"light": -2, "module": "kiln_coils"}}]}, {"text": "EV_KILN_WRECK_C2", "requires": {}, "outcomes": [{"weight": 1, "text": "EV_KILN_WRECK_C2_O1", "effects": {"scrap": 10}}]}]},
-  "tinker_barge": {"text": "EV_TINKER_BARGE", "weight": 8, "choices": [{"text": "EV_TINKER_BARGE_C1", "requires": {"scrap": 25}, "outcomes": [{"weight": 1, "text": "EV_TINKER_BARGE_C1_O1", "effects": {"scrap": -25, "module": "any"}}]}, {"text": "EV_TINKER_BARGE_C2", "requires": {"species": "oru"}, "outcomes": [{"weight": 1, "text": "EV_TINKER_BARGE_C2_O1", "effects": {"module": "any"}}]}, {"text": "EV_TINKER_BARGE_C3", "requires": {}, "outcomes": [{"weight": 1, "text": "EV_TINKER_BARGE_C3_O1", "effects": {}}]}]}
+  "rime_rack": {
+    "text": "EV_RIME_RACK",
+    "weight": 8,
+    "choices": [
+      {
+        "text": "EV_RIME_RACK_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 6,
+            "text": "EV_RIME_RACK_C1_O1",
+            "effects": {
+              "weapon": "frost_needle"
+            }
+          },
+          {
+            "weight": 4,
+            "text": "EV_RIME_RACK_C1_O2",
+            "effects": {
+              "fight": "ashmarket_skiff"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_RIME_RACK_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RIME_RACK_C2_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "kiln_wreck": {
+    "text": "EV_KILN_WRECK",
+    "weight": 8,
+    "choices": [
+      {
+        "text": "EV_KILN_WRECK_C1",
+        "requires": {
+          "light": 2
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_KILN_WRECK_C1_O1",
+            "effects": {
+              "light": -2,
+              "module": "kiln_coils"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_KILN_WRECK_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_KILN_WRECK_C2_O1",
+            "effects": {
+              "scrap": 10
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "tinker_barge": {
+    "text": "EV_TINKER_BARGE",
+    "weight": 8,
+    "choices": [
+      {
+        "text": "EV_TINKER_BARGE_C1",
+        "requires": {
+          "scrap": 25
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_TINKER_BARGE_C1_O1",
+            "effects": {
+              "scrap": -25,
+              "module": "any"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_TINKER_BARGE_C2",
+        "requires": {
+          "species": "oru"
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_TINKER_BARGE_C2_O1",
+            "effects": {
+              "module": "any"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_TINKER_BARGE_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_TINKER_BARGE_C3_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "rival_first": {
+    "text": "EV_RIVAL_FIRST",
+    "weight": 10,
+    "when": {
+      "no_flag": "met_gall"
+    },
+    "choices": [
+      {
+        "text": "EV_RIVAL_FIRST_C1",
+        "requires": {},
+        "check": {
+          "skill": "steer",
+          "base": 35,
+          "per_rank": 20
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RIVAL_FIRST_C1_O1",
+            "on": "pass",
+            "effects": {
+              "scrap": 14,
+              "flag": [
+                "met_gall",
+                "gall_grudge"
+              ]
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_RIVAL_FIRST_C1_O2",
+            "on": "fail",
+            "effects": {
+              "scrap": 3,
+              "hull": -2,
+              "flag": [
+                "met_gall",
+                "gall_grudge"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_RIVAL_FIRST_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RIVAL_FIRST_C2_O1",
+            "effects": {
+              "scrap": 7,
+              "flag": [
+                "met_gall",
+                "gall_friend"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_RIVAL_FIRST_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RIVAL_FIRST_C3_O1",
+            "effects": {
+              "flag": "met_gall"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "rival_ambush": {
+    "text": "EV_RIVAL_AMBUSH",
+    "weight": 10,
+    "beacon": "fight",
+    "when": {
+      "flag": "gall_grudge",
+      "no_flag": "gall_done",
+      "gates_at_least": 1
+    },
+    "choices": [
+      {
+        "text": "EV_RIVAL_AMBUSH_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RIVAL_AMBUSH_C1_O1",
+            "effects": {
+              "fight": "reach",
+              "fight_faction": "ashmarket",
+              "flag": "gall_done"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_RIVAL_AMBUSH_C2",
+        "requires": {
+          "scrap": 12
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RIVAL_AMBUSH_C2_O1",
+            "effects": {
+              "scrap": -12,
+              "flag": "gall_done",
+              "rep": {
+                "ashmarket": -1
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "rival_aid": {
+    "text": "EV_RIVAL_AID",
+    "weight": 10,
+    "when": {
+      "flag": "gall_friend",
+      "no_flag": "gall_done",
+      "gates_at_least": 1
+    },
+    "choices": [
+      {
+        "text": "EV_RIVAL_AID_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RIVAL_AID_C1_O1",
+            "effects": {
+              "hull": 4,
+              "flag": "gall_done"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_RIVAL_AID_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RIVAL_AID_C2_O1",
+            "effects": {
+              "light": 2,
+              "flag": "gall_done"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "rival_last": {
+    "text": "EV_RIVAL_LAST",
+    "weight": 10,
+    "beacon": "empty",
+    "when": {
+      "flag": "met_gall",
+      "no_flag": "gall_end",
+      "gates_at_least": 2
+    },
+    "choices": [
+      {
+        "text": "EV_RIVAL_LAST_C1",
+        "requires": {
+          "light": 2
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RIVAL_LAST_C1_O1",
+            "effects": {
+              "light": -2,
+              "flag": "gall_end",
+              "rep": {
+                "tidewarden": 1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_RIVAL_LAST_C2",
+        "requires": {},
+        "check": {
+          "skill": "patch",
+          "base": 35,
+          "per_rank": 20
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RIVAL_LAST_C2_O1",
+            "on": "pass",
+            "effects": {
+              "hush": -0.5,
+              "flag": "gall_end"
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_RIVAL_LAST_C2_O2",
+            "on": "fail",
+            "effects": {
+              "hull": -2,
+              "hush": 0.4,
+              "flag": "gall_end"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_RIVAL_LAST_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RIVAL_LAST_C3_O1",
+            "effects": {
+              "crew_hp": -10,
+              "flag": "gall_end"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "cantor_first": {
+    "text": "EV_CANTOR_FIRST",
+    "weight": 10,
+    "faction": "choir",
+    "when": {
+      "no_flag": "met_cantor"
+    },
+    "choices": [
+      {
+        "text": "EV_CANTOR_FIRST_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CANTOR_FIRST_C1_O1",
+            "effects": {
+              "flag": "met_cantor",
+              "rep": {
+                "choir": 1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_CANTOR_FIRST_C2",
+        "requires": {},
+        "check": {
+          "skill": "stoke",
+          "base": 35,
+          "per_rank": 20
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CANTOR_FIRST_C2_O1",
+            "on": "pass",
+            "effects": {
+              "light": 2,
+              "flag": "met_cantor",
+              "rep": {
+                "choir": 1
+              }
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_CANTOR_FIRST_C2_O2",
+            "on": "fail",
+            "effects": {
+              "crew_hp": -15,
+              "flag": "met_cantor"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_CANTOR_FIRST_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CANTOR_FIRST_C3_O1",
+            "effects": {
+              "flag": "met_cantor",
+              "rep": {
+                "choir": -1
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "cantor_hymn": {
+    "text": "EV_CANTOR_HYMN",
+    "weight": 10,
+    "faction": "choir",
+    "when": {
+      "flag": "met_cantor",
+      "no_flag": "cantor_hymned",
+      "gates_at_least": 1
+    },
+    "choices": [
+      {
+        "text": "EV_CANTOR_HYMN_C1",
+        "requires": {
+          "light": 2
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CANTOR_HYMN_C1_O1",
+            "effects": {
+              "light": -2,
+              "hush": -1.0,
+              "flag": "cantor_hymned",
+              "rep": {
+                "choir": 1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_CANTOR_HYMN_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CANTOR_HYMN_C2_O1",
+            "effects": {
+              "flag": "cantor_hymned"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "cantor_truth": {
+    "text": "EV_CANTOR_TRUTH",
+    "weight": 10,
+    "beacon": "empty",
+    "faction": "choir",
+    "when": {
+      "flag": "met_cantor",
+      "no_flag": "cantor_promise",
+      "gates_at_least": 2,
+      "rep_at_least": {
+        "choir": 2
+      }
+    },
+    "choices": [
+      {
+        "text": "EV_CANTOR_TRUTH_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CANTOR_TRUTH_C1_O1",
+            "effects": {
+              "light": 1,
+              "crew_hp": 20,
+              "flag": "cantor_promise",
+              "rep": {
+                "choir": 1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_CANTOR_TRUTH_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CANTOR_TRUTH_C2_O1",
+            "effects": {
+              "flag": "cantor_promise"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "warden_escort": {
+    "text": "EV_WARDEN_ESCORT",
+    "weight": 10,
+    "faction": "tidewarden",
+    "when": {
+      "rep_at_least": {
+        "tidewarden": 2
+      }
+    },
+    "choices": [
+      {
+        "text": "EV_WARDEN_ESCORT_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_WARDEN_ESCORT_C1_O1",
+            "effects": {
+              "hush": -0.8
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_WARDEN_ESCORT_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_WARDEN_ESCORT_C2_O1",
+            "effects": {
+              "hull": 3
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "warden_bounty": {
+    "text": "EV_WARDEN_BOUNTY",
+    "weight": 10,
+    "beacon": "fight",
+    "faction": "tidewarden",
+    "when": {
+      "rep_at_least": {
+        "tidewarden": 1
+      }
+    },
+    "choices": [
+      {
+        "text": "EV_WARDEN_BOUNTY_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_WARDEN_BOUNTY_C1_O1",
+            "effects": {
+              "fight": "reach",
+              "fight_faction": "ashmarket",
+              "fight_bonus_scrap": 10
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_WARDEN_BOUNTY_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_WARDEN_BOUNTY_C2_O1",
+            "effects": {
+              "hush": 0.3
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "warden_inspection": {
+    "text": "EV_WARDEN_INSPECTION",
+    "weight": 10,
+    "beacon": "fight",
+    "faction": "tidewarden",
+    "when": {
+      "rep_at_most": {
+        "tidewarden": -2
+      }
+    },
+    "choices": [
+      {
+        "text": "EV_WARDEN_INSPECTION_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_WARDEN_INSPECTION_C1_O1",
+            "effects": {
+              "crew_hp": -10,
+              "rep": {
+                "tidewarden": 1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_WARDEN_INSPECTION_C2",
+        "requires": {
+          "scrap": 10
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_WARDEN_INSPECTION_C2_O1",
+            "effects": {
+              "scrap": -10,
+              "rep": {
+                "tidewarden": 1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_WARDEN_INSPECTION_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_WARDEN_INSPECTION_C3_O1",
+            "effects": {
+              "fight": "reach",
+              "fight_faction": "tidewarden"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "ash_hunters": {
+    "text": "EV_ASH_HUNTERS",
+    "weight": 10,
+    "beacon": "fight",
+    "faction": "ashmarket",
+    "when": {
+      "rep_at_most": {
+        "ashmarket": -3
+      }
+    },
+    "choices": [
+      {
+        "text": "EV_ASH_HUNTERS_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_ASH_HUNTERS_C1_O1",
+            "effects": {
+              "fight": "reach",
+              "fight_faction": "ashmarket"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_ASH_HUNTERS_C2",
+        "requires": {
+          "scrap": 15
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_ASH_HUNTERS_C2_O1",
+            "effects": {
+              "scrap": -15,
+              "rep": {
+                "ashmarket": 2
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "ash_insider": {
+    "text": "EV_ASH_INSIDER",
+    "weight": 10,
+    "beacon": "store",
+    "faction": "ashmarket",
+    "when": {
+      "rep_at_least": {
+        "ashmarket": 2
+      }
+    },
+    "choices": [
+      {
+        "text": "EV_ASH_INSIDER_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_ASH_INSIDER_C1_O1",
+            "effects": {
+              "store": true
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_ASH_INSIDER_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_ASH_INSIDER_C2_O1",
+            "effects": {
+              "hush": -0.4,
+              "store": true
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_ASH_INSIDER_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_ASH_INSIDER_C3_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "choir_procession": {
+    "text": "EV_CHOIR_PROCESSION",
+    "weight": 10,
+    "faction": "choir",
+    "when": {
+      "rep_at_least": {
+        "choir": 2
+      }
+    },
+    "choices": [
+      {
+        "text": "EV_CHOIR_PROCESSION_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CHOIR_PROCESSION_C1_O1",
+            "effects": {
+              "crew_hp": 40
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_CHOIR_PROCESSION_C2",
+        "requires": {
+          "light": 1
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CHOIR_PROCESSION_C2_O1",
+            "effects": {
+              "light": -1,
+              "hush": -0.5,
+              "rep": {
+                "choir": 1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_CHOIR_PROCESSION_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CHOIR_PROCESSION_C3_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "choir_quiet": {
+    "text": "EV_CHOIR_QUIET",
+    "weight": 10,
+    "faction": "choir",
+    "when": {
+      "rep_at_most": {
+        "choir": -2
+      }
+    },
+    "choices": [
+      {
+        "text": "EV_CHOIR_QUIET_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CHOIR_QUIET_C1_O1",
+            "effects": {
+              "hush": 0.6
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_CHOIR_QUIET_C2",
+        "requires": {},
+        "check": {
+          "skill": "stoke",
+          "base": 35,
+          "per_rank": 20
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CHOIR_QUIET_C2_O1",
+            "on": "pass",
+            "effects": {
+              "rep": {
+                "choir": 2
+              }
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_CHOIR_QUIET_C2_O2",
+            "on": "fail",
+            "effects": {
+              "hush": 0.4,
+              "crew_hp": -10
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "ion_squall": {
+    "text": "EV_ION_SQUALL",
+    "weight": 10,
+    "choices": [
+      {
+        "text": "EV_ION_SQUALL_C1",
+        "requires": {},
+        "check": {
+          "skill": "steer",
+          "base": 40,
+          "per_rank": 20
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_ION_SQUALL_C1_O1",
+            "on": "pass",
+            "effects": {
+              "hush": -0.4
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_ION_SQUALL_C1_O2",
+            "on": "fail",
+            "effects": {
+              "hull": -3
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_ION_SQUALL_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_ION_SQUALL_C2_O1",
+            "effects": {
+              "hush": 0.5
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "jammed_pod": {
+    "text": "EV_JAMMED_POD",
+    "weight": 10,
+    "beacon": "empty",
+    "choices": [
+      {
+        "text": "EV_JAMMED_POD_C1",
+        "requires": {},
+        "check": {
+          "skill": "patch",
+          "base": 35,
+          "per_rank": 20
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_JAMMED_POD_C1_O1",
+            "on": "pass",
+            "effects": {
+              "scrap": 12
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_JAMMED_POD_C1_O2",
+            "on": "fail",
+            "effects": {
+              "scrap": 3,
+              "hull": -1
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_JAMMED_POD_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_JAMMED_POD_C2_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "mine_field": {
+    "text": "EV_MINE_FIELD",
+    "weight": 10,
+    "beacon": "fight",
+    "choices": [
+      {
+        "text": "EV_MINE_FIELD_C1",
+        "requires": {},
+        "check": {
+          "skill": "guns",
+          "base": 35,
+          "per_rank": 20
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_MINE_FIELD_C1_O1",
+            "on": "pass",
+            "effects": {
+              "fight": "reach",
+              "enemy_hull": -3
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_MINE_FIELD_C1_O2",
+            "on": "fail",
+            "effects": {
+              "hull": -2,
+              "fight": "reach"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_MINE_FIELD_C2",
+        "requires": {},
+        "check": {
+          "skill": "steer",
+          "base": 30,
+          "per_rank": 20
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_MINE_FIELD_C2_O1",
+            "on": "pass",
+            "effects": {}
+          },
+          {
+            "weight": 1,
+            "text": "EV_MINE_FIELD_C2_O2",
+            "on": "fail",
+            "effects": {
+              "hull": -3,
+              "fight": "reach"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "ward_trial": {
+    "text": "EV_WARD_TRIAL",
+    "weight": 10,
+    "faction": "tidewarden",
+    "choices": [
+      {
+        "text": "EV_WARD_TRIAL_C1",
+        "requires": {},
+        "check": {
+          "skill": "wards",
+          "base": 30,
+          "per_rank": 25
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_WARD_TRIAL_C1_O1",
+            "on": "pass",
+            "effects": {
+              "scrap": 10,
+              "rep": {
+                "tidewarden": 1
+              }
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_WARD_TRIAL_C1_O2",
+            "on": "fail",
+            "effects": {
+              "hull": -2
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_WARD_TRIAL_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_WARD_TRIAL_C2_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "starving_hearth": {
+    "text": "EV_STARVING_HEARTH",
+    "weight": 10,
+    "beacon": "empty",
+    "choices": [
+      {
+        "text": "EV_STARVING_HEARTH_C1",
+        "requires": {},
+        "check": {
+          "skill": "stoke",
+          "base": 40,
+          "per_rank": 20
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_STARVING_HEARTH_C1_O1",
+            "on": "pass",
+            "effects": {
+              "light": 1,
+              "rep": {
+                "tidewarden": 1
+              }
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_STARVING_HEARTH_C1_O2",
+            "on": "fail",
+            "effects": {
+              "crew_hp": -10
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_STARVING_HEARTH_C2",
+        "requires": {
+          "light": 1
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_STARVING_HEARTH_C2_O1",
+            "effects": {
+              "light": -1,
+              "rep": {
+                "tidewarden": 1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_STARVING_HEARTH_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_STARVING_HEARTH_C3_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "runaway_sled": {
+    "text": "EV_RUNAWAY_SLED",
+    "weight": 10,
+    "beacon": "fight",
+    "choices": [
+      {
+        "text": "EV_RUNAWAY_SLED_C1",
+        "requires": {},
+        "check": {
+          "skill": "steer",
+          "base": 40,
+          "per_rank": 20
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RUNAWAY_SLED_C1_O1",
+            "on": "pass",
+            "effects": {
+              "scrap": 8,
+              "fight": "reach"
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_RUNAWAY_SLED_C1_O2",
+            "on": "fail",
+            "effects": {
+              "fight": "reach"
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_RUNAWAY_SLED_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_RUNAWAY_SLED_C2_O1",
+            "effects": {
+              "fight": "reach",
+              "fight_bonus_scrap": 6
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "cracked_core": {
+    "text": "EV_CRACKED_CORE",
+    "weight": 10,
+    "choices": [
+      {
+        "text": "EV_CRACKED_CORE_C1",
+        "requires": {},
+        "check": {
+          "skill": "patch",
+          "base": 30,
+          "per_rank": 20
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CRACKED_CORE_C1_O1",
+            "on": "pass",
+            "effects": {
+              "light": 2
+            }
+          },
+          {
+            "weight": 1,
+            "text": "EV_CRACKED_CORE_C1_O2",
+            "on": "fail",
+            "effects": {
+              "hull": -3
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_CRACKED_CORE_C2",
+        "requires": {
+          "skill": "patch",
+          "rank": 2
+        },
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CRACKED_CORE_C2_O1",
+            "effects": {
+              "light": 2
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_CRACKED_CORE_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CRACKED_CORE_C3_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "tide_dock": {
+    "text": "EV_TIDE_DOCK",
+    "weight": 10,
+    "beacon": "store",
+    "faction": "tidewarden",
+    "choices": [
+      {
+        "text": "EV_TIDE_DOCK_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_TIDE_DOCK_C1_O1",
+            "effects": {
+              "store": true
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_TIDE_DOCK_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_TIDE_DOCK_C2_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "choir_reliquary": {
+    "text": "EV_CHOIR_RELIQUARY",
+    "weight": 10,
+    "beacon": "store",
+    "faction": "choir",
+    "choices": [
+      {
+        "text": "EV_CHOIR_RELIQUARY_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CHOIR_RELIQUARY_C1_O1",
+            "effects": {
+              "store": true
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_CHOIR_RELIQUARY_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_CHOIR_RELIQUARY_C2_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "ash_scrapyard": {
+    "text": "EV_ASH_SCRAPYARD",
+    "weight": 10,
+    "beacon": "store",
+    "faction": "ashmarket",
+    "choices": [
+      {
+        "text": "EV_ASH_SCRAPYARD_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_ASH_SCRAPYARD_C1_O1",
+            "effects": {
+              "store": true
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_ASH_SCRAPYARD_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_ASH_SCRAPYARD_C2_O1",
+            "effects": {
+              "crew_hp": -15,
+              "scrap": 9,
+              "store": true,
+              "rep": {
+                "ashmarket": 1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_ASH_SCRAPYARD_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_ASH_SCRAPYARD_C3_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "sealed_crate": {
+    "text": "EV_SEALED_CRATE",
+    "weight": 10,
+    "faction": "ashmarket",
+    "choices": [
+      {
+        "text": "EV_SEALED_CRATE_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_SEALED_CRATE_C1_O1",
+            "effects": {
+              "scrap": 12,
+              "rep": {
+                "ashmarket": 1,
+                "tidewarden": -1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_SEALED_CRATE_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_SEALED_CRATE_C2_O1",
+            "effects": {
+              "rep": {
+                "tidewarden": 1,
+                "ashmarket": -1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_SEALED_CRATE_C3",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_SEALED_CRATE_C3_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  },
+  "lamp_census": {
+    "text": "EV_LAMP_CENSUS",
+    "weight": 10,
+    "beacon": "empty",
+    "faction": "tidewarden",
+    "choices": [
+      {
+        "text": "EV_LAMP_CENSUS_C1",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_LAMP_CENSUS_C1_O1",
+            "effects": {
+              "scrap": 4,
+              "rep": {
+                "tidewarden": 1,
+                "choir": -1
+              }
+            }
+          }
+        ]
+      },
+      {
+        "text": "EV_LAMP_CENSUS_C2",
+        "requires": {},
+        "outcomes": [
+          {
+            "weight": 1,
+            "text": "EV_LAMP_CENSUS_C2_O1",
+            "effects": {}
+          }
+        ]
+      }
+    ]
+  }
 }

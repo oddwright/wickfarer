@@ -274,7 +274,10 @@ static func tr_key(key: String) -> String:
 ## Every step's words, and every jump note the chart's coach may show alone instead.
 static func _fits(tl: CoachView, r: Rect2i, keys: Array[String]) -> Array[String]:
 	var out: Array[String] = []
-	for k in keys + ["UI_HUSH_HIT", "UI_DARK_JUMP"]:
+	var news: Array[String] = ["UI_HUSH_HIT", "UI_DARK_JUMP"]
+	for f in Standing.ids():  # a won fight's standing line
+		news.append(str(Standing.spec(f).beaten))
+	for k in keys + news:
 		if not tl.fits(tr_key(k), r):
 			out.append("%s does not fit in %d px" % [k.left(14), r.size.y])
 	return out
