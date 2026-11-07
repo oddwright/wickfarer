@@ -310,6 +310,8 @@ func _draw_next(run: Run, l: RunLayout) -> void:
 			title = tr("UI_REACH_DONE_TITLE")
 			var ahead := tr(str(ContentDB.reaches[str(run.reach().next)].name))
 			body = tr("UI_REACH_DONE") + " " + tr("UI_REACH_NEXT") % ahead
+			if not run.messages.is_empty():  # what the Warden fight cost, e.g. sung-away Light
+				body = tr(run.messages[-1]) + ". " + body
 			label = "UI_JUMP_THROUGH"
 		"won":
 			title = tr("UI_RUN_WON_TITLE")

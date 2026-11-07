@@ -1,11 +1,12 @@
 extends SceneTree
 ## Screenshot one screen at a given window size (needs a display; use xvfb-run).
 ## godot --path . -s tools/shot.gd -- <width> <height> <out.png> [ticks] [screen] [ui size]
-## screen is fight (default), fight:<player ship id>, chart, event, event:<event id>, store,
-## refit, wares, modules, guns or selling (store gear pages with some gear aboard),
-## store:<faction>:<standing>, reach_done,
-## won or lost, roster or roster_pick (the crew roster over a fight,
-## picker shut or open), or a menu over a fight: title, pause, options, confirm, depth or
+## screen is fight (default), fight:<player ship id>, vs:<enemy ship id> (the Tallow
+## Wren against any enemy or Warden), chart, event, event:<event id>, store, refit, wares,
+## modules, guns or selling (store gear pages with some gear aboard),
+## store:<faction>:<standing>, reach_done, won or
+## lost, roster or roster_pick (the crew roster over a fight, picker shut or open), or a
+## menu over a fight: title, pause, options, confirm, depth or
 ## log, or ship select from the title: ship or ship:<ship id> (shown unlocked). ui size is the
 ## options setting, a step from auto (-2 to 1); it is not saved.
 
@@ -82,6 +83,8 @@ func _set_up() -> void:
 		run.standing.change(run.store_faction, int(which.get_slice(":", 2)))
 	if which.begins_with("fight:"):
 		run._start_fight("ashmarket_cutter")
+	if which.begins_with("vs:"):  # unboosted, as the hull is in ships.json
+		run._start_fight(which.trim_prefix("vs:"), 0, false)
 	if which in ["title", "pause", "options", "confirm", "depth", "log", "roster", "roster_pick"]:
 		run._start_fight("ashmarket_cutter")
 	if which.begins_with("ship"):

@@ -244,6 +244,19 @@ func _corners(r: Rect2i, col: Color, n: int) -> void:
 	Pixel.corners(self, r, col, n)
 
 
+## Where a crew sprite is drawn, feet at fp. Enemy crew face the other way: a
+## negative width flips the image where it stands, since Godot draws a rect from
+## its position across the width's size whatever its sign. (Moving the position by
+## the width as well put every enemy hand one room aft of where they really were.)
+static func crew_rect(side: int, fp: Vector2) -> Rect2:
+	var dst := Rect2(
+		Vector2(roundf(fp.x) - CREW_CELL.x / 2, fp.y - CREW_CELL.y), Vector2(CREW_CELL)
+	)
+	if side == 1:
+		dst.size.x = -dst.size.x
+	return dst
+
+
 func _draw_crew(side: int) -> void:
 	var s: Ship = main.combat.ships[side]
 	for c in s.alive_crew():
@@ -254,14 +267,8 @@ func _draw_crew(side: int) -> void:
 			f = 2 + int(anim_time * 8.0 + c.uid) % 4
 		else:
 			f = int(anim_time * 2.0 + c.uid * 0.37) % 2
-		var dst := Rect2(
-			Vector2(roundf(fp.x) - CREW_CELL.x / 2, fp.y - CREW_CELL.y), Vector2(CREW_CELL)
-		)
 		var src := Rect2(f * CREW_CELL.x, 0, CREW_CELL.x, CREW_CELL.y)
-		if side == 1:
-			dst.position.x += dst.size.x
-			dst.size.x = -dst.size.x
-		draw_texture_rect_region(tex, dst, src)
+		draw_texture_rect_region(tex, crew_rect(side, fp), src)
 		if side == 0 and main.selected_crew == c.uid:
 			var post := s.room(c.post)
 			if post:  # show where their post is, so a move away from it is a choice

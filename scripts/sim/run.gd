@@ -151,14 +151,35 @@ func jump(target: String) -> bool:
 func _arrive() -> void:
 	var kind := str(here().kind)
 	if kind == "gate":
-		reaches_crossed += 1
-		state = "reach_done" if str(reach().get("next", "")) != "" else "won"
+		# The Gate's dock patches the hull on arrival, so a Warden meets a ship fit to
+		# fight. A Reach with a Warden holds its Gate: it is crossed once it is beaten.
+		_patch_at_gate()
+		var warden := str(reach().get("warden", ""))
+		if warden != "":
+			_start_fight(warden, 0, "", false)
+			return
+		_cross_gate()
 		return
 	event_id = _pick_event(kind)
 	if event_id != "":
 		state = "event"
 		return
 	_skip_story(kind)
+
+
+## The Gate's dock patches some hull.
+func _patch_at_gate() -> void:
+	ship.hull = mini(ship.max_hull, ship.hull + int(reach().get("gate_repair", 0)))
+
+
+func _cross_gate() -> void:
+	reaches_crossed += 1
+	state = "reach_done" if str(reach().get("next", "")) != "" else "won"
+
+
+## The fight under way is this Reach's Warden, at the Gate.
+func is_warden_fight() -> bool:
+	return state == "fight" and str(here().kind) == "gate"
 
 
 ## No story for this beacon: fall straight into what's there.
@@ -184,8 +205,6 @@ func next_reach() -> bool:
 	var next := str(reach().get("next", ""))
 	if state != "reach_done" or next == "":
 		return false
-	# The Gate's dock patches some hull on the way through.
-	ship.hull = mini(ship.max_hull, ship.hull + int(reach().get("gate_repair", 0)))
 	reach_id = next
 	chart = StarChart.generate(reach(), rng.stream("map"))
 	at = chart.start_id()
@@ -214,14 +233,17 @@ func is_swallowed(id: String) -> bool:
 # ---------------------------------------------------------------- fights
 
 
-## faction "" means the enemy ship's own faction, if it has one.
-func _start_fight(enemy: String, enemy_hull := 0, faction := "") -> void:
+## faction "" means the enemy ship's own faction, if it has one. A Warden is
+## built for its Reach, so it skips the Reach's enemy boost (boosted false); the
+## Hush Depth's extra hull still applies to every enemy.
+func _start_fight(enemy: String, enemy_hull := 0, faction := "", boosted := true) -> void:
 	if enemy == REACH_ENEMY:
 		enemy = _pick_enemy(faction)
 	fight_faction = faction if faction != "" else str(ContentDB.ships[enemy].get("faction", ""))
 	combat = Combat.from_ship(rng.stream("combat").randi(), ship, enemy)
 	var foe := combat.enemy()
-	foe.boost(reach().get("enemy_boost", {}))
+	if boosted:
+		foe.boost(reach().get("enemy_boost", {}))
 	foe.boost({"hull": int(mod("enemy_hull"))})
 	foe.hull = clampi(foe.hull + enemy_hull, 1, foe.max_hull)
 	state = "fight"
@@ -260,19 +282,26 @@ func finish_fight() -> bool:
 	_gain_scrap(maxi(0, won_scrap + int(mod("fight_scrap"))) + fight_bonus_scrap)
 	light += loot.randi_range(int(reward.light[0]), int(reward.light[1]))
 	light += int(ship.mod("fight_light"))
+	# What the Choir sang out of the Ember is gone once the fight ends.
+	light = maxi(0, light - combat.light_drained[0])
 	fights_won += 1
 	fight_bonus_scrap = 0
 	messages.clear()
 	messages.append_array(standing.fight_won(fight_faction))
 	fight_faction = ""
+	if combat.light_drained[0] > 0:
+		messages.append("UI_LIGHT_SUNG")
 	var gear_roll := rng.stream("gear")
 	if gear_roll.randf() < float(reward.get("gear_chance", 0.0)):
 		var found := Gear.pick(gear_roll, unlocked)
 		if not found.is_empty():
 			gain(found)
 	ship.recover_after_fight()
+	var gate := str(here().kind) == "gate"
 	combat = null
 	state = "chart"
+	if gate:
+		_cross_gate()
 	return true
 
 

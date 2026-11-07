@@ -377,13 +377,14 @@ func mod(effect: String) -> float:
 # ---------------------------------------------------------------- tick
 
 
-func tick(dt: float, rng: RandomNumberGenerator, events: Array) -> void:
+## chill is extra warmth every room loses a second, from the fight's rule (Combat.chill()).
+func tick(dt: float, rng: RandomNumberGenerator, events: Array, chill := 0.0) -> void:
 	if is_dead():
 		return
 	enforce_power()
 	_tick_crew(dt, events)
 	_tick_learning(dt, events)
-	_tick_warmth(dt)
+	_tick_warmth(dt, chill)
 	_tick_fire(dt, rng, events)
 	_tick_wards(dt)
 	_tick_weapons(dt, events)
@@ -522,11 +523,11 @@ func promotions() -> Array[Dictionary]:
 	return out
 
 
-func _tick_warmth(dt: float) -> void:
+func _tick_warmth(dt: float, chill: float) -> void:
 	var delta := {}
 	var fitted := mod("warmth") - mod("heat")
 	for r in rooms:
-		var d := -1.2 + fitted
+		var d := -1.2 + fitted - chill
 		if r.system == "ember" and r.level > 0:
 			var stoked := 1.0 + station_bonus("ember", STOKE_BOOST)
 			d += 7.0 * stoked * float(r.effective_level()) / float(r.level)
@@ -583,8 +584,22 @@ func _tick_wards(dt: float) -> void:
 		ward_regen = 0.0
 
 
+## How fast weapons charge: a crewed weapons room charges them faster.
+func charge_rate() -> float:
+	return maxf(1.0, station_bonus("weapons", GUN_BOOST)) * (1.0 + mod("weapon_charge"))
+
+
+## Seconds until weapon i is charged at today's rate (0 once it is), or -1 while
+## it has no power. The view shows it as the weapon's intent.
+func weapon_eta(i: int) -> float:
+	if not weapon_powered(i):
+		return -1.0
+	var left := float(ContentDB.weapons[weapon_ids[i]].charge) - weapon_charge[i]
+	return maxf(0.0, left / charge_rate())
+
+
 func _tick_weapons(dt: float, events: Array) -> void:
-	var boost := maxf(1.0, station_bonus("weapons", GUN_BOOST)) * (1.0 + mod("weapon_charge"))
+	var boost := charge_rate()
 	for i in weapon_ids.size():
 		var full := float(ContentDB.weapons[weapon_ids[i]].charge)
 		if weapon_powered(i):
@@ -673,6 +688,12 @@ func set_ward_deck(deck: int) -> void:
 	ward_deck = deck
 	ward_layers = ward_layers / 2  # moving the ward costs half its layers
 	ward_regen = 0.0
+
+
+## The tide (a Warden's twist) carries the ward to the other deck. Unlike a
+## captain's move it keeps every layer: nobody chose it, so nothing is paid.
+func turn_tide() -> void:
+	ward_deck = 1 - ward_deck
 
 
 # ---------------------------------------------------------------- save

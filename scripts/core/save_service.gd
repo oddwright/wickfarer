@@ -8,7 +8,7 @@ extends RefCounted
 ## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
-const VERSION := 7
+const VERSION := 8
 const DIR := "user://"
 
 
@@ -78,6 +78,20 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 			# fight the ship is at. A version 6 run met no faction yet: Run.from_dict
 			# starts every faction neutral with no flags. Nothing moves; the bump
 			# keeps an older build from dropping a newer run's standing.
+			return d
+		7:
+			# Version 8 fights count the Light the Hollow Choir drains (a missing
+			# count reads as 0), and a Gate's dock patches the hull on arrival, before
+			# any Warden, not on the way through. A run saved on a Gate's screen
+			# arrived without the patch and would no longer get it, so it gets it here.
+			var run: Dictionary = d.get("run", {})
+			if str(run.get("state", "")) == "reach_done":
+				ContentDB.load_all()
+				var reach: Dictionary = ContentDB.reaches.get(str(run.get("reach", "")), {})
+				var ship: Dictionary = run.get("ship", {})
+				if ship.has("hull"):
+					var top := int(ship.get("max_hull", ship.hull))
+					ship["hull"] = mini(top, int(ship.hull) + int(reach.get("gate_repair", 0)))
 			return d
 	return null
 

@@ -125,7 +125,7 @@ func _draw() -> void:
 				me.used_power(),
 				me.available_power(),
 				tr("UI_EVASION"),
-				me.evasion()
+				combat.evasion(0)
 			]
 		),
 		5.0,
@@ -142,7 +142,7 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_RIGHT,
 		200
 	)
-	var ev := foe.evasion()
+	var ev := combat.evasion(1)
 	_text(
 		Vector2(l.native.x - 34 - 200, 37),
 		"%s %d%%" % [tr("UI_EVASION"), ev],
@@ -206,6 +206,8 @@ func _draw() -> void:
 		msg = tr(main.pause_reason) if main.pause_reason != "" else tr("UI_PAUSED")
 	elif combat.time() < 15.0:
 		msg = tr("UI_HINT")
+	else:
+		msg = IntentLayer.rule_text(combat)  # a Warden's twist, once the hint has gone
 	if msg != "" and combat.state == "fighting" and not main.coach_speaking():
 		var mr := l.message_rect
 		_text(

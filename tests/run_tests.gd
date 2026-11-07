@@ -18,6 +18,7 @@ const RESUME_TESTS = preload("res://tests/resume_tests.gd")
 const TUTORIAL_TESTS = preload("res://tests/tutorial_tests.gd")
 const FACTION_TESTS = preload("res://tests/faction_tests.gd")
 const GEAR_TESTS = preload("res://tests/gear_tests.gd")
+const WARDEN_TESTS = preload("res://tests/warden_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
 	"generic 20:9 (2400x1080)": Vector2i(2400, 1080),
@@ -88,6 +89,7 @@ func _init() -> void:
 		"test_progression",
 		"test_gear",
 		"test_tutorial",
+		"test_enemy_factions_and_wardens",
 	]:
 		current = t
 		call(t)
@@ -666,6 +668,20 @@ func test_run_screens_on_every_screen() -> void:
 				if mode != "next" and (b.rect as Rect2i).intersects(l.text_rect):
 					probs.append("%s button covers the text" % mode)
 		check(probs.is_empty(), "%s run screens: %s" % [name, probs.slice(0, 4)])
+
+
+## Faction hulls, captains' tactics, Reach Wardens and the intent readout:
+## see tests/warden_tests.gd.
+func test_enemy_factions_and_wardens() -> void:
+	WARDEN_TESTS.factions_in_the_reaches(self)
+	WARDEN_TESTS.weapon_eta(self)
+	WARDEN_TESTS.volley_tactic(self)
+	WARDEN_TESTS.focus_tactic(self)
+	WARDEN_TESTS.warden_rules(self)
+	WARDEN_TESTS.light_drain(self)
+	WARDEN_TESTS.warden_holds_the_gate(self)
+	WARDEN_TESTS.intent_readout(self)
+	WARDEN_TESTS.enemy_crew_drawn_in_place(self)
 
 
 ## Reaches, refits and stoking (tests/progress_tests.gd), and the profile

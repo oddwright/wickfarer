@@ -743,5 +743,788 @@
       "engines": 1
     },
     "ward_deck": 1
+  },
+  "tidewarden_ketch": {
+    "name": "SHIP_TIDEWARDEN_KETCH",
+    "faction": "tidewarden",
+    "sprite": "res://art/ship_tidewarden_ketch.png",
+    "frame_size": [
+      200,
+      70
+    ],
+    "hull": 12,
+    "reactor": 10,
+    "rooms": [
+      {
+        "id": "helm",
+        "deck": 1,
+        "rect": [
+          46,
+          22,
+          63,
+          37
+        ],
+        "system": "helm",
+        "level": 1
+      },
+      {
+        "id": "weapons",
+        "deck": 1,
+        "rect": [
+          66,
+          22,
+          89,
+          37
+        ],
+        "system": "weapons",
+        "level": 3
+      },
+      {
+        "id": "stores",
+        "deck": 1,
+        "rect": [
+          92,
+          22,
+          113,
+          37
+        ],
+        "system": ""
+      },
+      {
+        "id": "engines",
+        "deck": 1,
+        "rect": [
+          116,
+          22,
+          139,
+          37
+        ],
+        "system": "engines",
+        "level": 1
+      },
+      {
+        "id": "mend",
+        "deck": 0,
+        "rect": [
+          44,
+          40,
+          63,
+          55
+        ],
+        "system": "mend",
+        "level": 1
+      },
+      {
+        "id": "wards",
+        "deck": 0,
+        "rect": [
+          66,
+          40,
+          91,
+          55
+        ],
+        "system": "wards",
+        "level": 6
+      },
+      {
+        "id": "ember",
+        "deck": 0,
+        "rect": [
+          94,
+          40,
+          115,
+          55
+        ],
+        "system": "ember",
+        "level": 2
+      },
+      {
+        "id": "hold",
+        "deck": 0,
+        "rect": [
+          118,
+          40,
+          141,
+          55
+        ],
+        "system": ""
+      }
+    ],
+    "ladders": [
+      {
+        "upper": "weapons",
+        "lower": "wards",
+        "x": 80
+      },
+      {
+        "upper": "engines",
+        "lower": "hold",
+        "x": 128
+      }
+    ],
+    "weapons": [
+      "rivet_gun",
+      "heavy_rivet"
+    ],
+    "crew": [
+      {
+        "name": "CREW_WARDEN_1",
+        "species": "oru",
+        "room": "wards"
+      },
+      {
+        "name": "CREW_WARDEN_2",
+        "species": "drifter",
+        "room": "weapons"
+      },
+      {
+        "name": "CREW_WARDEN_3",
+        "species": "kith",
+        "room": "helm"
+      }
+    ],
+    "start_power": {
+      "wards": 6,
+      "weapons": 3,
+      "helm": 1
+    },
+    "ward_deck": 1,
+    "ai": {
+      "targets": {
+        "weapons": 2,
+        "wards": 3,
+        "helm": 2,
+        "ember": 1,
+        "engines": 1,
+        "mend": 1
+      },
+      "ward_react": 1.5,
+      "volley": true
+    }
+  },
+  "choir_psalter": {
+    "name": "SHIP_CHOIR_PSALTER",
+    "faction": "choir",
+    "sprite": "res://art/ship_choir_psalter.png",
+    "frame_size": [
+      200,
+      70
+    ],
+    "hull": 13,
+    "reactor": 9,
+    "rooms": [
+      {
+        "id": "helm",
+        "deck": 1,
+        "rect": [
+          56,
+          22,
+          75,
+          37
+        ],
+        "system": "helm",
+        "level": 1
+      },
+      {
+        "id": "weapons",
+        "deck": 1,
+        "rect": [
+          78,
+          22,
+          97,
+          37
+        ],
+        "system": "weapons",
+        "level": 3
+      },
+      {
+        "id": "wards",
+        "deck": 1,
+        "rect": [
+          102,
+          22,
+          121,
+          37
+        ],
+        "system": "wards",
+        "level": 4
+      },
+      {
+        "id": "stores",
+        "deck": 1,
+        "rect": [
+          124,
+          22,
+          143,
+          37
+        ],
+        "system": ""
+      },
+      {
+        "id": "hold",
+        "deck": 0,
+        "rect": [
+          56,
+          40,
+          75,
+          55
+        ],
+        "system": ""
+      },
+      {
+        "id": "ember",
+        "deck": 0,
+        "rect": [
+          78,
+          40,
+          97,
+          55
+        ],
+        "system": "ember",
+        "level": 2
+      },
+      {
+        "id": "mend",
+        "deck": 0,
+        "rect": [
+          102,
+          40,
+          121,
+          55
+        ],
+        "system": "mend",
+        "level": 1
+      },
+      {
+        "id": "engines",
+        "deck": 0,
+        "rect": [
+          124,
+          40,
+          143,
+          55
+        ],
+        "system": "engines",
+        "level": 1
+      }
+    ],
+    "ladders": [
+      {
+        "upper": "weapons",
+        "lower": "ember",
+        "x": 92
+      },
+      {
+        "upper": "wards",
+        "lower": "mend",
+        "x": 104
+      }
+    ],
+    "weapons": [
+      "dirge_bell",
+      "rivet_gun"
+    ],
+    "crew": [
+      {
+        "name": "CREW_CHORISTER_1",
+        "species": "sable",
+        "room": "weapons"
+      },
+      {
+        "name": "CREW_CHORISTER_2",
+        "species": "sable",
+        "room": "helm"
+      },
+      {
+        "name": "CREW_CHORISTER_3",
+        "species": "sable",
+        "room": "wards"
+      }
+    ],
+    "start_power": {
+      "wards": 4,
+      "weapons": 3,
+      "helm": 1,
+      "engines": 1
+    },
+    "ward_deck": 1,
+    "ai": {
+      "targets": {
+        "ember": 4,
+        "wards": 2,
+        "weapons": 2,
+        "helm": 1
+      },
+      "focus": true
+    }
+  },
+  "warden_tollkeeper": {
+    "name": "WARDEN_TOLLKEEPER",
+    "faction": "ashmarket",
+    "sprite": "res://art/ship_ashmarket_cutter.png",
+    "frame_size": [
+      196,
+      66
+    ],
+    "hull": 10,
+    "reactor": 8,
+    "rooms": [
+      {
+        "id": "helm",
+        "deck": 1,
+        "rect": [
+          54,
+          22,
+          71,
+          37
+        ],
+        "system": "helm",
+        "level": 1
+      },
+      {
+        "id": "weapons",
+        "deck": 1,
+        "rect": [
+          74,
+          22,
+          95,
+          37
+        ],
+        "system": "weapons",
+        "level": 3
+      },
+      {
+        "id": "wards",
+        "deck": 1,
+        "rect": [
+          98,
+          22,
+          119,
+          37
+        ],
+        "system": "wards",
+        "level": 4
+      },
+      {
+        "id": "stores",
+        "deck": 1,
+        "rect": [
+          122,
+          22,
+          145,
+          37
+        ],
+        "system": ""
+      },
+      {
+        "id": "engines",
+        "deck": 0,
+        "rect": [
+          52,
+          40,
+          73,
+          55
+        ],
+        "system": "engines",
+        "level": 1
+      },
+      {
+        "id": "ember",
+        "deck": 0,
+        "rect": [
+          76,
+          40,
+          97,
+          55
+        ],
+        "system": "ember",
+        "level": 2
+      },
+      {
+        "id": "mend",
+        "deck": 0,
+        "rect": [
+          100,
+          40,
+          121,
+          55
+        ],
+        "system": "mend",
+        "level": 1
+      },
+      {
+        "id": "hold",
+        "deck": 0,
+        "rect": [
+          124,
+          40,
+          151,
+          55
+        ],
+        "system": ""
+      }
+    ],
+    "ladders": [
+      {
+        "upper": "weapons",
+        "lower": "ember",
+        "x": 90
+      }
+    ],
+    "weapons": [
+      "heavy_rivet"
+    ],
+    "crew": [
+      {
+        "name": "CREW_RAIDER_1",
+        "species": "drifter",
+        "room": "weapons"
+      },
+      {
+        "name": "CREW_RAIDER_2",
+        "species": "drifter",
+        "room": "helm"
+      },
+      {
+        "name": "CREW_RAIDER_3",
+        "species": "kith",
+        "room": "wards"
+      }
+    ],
+    "start_power": {
+      "wards": 2,
+      "weapons": 2,
+      "helm": 1,
+      "engines": 1
+    },
+    "ward_deck": 1,
+    "rule": "tether"
+  },
+  "warden_breakwater": {
+    "name": "WARDEN_BREAKWATER",
+    "faction": "tidewarden",
+    "sprite": "res://art/ship_tidewarden_ketch.png",
+    "frame_size": [
+      200,
+      70
+    ],
+    "hull": 12,
+    "reactor": 9,
+    "rooms": [
+      {
+        "id": "helm",
+        "deck": 1,
+        "rect": [
+          46,
+          22,
+          63,
+          37
+        ],
+        "system": "helm",
+        "level": 1
+      },
+      {
+        "id": "weapons",
+        "deck": 1,
+        "rect": [
+          66,
+          22,
+          89,
+          37
+        ],
+        "system": "weapons",
+        "level": 3
+      },
+      {
+        "id": "stores",
+        "deck": 1,
+        "rect": [
+          92,
+          22,
+          113,
+          37
+        ],
+        "system": ""
+      },
+      {
+        "id": "engines",
+        "deck": 1,
+        "rect": [
+          116,
+          22,
+          139,
+          37
+        ],
+        "system": "engines",
+        "level": 1
+      },
+      {
+        "id": "mend",
+        "deck": 0,
+        "rect": [
+          44,
+          40,
+          63,
+          55
+        ],
+        "system": "mend",
+        "level": 1
+      },
+      {
+        "id": "wards",
+        "deck": 0,
+        "rect": [
+          66,
+          40,
+          91,
+          55
+        ],
+        "system": "wards",
+        "level": 6
+      },
+      {
+        "id": "ember",
+        "deck": 0,
+        "rect": [
+          94,
+          40,
+          115,
+          55
+        ],
+        "system": "ember",
+        "level": 2
+      },
+      {
+        "id": "hold",
+        "deck": 0,
+        "rect": [
+          118,
+          40,
+          141,
+          55
+        ],
+        "system": ""
+      }
+    ],
+    "ladders": [
+      {
+        "upper": "weapons",
+        "lower": "wards",
+        "x": 80
+      },
+      {
+        "upper": "engines",
+        "lower": "hold",
+        "x": 128
+      }
+    ],
+    "weapons": [
+      "rivet_gun",
+      "heavy_rivet"
+    ],
+    "crew": [
+      {
+        "name": "CREW_WARDEN_1",
+        "species": "oru",
+        "room": "wards"
+      },
+      {
+        "name": "CREW_WARDEN_2",
+        "species": "drifter",
+        "room": "weapons"
+      },
+      {
+        "name": "CREW_WARDEN_3",
+        "species": "kith",
+        "room": "helm"
+      },
+      {
+        "name": "CREW_WARDEN_4",
+        "species": "oru",
+        "room": "engines"
+      }
+    ],
+    "start_power": {
+      "wards": 4,
+      "weapons": 3,
+      "helm": 1,
+      "engines": 1
+    },
+    "ward_deck": 1,
+    "ai": {
+      "targets": {
+        "weapons": 2,
+        "wards": 3,
+        "helm": 2,
+        "ember": 1,
+        "engines": 1,
+        "mend": 1
+      },
+      "ward_react": 600.0,
+      "volley": true
+    },
+    "rule": "tide"
+  },
+  "warden_cantor": {
+    "name": "WARDEN_CANTOR",
+    "faction": "choir",
+    "sprite": "res://art/ship_choir_psalter.png",
+    "frame_size": [
+      200,
+      70
+    ],
+    "hull": 20,
+    "reactor": 11,
+    "rooms": [
+      {
+        "id": "helm",
+        "deck": 1,
+        "rect": [
+          56,
+          22,
+          75,
+          37
+        ],
+        "system": "helm",
+        "level": 1
+      },
+      {
+        "id": "weapons",
+        "deck": 1,
+        "rect": [
+          78,
+          22,
+          97,
+          37
+        ],
+        "system": "weapons",
+        "level": 4
+      },
+      {
+        "id": "wards",
+        "deck": 1,
+        "rect": [
+          102,
+          22,
+          121,
+          37
+        ],
+        "system": "wards",
+        "level": 4
+      },
+      {
+        "id": "stores",
+        "deck": 1,
+        "rect": [
+          124,
+          22,
+          143,
+          37
+        ],
+        "system": ""
+      },
+      {
+        "id": "hold",
+        "deck": 0,
+        "rect": [
+          56,
+          40,
+          75,
+          55
+        ],
+        "system": ""
+      },
+      {
+        "id": "ember",
+        "deck": 0,
+        "rect": [
+          78,
+          40,
+          97,
+          55
+        ],
+        "system": "ember",
+        "level": 2
+      },
+      {
+        "id": "mend",
+        "deck": 0,
+        "rect": [
+          102,
+          40,
+          121,
+          55
+        ],
+        "system": "mend",
+        "level": 1
+      },
+      {
+        "id": "engines",
+        "deck": 0,
+        "rect": [
+          124,
+          40,
+          143,
+          55
+        ],
+        "system": "engines",
+        "level": 1
+      }
+    ],
+    "ladders": [
+      {
+        "upper": "weapons",
+        "lower": "ember",
+        "x": 92
+      },
+      {
+        "upper": "wards",
+        "lower": "mend",
+        "x": 104
+      }
+    ],
+    "weapons": [
+      "dirge_bell",
+      "heavy_rivet"
+    ],
+    "crew": [
+      {
+        "name": "CREW_CHORISTER_1",
+        "species": "sable",
+        "room": "weapons"
+      },
+      {
+        "name": "CREW_CHORISTER_2",
+        "species": "sable",
+        "room": "helm"
+      },
+      {
+        "name": "CREW_CHORISTER_3",
+        "species": "sable",
+        "room": "wards"
+      },
+      {
+        "name": "CREW_CHORISTER_4",
+        "species": "sable",
+        "room": "engines"
+      }
+    ],
+    "start_power": {
+      "wards": 4,
+      "weapons": 4,
+      "helm": 1,
+      "engines": 1
+    },
+    "ward_deck": 1,
+    "ai": {
+      "targets": {
+        "ember": 4,
+        "wards": 2,
+        "weapons": 2,
+        "helm": 1
+      },
+      "focus": true
+    },
+    "rule": "hymn"
   }
 }
