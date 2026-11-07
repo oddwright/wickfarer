@@ -65,7 +65,7 @@ func _draw_chart(run: Run, l: RunLayout) -> void:
 			var a := l.beacon_pos(n)
 			var b := l.beacon_pos(run.chart.node(id))
 			var hot: bool = n.id == run.at and targets.has(id)
-			draw_line(a, b, Pixel.c("v") if hot else Pixel.c("d"), 1.0)
+			Pixel.line(self, a, b, Pixel.c("v") if hot else Pixel.c("d"))
 	var blink := int(main.world.anim_time * 3.0) % 2 == 0
 	for n in run.chart.nodes:
 		_draw_beacon(run, l, n, targets.has(n.id), blink)
@@ -113,7 +113,7 @@ func _draw_beacon(run: Run, l: RunLayout, n: Dictionary, target: bool, blink: bo
 	draw_rect(Rect2(c - Vector2i(4, 4), Vector2(9, 9)), Pixel.c("a"))  # links stop at the icon
 	ChartKey.draw_icon(self, ChartKey.icon_for(run, n), c, ChartKey.color_for(run, n, target))
 	if n.id == run.at:  # a ring, so the ship is the first thing the eye finds
-		draw_rect(Rect2(c - Vector2i(6, 6), Vector2(13, 13)), Pixel.c("w"), false, 1.0)
+		Pixel.frame(self, Rect2i(c - Vector2i(6, 6), Vector2i(13, 13)), Pixel.c("w"))
 	if target and blink:
 		var box := Rect2i(c - Vector2i(5, 5), Vector2i(11, 11))
 		Pixel.corners(self, box, Pixel.c("o") if swallowed else Pixel.c("v"), 2)

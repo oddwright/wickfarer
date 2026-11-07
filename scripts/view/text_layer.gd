@@ -1,7 +1,7 @@
 class_name TextLayer
 extends Node2D
 ## Text drawn in the pixel world. Layout works in native (art) pixels against the 3x5 font's
-## metrics. On screens at 2x or more the letters themselves come from a finer 4x6 font, each
+## metrics. On screens at 3x or more the letters themselves come from a finer 4x6 font, each
 ## font pixel a whole number of screen pixels (4 at 5x and 6x), so text stays pixel text but
 ## reads more easily; the art keeps its own scale. A 4x6 letter and its outline never take more
 ## room than the 3x5 letter it replaces, so anything laid out for the 3x5 font still fits.
@@ -50,35 +50,32 @@ static func load_glyphs() -> void:
 
 
 ## Picks the font for a canvas scale. Returns true when the fine font is on: the canvas must then
-## be rendered at screen resolution with the scale as its transform, since the fine letters fall
+## be drawn at screen resolution with the scale as its transform, since fine letters fall
 ## between native pixels. Otherwise it stays at native size and text draws in native pixels.
-static func configure(scale: int, fine := true) -> bool:
-	font_px = fine_px(scale) if fine else 0
+static func configure(scale: int) -> bool:
+	font_px = fine_px(scale)
 	px_scale = scale if font_px > 0 else 1
 	return font_px > 0
 
 
-## Sets up the game canvas for a scale. Fine text needs it drawn at screen resolution: the art
-## is then scaled by the canvas transform instead of by stretching a native-size texture, which
-## looks the same since all art sits on whole native pixels.
+## Sets up the game canvas for a scale. With fine text it is drawn at screen resolution and the
+## art is scaled by the canvas transform instead of by stretching a native-size texture; art
+## sits on whole native pixels (see Pixel.frame and Pixel.line), so it looks the same.
 static func fit_canvas(container: SubViewportContainer, viewport: SubViewport, scale: int) -> void:
 	var fine := configure(scale)
 	container.stretch_shrink = 1 if fine else scale
-	viewport.canvas_transform = Transform2D.IDENTITY.scaled(Vector2.ONE * (scale if fine else 1))
+	viewport.canvas_transform = Transform2D.IDENTITY.scaled(Vector2.ONE * px_scale)
 
 
-## Screen pixels per 4x6 font pixel at a canvas scale, or 0 when the 3x5 font must stay (1x).
+## Screen pixels per 4x6 font pixel at a canvas scale, or 0 when the 3x5 font stays: below 3x a
+## 4x6 pixel would be a single screen pixel, too small to read.
 static func fine_px(scale: int) -> int:
-	return (scale * FINE_NUM) / FINE_DEN
+	var px := (scale * FINE_NUM) / FINE_DEN
+	return px if px >= 2 else 0
 
 
 static func _fine() -> bool:
 	return font_px > 0 and not fine_index.is_empty()
-
-
-## The glyph index text is drawn from now.
-static func _index() -> Dictionary:
-	return fine_index if _fine() else glyph_index
 
 
 ## Advance of one letter in font pixels, gap included.
@@ -95,14 +92,10 @@ static func _px_width(s: String, index: Dictionary) -> int:
 	return maxi(0, w - 1)
 
 
-## Width of a line in native pixels, rounded up. A fine line is measured no wider than its 3x5
-## line: its last letter can run one screen pixel past the 3x5 one, but its outline is a font
-## pixel thinner, so with outlines the fine line still sits inside the 3x5 one.
+## Width of a line in native pixels, always measured in the 3x5 font so layouts are the same on
+## every screen; fine text, drawn inside that room, never needs more.
 static func text_width(s: String, k := 1) -> int:
-	var coarse := _px_width(s, glyph_index) * k
-	if not _fine():
-		return coarse
-	return mini(ceili(float(_px_width(s, fine_index) * k * font_px) / px_scale), coarse)
+	return _px_width(s, glyph_index) * k
 
 
 static func _wrap(s: String, max_w: int, k: int) -> PackedStringArray:
@@ -133,18 +126,20 @@ func _text(
 	var up := s.to_upper()
 	var lines: PackedStringArray = [up] if width <= 0 else _wrap(up, int(width), k)
 	var fine := _fine()
+	var index := fine_index if fine else glyph_index
 	var u := (font_px if fine else px_scale) * k  # screen pixels per font pixel
 	var h := FINE_H if fine else GLYPH_H
 	var step := (FINE_LINE if fine else LINE) * u
-	# The block is centred where the 3x5 letters were, so layouts made for them still line up.
-	var mid := roundi(native_pos.y * px_scale) - GLYPH_H * k * px_scale / 2
-	var y := mid - h * u / 2 - (lines.size() - 1) * step / 2
+	# Letters are centred where the 3x5 ones were (for 3x5 text this is the old top exactly), so
+	# layouts made for them still line up.
+	var y := roundi(native_pos.y * px_scale) - (GLYPH_H * k * px_scale + h * u) / 2
+	y -= (lines.size() - 1) * step / 2
 	var left := roundi(native_pos.x * px_scale)
 	var box := roundi(width * px_scale)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE / px_scale)
 	for line in lines:
 		var x := left
-		var w := _px_width(line, _index()) * u
+		var w := _px_width(line, index) * u
 		if width > 0:
 			if align == HORIZONTAL_ALIGNMENT_CENTER:
 				x += (box - w) / 2
@@ -153,24 +148,27 @@ func _text(
 		# A one-pixel ink outline keeps text readable over stars, fire and panels. It fades with
 		# the text; while a floater fades, the gap column between letters, where two outlines
 		# overlap, is a little darker for a moment, which beats the outline vanishing at once.
-		_line(line, Vector2i(x, y), u, Pixel.c("a", col.a), true)
-		_line(line, Vector2i(x, y), u, col)
+		var at := Vector2i(x, y)
+		var ink := Pixel.c("a", col.a)
+		_line(line, at, u, ink, fine_outline if fine else outline, index, h, OUTLINE_CELL, 1)
+		_line(line, at, u, col, fine_glyphs if fine else glyphs, index, h, CELL, 0)
 		y += step
 	draw_set_transform(Vector2.ZERO)
 
 
-## Draws one line in screen pixels (the caller has set the transform), u per font pixel.
-func _line(s: String, at: Vector2i, u: int, col: Color, outlined := false) -> void:
-	var fine := _fine()
-	var index := _index()
-	var h := FINE_H if fine else GLYPH_H
-	var tex: Texture2D
-	if fine:
-		tex = fine_outline if outlined else fine_glyphs
-	else:
-		tex = outline if outlined else glyphs
-	var slot := CELL + 2 if outlined else CELL  # both fonts use 5-wide slots
-	var pad := 1 if outlined else 0  # the outline slot is the glyph grown a pixel each side
+## Draws one line from a glyph strip in screen pixels (the caller has set the transform), u per
+## font pixel. An outline strip's slots are the glyphs grown by pad pixels on every side.
+func _line(
+	s: String,
+	at: Vector2i,
+	u: int,
+	col: Color,
+	tex: Texture2D,
+	index: Dictionary,
+	h: int,
+	slot: int,
+	pad: int
+) -> void:
 	var x := at.x
 	for ch in s:
 		if index.has(ch):
