@@ -235,7 +235,8 @@ func _land(me: Ship, rng: RandomNumberGenerator, events: Array) -> void:
 
 ## The cold of what got through: a swallow bites its system, a chill the whole deck.
 func _strike_ship(me: Ship, left: int, events: Array) -> void:
-	var chill := float(data().chill_per_strength) * left
+	# The Hush's cold is Chill like any other: gear that shrugs it off helps here too.
+	var chill := float(data().chill_per_strength) * left * (1.0 - me.mod("chill_resist"))
 	if wave_kind == "swallow":
 		var r := me.room(target_room)
 		var bite := float(data().swallow_per_strength) * left

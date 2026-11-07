@@ -8,7 +8,7 @@ extends RefCounted
 ## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
-const VERSION := 6
+const VERSION := 7
 const DIR := "user://"
 
 
@@ -58,8 +58,24 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 						c["fight_xp"] = {}
 			return d
 		5:
-			# Version 6 fights can be the Kindling siege, with a "siege" block and a
-			# "siege" random stream. A version 5 fight is an ordinary one and needs
+			# Version 6 ships carry their guns and modules, and runs a hold, a
+			# store's wares and the unlocks gear is drawn from. An older ship has
+			# no modules; its guns (missing here) are its hull's own, which
+			# Ship.from_dict fills in from the content. An older run found
+			# nothing yet and draws only from gear that needs no unlock. Its
+			# wares stay missing, so a run saved docked lays them out on load.
+			for ship: Dictionary in _saved_ships(d):
+				if not ship.has("modules"):
+					ship["modules"] = []
+			var run: Dictionary = d.get("run", {})
+			if not run.is_empty():
+				for k: String in ["hold", "unlocked"]:
+					if not run.has(k):
+						run[k] = []
+			return d
+		6:
+			# Version 7 fights can be the Kindling siege, with a "siege" block and a
+			# "siege" random stream. A version 6 fight is an ordinary one and needs
 			# neither (the stream seeds itself); the bump keeps an older build from
 			# loading a siege it would play as a fight with no end.
 			return d

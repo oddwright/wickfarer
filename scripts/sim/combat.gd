@@ -8,6 +8,8 @@ const FLIGHT_TIME := 1.0
 const SHOT_SPACING := 0.2
 const AI_THINK := 0.5
 const RESIGHT_COST := 2.0
+const HIT_CHILL := 15.0  ## warmth any hit knocks out of its room; Chill guns set their own
+const CHILL_SPREAD := 0.5  ## share of a Chill hit's cold that reaches each neighbouring room
 
 var ships: Array[Ship] = []
 var projectiles: Array[Dictionary] = []
@@ -164,7 +166,8 @@ func _resolve(p: Dictionary) -> void:
 		return
 	var r := target.room(p.target)
 	var where := {"side": target.side, "room": r.id}
-	if target.ward_layers > 0 and r.deck == target.ward_deck:
+	var pierces: bool = w.get("pierces_ward", false)
+	if target.ward_layers > 0 and r.deck == target.ward_deck and not pierces:
 		if w.strips_ward:
 			target.ward_layers -= 1
 			target.ward_regen = 0.0
@@ -179,13 +182,25 @@ func _resolve(p: Dictionary) -> void:
 	target.hull = maxi(0, target.hull - int(w.hull_damage))
 	if r.level > 0:
 		r.damage = minf(float(r.level), r.damage + float(w.system_damage))
-	r.warmth = maxf(0.0, r.warmth - 15.0)
+	_chill(target, r, float(w.get("chill", HIT_CHILL)), w.has("chill"))
 	for c in target.crew_in(r.id, true):
 		c.hp = maxf(0.0, c.hp - float(w.crew_damage))
 	if combat_rng.randf() < float(w.fire_chance):
 		r.fire = maxf(r.fire, 30.0)
 		events.append(where.merged({"type": "fire_start"}))
 	events.append(where.merged({"type": "hit", "damage": int(w.hull_damage)}))
+
+
+## Every hit lets some cold in; a Chill gun lets in far more, and half of it
+## reaches the rooms next door. A warm-fitted ship shrugs some of it off.
+func _chill(target: Ship, r: Room, cold: float, spreads: bool) -> void:
+	cold *= 1.0 - target.mod("chill_resist")
+	r.warmth = maxf(0.0, r.warmth - cold)
+	if not spreads:
+		return
+	for n: Array in target.neighbors(r.id):
+		var o := target.room(n[0])
+		o.warmth = maxf(0.0, o.warmth - cold * CHILL_SPREAD)
 
 
 # ---------------------------------------------------------------- save

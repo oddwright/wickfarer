@@ -25,11 +25,13 @@ func _aim(combat: Combat, me: Ship, foe: Ship, side: int, r: RandomNumberGenerat
 	# With nothing that strips a ward, only the deck the ward leaves open can be hurt.
 	var shut := foe.ward_deck if foe.ward_layers > 0 and not _strips_wards(me) else -1
 	for i in me.weapon_ids.size():
+		# A gun that passes wards (Chill) can hit the warded deck as well.
+		var skip := -1 if ContentDB.weapons[me.weapon_ids[i]].get("pierces_ward", false) else shut
 		var aimed := me.weapon_target[i]
-		var wasted := aimed != "" and foe.room(aimed).deck == shut
+		var wasted := aimed != "" and foe.room(aimed).deck == skip
 		if aimed != "" and me.weapon_charge[i] > 0.0 and not wasted:
 			continue
-		var pool := _targets(foe, shut)
+		var pool := _targets(foe, skip)
 		if pool.is_empty():
 			pool = _targets(foe, -1)
 		if pool.is_empty():

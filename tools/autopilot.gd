@@ -91,6 +91,8 @@ func play(run: Run, max_steps := 1200, max_fight_ticks := 6000) -> String:
 					pass
 				_refit(run)
 				run.leave_store()
+			"wares", "modules", "guns":
+				run.store_action("back")  # a save made on a store page
 			"reach_done":
 				run.next_reach()
 			_:

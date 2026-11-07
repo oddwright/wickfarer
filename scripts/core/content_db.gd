@@ -16,6 +16,7 @@ const FILES := {
 	"tutorial": "res://data/tutorial.json",
 	"unlocks": "res://data/unlocks.json",
 	"depths": "res://data/depths.json",
+	"modules": "res://data/modules.json",
 	"sieges": "res://data/sieges.json",
 }
 ## What a Hush Depth's rules may change, and the sign each must have (+1: only
@@ -31,7 +32,17 @@ const DEPTH_EFFECTS := {
 }
 
 const EVENT_EFFECTS := [
-	"scrap", "light", "hull", "crew_hp", "hush", "fight", "fight_bonus_scrap", "enemy_hull", "store"
+	"scrap",
+	"light",
+	"hull",
+	"crew_hp",
+	"hush",
+	"fight",
+	"fight_bonus_scrap",
+	"enemy_hull",
+	"store",
+	"module",
+	"weapon",
 ]
 const BEACON_KINDS := ["fight", "event", "store", "empty"]  ## the Gate has no story
 const MAX_CHOICES := 3  ## what the Square layout's right page has room for
@@ -55,6 +66,7 @@ static var skills: Dictionary = {}  ## crew skills, ranks and how practice grows
 static var tutorial: Dictionary = {}  ## the training flight's lessons and the one-time tips
 static var unlocks: Dictionary = {}  ## unlock id -> {name, hint, stat, at_least}
 static var depths: Dictionary = {}  ## {"depths": [{name, text, effects}]}, depth 1 first
+static var modules: Dictionary = {}  ## module id -> {name, price, weight, gain, cost, unlock}
 static var sieges: Dictionary = {}  ## boss sieges (the Kindling); see Siege
 static var loaded := false
 
@@ -74,6 +86,7 @@ static func load_all() -> void:
 	tutorial = _read(FILES.tutorial)
 	unlocks = _read(FILES.unlocks)
 	depths = _read(FILES.depths)
+	modules = _read(FILES.modules)
 	sieges = _read(FILES.sieges)
 	_install_translation()
 	loaded = true
@@ -150,6 +163,7 @@ static func validate() -> Array[String]:
 		Siege.validate(sid, sieges[sid], errors)
 	_validate_feedback(feedback, errors)
 	Skills.validate(errors)
+	GearCheck.validate(errors)
 	_validate_tutorial(tutorial, errors)
 	return errors
 

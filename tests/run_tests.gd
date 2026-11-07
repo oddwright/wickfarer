@@ -16,6 +16,7 @@ const PROGRESS_TESTS = preload("res://tests/progress_tests.gd")
 const PROFILE_TESTS = preload("res://tests/profile_tests.gd")
 const RESUME_TESTS = preload("res://tests/resume_tests.gd")
 const TUTORIAL_TESTS = preload("res://tests/tutorial_tests.gd")
+const GEAR_TESTS = preload("res://tests/gear_tests.gd")
 const SIEGE_TESTS = preload("res://tests/siege_tests.gd")
 const SCREENS := {
 	"Galaxy S24 (2340x1080)": Vector2i(2340, 1080),
@@ -84,6 +85,7 @@ func _init() -> void:
 		"test_menu_screens_on_every_screen",
 		"test_options_adjust_settings",
 		"test_progression",
+		"test_gear",
 		"test_tutorial",
 		"test_kindling_siege",
 	]:
@@ -94,7 +96,9 @@ func _init() -> void:
 ## Tests that need the real scene in the tree run on the first frame, once the
 ## root has entered it (it hasn't during _init).
 func _process(_delta: float) -> bool:
-	for t in ["test_menu_flow", "_test_tutorial_flow", "_test_crew_roster_flow"]:
+	for t in [
+		"test_menu_flow", "_test_tutorial_flow", "_test_crew_roster_flow", "_test_gear_pages"
+	]:
 		current = t
 		call(t)
 	_finish()
@@ -635,18 +639,14 @@ func test_run_screens_on_every_screen() -> void:
 				if (l.button("beacon", n.id).rect as Rect2i).get_center() != l.beacon_pos(n):
 					probs.append("beacon %s is off its hit box" % n.id)
 		var chart0 := Run.create(1).chart
-		var counts := {
-			"event": 3,
-			"store": Run.STORE_ITEMS.size() + 2,
-			"refit": Run.REFIT_SYSTEMS.size() + 2,
-			"next": 1
-		}
+		var counts := {"event": 3, "next": 1}
+		counts.merge(GEAR_TESTS.page_sizes())
 		for mode: String in counts:
 			var l := RunLayout.build(scr, chart0, mode, counts[mode])
 			probs.append_array(l.problems())
-			var own := {"event": "choice", "store": "store", "refit": "refit", "next": "next"}
-			if l.button(own[mode]).is_empty():
-				probs.append("%s has no %s button" % [mode, own[mode]])
+			var own: String = {"event": "choice"}.get(mode, mode)
+			if l.button(own).is_empty():
+				probs.append("%s has no %s button" % [mode, own])
 			for b in l.buttons:
 				if (b.rect as Rect2i).end.y > scr.native.y - 4:
 					probs.append("%s button falls off the bottom" % mode)
@@ -672,6 +672,21 @@ func test_progression() -> void:
 	PROFILE_TESTS.fixture_loads(self)
 	PROFILE_TESTS.review_fixes(self)
 	PROFILE_TESTS.content_checked(self)
+
+
+## Modules, Chill guns and the store's gear pages (tests/gear_tests.gd).
+func test_gear() -> void:
+	GEAR_TESTS.modules_fit(self)
+	GEAR_TESTS.chill_guns(self)
+	GEAR_TESTS.store_pages(self)
+	GEAR_TESTS.gear_found(self)
+	GEAR_TESTS.run_costs(self)
+	GEAR_TESTS.saves_keep_gear(self)
+	GEAR_TESTS.content_checked(self)
+
+
+func _test_gear_pages() -> void:
+	GEAR_TESTS.pages_in_main(self)
 
 
 func test_view_screens_follow_the_run() -> void:
