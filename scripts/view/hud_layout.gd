@@ -16,6 +16,8 @@ const CREW_X := 128  ## clear of the longest ship name and hull count in the top
 const KINDLE_W := 54
 const BAR_H := 40  ## a ship's status lines: name and hull, hull pips, reactor, power
 const MSG_H := 24  ## Tall: three lines of the hint between the player ship and the buttons
+const INTENT_LINE := 7  ## one line of the enemy's intent, under its status lines
+const INTENT_W := 200
 
 var kind: String
 var native: Vector2i
@@ -33,6 +35,9 @@ var message_rect: Rect2i  ## where prompts and hints are written
 var player_bar_y := 0
 ## Opens the pause menu; kept out of buttons, which are the fight controls.
 var menu_rect: Rect2i
+## Where the enemy's intent is listed (one line per gun, and the fight's rule): under
+## its status lines and over its hull, as many lines as fit. Drawn by IntentLayer.
+var intent_rect: Rect2i
 
 
 static func build(
@@ -107,10 +112,23 @@ static func build(
 		l.message_rect = Rect2i(4, msg_top, w - 8, row2 - msg_top - 4)
 	l.player_body = Rect2i(l.player_origin + pu.position, pu.size)
 	l.enemy_body = Rect2i(l.enemy_origin + eu.position, eu.size)
+	var top := BAR_H + 1
+	var x := maxi(4, w - 34 - INTENT_W)  # a Tall canvas is narrower than a full line
+	var floor_y := l.enemy_body.position.y
+	if l.player_body.end.x > x:  # on a narrow canvas the player's hull reaches under it too
+		floor_y = mini(floor_y, l.player_body.position.y)
+	var lines := maxi(0, (floor_y - 1 - top) / INTENT_LINE)
+	if lines > 0 and not siege:  # an empty rect still "intersects" what it sits in
+		l.intent_rect = Rect2i(x, top, w - 34 - x, lines * INTENT_LINE)
 	l._add_flare()
 	if siege:
 		l._add_kindle()
 	return l
+
+
+## How many lines of the enemy's intent fit.
+func intent_lines() -> int:
+	return intent_rect.size.y / INTENT_LINE
 
 
 ## Flare the Ember: one more small button beside Crew and Muster, after them in
@@ -233,8 +251,15 @@ func problems() -> Array[String]:
 			out.append("ship outside the canvas %s" % r)
 	if player_rect.intersects(enemy_rect):
 		out.append("ships overlap")
+	var listed := intent_rect.has_area()
+	if listed and (intent_rect.intersects(enemy_rect) or intent_rect.intersects(player_rect)):
+		out.append("the enemy's intent lines cover a ship")
+	if listed and not canvas.encloses(intent_rect):
+		out.append("the enemy's intent lines run off the canvas")
 	for b in buttons + [{"kind": "menu", "rect": menu_rect}]:
 		var r: Rect2i = b.rect
+		if listed and r.intersects(intent_rect):
+			out.append("%s button covers the enemy's intent lines" % b.kind)
 		if not canvas.encloses(r):
 			out.append("%s button outside the canvas" % b.kind)
 		if r.intersects(player_rect) or r.intersects(enemy_rect):

@@ -39,7 +39,7 @@ static func draw_flare(world: WorldView, s: Ship, rr: Rect2i, t: float) -> void:
 ## The Flare button: a flame, lit when ready, glowing while burning, dim while
 ## the Ember rests; its bar shows the burn left, or the rest still to wait.
 static func draw_button(world: WorldView, s: Ship, r: Rect2i) -> void:
-	var ready := s.can_flare()
+	var ready := EmberFlare.can(s)
 	var burning := s.flare_time > 0.0
 	Pixel.panel(world, r, burning)
 	var tint := Color(1, 1, 1, 1.0 if ready or burning else 0.35)
@@ -61,7 +61,7 @@ static func draw_button(world: WorldView, s: Ship, r: Rect2i) -> void:
 
 ## The word on the Flare button.
 static func draw_button_text(tl: TextLayer, s: Ship, r: Rect2i) -> void:
-	var lit := s.can_flare() or s.flare_time > 0.0
+	var lit := EmberFlare.can(s) or s.flare_time > 0.0
 	tl._text(
 		Vector2(r.position.x, r.position.y + r.size.y / 2 + 5),
 		tl.tr("UI_FLARE"),

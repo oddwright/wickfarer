@@ -284,7 +284,7 @@ func _moment(on: String, ctx: Dictionary) -> bool:
 		"low_hull":
 			return c.player().hull * 3 <= c.player().max_hull
 		"flare_ready":  # once a fight is under way, so the tip names a real choice
-			return c.siege == null and c.time() >= 20.0 and c.player().can_flare()
+			return c.siege == null and c.time() >= 20.0 and EmberFlare.can(c.player())
 	return _moments.has(on)
 
 

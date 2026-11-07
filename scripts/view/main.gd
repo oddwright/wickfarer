@@ -87,7 +87,7 @@ func _ready() -> void:
 	container.add_child(viewport)
 	world = WorldView.new()
 	viewport.add_child(world)
-	text = TextLayer.new()
+	text = IntentLayer.new()
 	viewport.add_child(text)  # text lives in the pixel world, above the art
 	run_view = RunView.new()
 	viewport.add_child(run_view)

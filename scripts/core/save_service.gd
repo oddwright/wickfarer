@@ -8,7 +8,7 @@ extends RefCounted
 ## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
-const VERSION := 9
+const VERSION := 10
 const DIR := "user://"
 
 
@@ -86,8 +86,22 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 			# loading a siege it would play as a fight with no end.
 			return d
 		8:
-			# Version 9 rooms can hold a rent and ships an Ember flare (its burn
-			# and rest). A version 8 fight had neither: Room.load_dict and
+			# Version 9 fights count the Light the Hollow Choir drains (a missing
+			# count reads as 0), and a Gate's dock patches the hull on arrival, before
+			# any Warden, not on the way through. A run saved on a Gate's screen
+			# arrived without the patch and would no longer get it, so it gets it here.
+			var run: Dictionary = d.get("run", {})
+			if str(run.get("state", "")) == "reach_done":
+				ContentDB.load_all()
+				var reach: Dictionary = ContentDB.reaches.get(str(run.get("reach", "")), {})
+				var ship: Dictionary = run.get("ship", {})
+				if ship.has("hull"):
+					var top := int(ship.get("max_hull", ship.hull))
+					ship["hull"] = mini(top, int(ship.hull) + int(reach.get("gate_repair", 0)))
+			return d
+		9:
+			# Version 10 rooms can hold a rent and ships an Ember flare (its burn
+			# and rest). A version 9 fight had neither: Room.load_dict and
 			# Ship.from_dict start them at 0, and the "rents" random stream seeds
 			# itself. Nothing moves; the bump keeps an older build from loading a
 			# torn or flaring ship it would play without the rules.

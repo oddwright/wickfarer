@@ -130,7 +130,7 @@ static func flare_burns_then_cracks(t: SceneTree) -> void:
 	var calm := _open_fight()
 	for x in [c, calm]:
 		x.apply({"type": "aim", "weapon": 0, "room": "weapons"})
-	_check(t, me.can_flare(), "a fresh Ember can flare")
+	_check(t, EmberFlare.can(me), "a fresh Ember can flare")
 	_check(t, c.apply({"type": "flare"}), "the flare order is taken")
 	_check(t, not c.apply({"type": "flare"}), "but not twice")
 	var lit := _ticks(c, 1)
@@ -152,18 +152,18 @@ static func flare_burns_then_cracks(t: SceneTree) -> void:
 	_check(t, me.flare_time == 0.0, "the flare burns for its seconds")
 	_check(t, ember.damage > 0.0 and _has(after, "flare_spent", 0), "then the Ember cracks")
 	_check(t, me.available_power() < calm.player().available_power(), "costing power")
-	_check(t, not me.can_flare(), "and it rests before it can flare again")
+	_check(t, not EmberFlare.can(me), "and it rests before it can flare again")
 	ember.damage = 0.0
 	me.flare_cool = 0.0
-	_check(t, me.can_flare(), "once rested and patched it can flare again")
+	_check(t, EmberFlare.can(me), "once rested and patched it can flare again")
 	ember.damage = float(ember.level)
-	_check(t, not me.can_flare(), "a broken Ember can't flare")
+	_check(t, not EmberFlare.can(me), "a broken Ember can't flare")
 	ember.damage = 0.0
-	me.flare()
+	EmberFlare.light(me)
 	me.recover_after_fight()
-	_check(t, me.flare_time == 0.0 and me.can_flare(), "every fight starts with a rested Ember")
+	_check(t, me.flare_time == 0.0 and EmberFlare.can(me), "every fight starts with a rested Ember")
 	var maw := Ship.from_content("hush_maw", 1)
-	_check(t, not maw.can_flare(), "a hull with no Ember never flares")
+	_check(t, not EmberFlare.can(maw), "a hull with no Ember never flares")
 
 
 static func enemies_use_them(t: SceneTree) -> void:
@@ -283,14 +283,37 @@ static func foe_line_clears_buttons(t: SceneTree, screens: Dictionary) -> void:
 
 
 static func fixtures_load(t: SceneTree) -> void:
-	for v in [8, 9]:
+	for v in [9, 10]:
 		var raw: Dictionary = JSON.parse_string(
 			FileAccess.get_file_as_string("res://tests/fixtures/run_save_v%d.json" % v)
 		)
 		var r := Run.from_dict(SaveService.upgrade(raw).data.run)
 		var ship := r.combat.player() if r.combat else r.ship
-		if v == 8:
-			_check(t, ship.flare_time == 0.0 and ship.can_flare(), "a v8 ship starts unflared")
+		if v == 9:
+			_check(t, ship.flare_time == 0.0 and EmberFlare.can(ship), "a v9 ship starts unflared")
 		else:
-			_check(t, ship.flare_time > 0.0, "the v9 fixture is caught mid-flare")
+			_check(t, ship.flare_time > 0.0, "the v10 fixture is caught mid-flare")
 			_check(t, ship.room("galley").rent > 0.0, "with a rent open")
+
+
+## A lone crew member repairing a broken room stays until it is fixed, then goes
+## to the empty station. They used to be pulled off to fill it, so the room
+## stayed broken and the crew bounced between the two.
+static func crew_keep_repairing(t: SceneTree) -> void:
+	var c := Combat.create(5, "tallow_wren", "ashmarket_skiff")
+	var foe := c.enemy()
+	var mend := foe.system_room("mend")
+	mend.damage = 1.0
+	for m in foe.crew:
+		m.hp = 0.0 if m != foe.crew[0] else m.hp
+	var hand := foe.crew[0]
+	hand.room = mend.id
+	hand.path.clear()
+	for i in 10:
+		c.ai.call("_crew", c, foe, 1)
+		if hand.is_moving():
+			break
+	_check(t, not hand.is_moving() and hand.room == mend.id, "a hand repairing stays on the repair")
+	mend.damage = 0.0
+	c.ai.call("_crew", c, foe, 1)
+	_check(t, hand.is_moving(), "and leaves for an empty station once it is fixed")

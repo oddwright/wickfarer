@@ -13,7 +13,7 @@ OUT = sys.argv[2]
 sys.path.insert(0, SRC)
 from PIL import Image
 from canvas import Cv, clean_orphans
-import ships, wren, cutter, minis, brine, saint, hush
+import ships, wren, cutter, minis, brine, saint, tidewarden, choir, hush
 
 os.makedirs(OUT, exist_ok=True)
 
@@ -28,7 +28,7 @@ def plain_room(c, x0, y0, x1, y1, state='plain', *a, **k):
         state = 'plain'
     return real_room(c, x0, y0, x1, y1, state, *a, **k)
 
-for mod in (wren, cutter, brine, saint):
+for mod in (wren, cutter, brine, saint, tidewarden, choir):
     mod.minis = dummy
     mod.room = plain_room
 cutter.FIRE = ['.', '.', '.']
@@ -49,6 +49,8 @@ sheet([ship_frame_wren(f) for f in range(4)]).save(os.path.join(OUT, 'ship_tallo
 sheet([cutter.cutter(f) for f in range(4)]).save(os.path.join(OUT, 'ship_ashmarket_cutter.png'))
 sheet([brine.brine(f) for f in range(4)]).save(os.path.join(OUT, 'ship_brine_cathedral.png'))
 sheet([saint.saint(f) for f in range(4)]).save(os.path.join(OUT, 'ship_porcelain_saint.png'))
+sheet([tidewarden.ketch(f) for f in range(4)]).save(os.path.join(OUT, 'ship_tidewarden_ketch.png'))
+sheet([choir.psalter(f) for f in range(4)]).save(os.path.join(OUT, 'ship_choir_psalter.png'))
 sheet([hush.maw(f) for f in range(4)]).save(os.path.join(OUT, 'ship_hush_maw.png'))
 
 ORU = """
