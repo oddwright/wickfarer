@@ -712,9 +712,9 @@
   "UI_FLARE": "Flare",
   "UI_RENT": "Rent",
   "UI_RENT_OPEN": "Torn",
-  "UI_RENT_SEALED": "Sealed +1",
+  "UI_RENT_SEALED": "Sealed +%d",
   "UI_FLARE_LIT": "Flare",
   "UI_FLARE_SPENT": "Cracked",
-  "TIP_RENT": "A rent drains warmth. Send crew to seal it: a seal gives 1 hull back.",
-  "TIP_FLARE": "Flare: 8 s of fast guns and warmth, then the Ember cracks."
+  "TIP_RENT": "A rent drains warmth. Send crew to seal it: sealing plates hull back.",
+  "TIP_FLARE": "Flare: a burst of fast guns and warmth, then the Ember cracks."
 }

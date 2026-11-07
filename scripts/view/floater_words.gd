@@ -17,7 +17,7 @@ static func for_event(e: Dictionary) -> Dictionary:
 		"rent_open":
 			return _say(_tr("UI_RENT_OPEN"), "j")
 		"rent_sealed":
-			return _say(_tr("UI_RENT_SEALED"), "H")
+			return _say(_tr("UI_RENT_SEALED") % int(e.get("hull", 0)), "H")
 		"flare":
 			return _say(_tr("UI_FLARE_LIT"), "w")
 		"flare_spent":

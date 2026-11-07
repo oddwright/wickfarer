@@ -117,16 +117,15 @@ static func build(
 ## the top bar (Wide) and before them over the guns (Tall). Square puts it over
 ## the systems, left of the fold, level with the crew buttons on the right.
 func _add_flare() -> void:
-	var muster: Rect2i = button("muster").rect
 	var size := Vector2i(CREW_W, CREW_H)
-	if kind == "tall":
-		var crew: Rect2i = button("crew").rect
-		_add("flare", 0, Rect2i(crew.position - Vector2i(CREW_W + 4, 0), size))
-	elif kind == "wide":
-		_add("flare", 0, Rect2i(muster.position + Vector2i(CREW_W + 4, 0), size))
-	else:  # Square: the right of the fold is full on a narrow Fold, so left of it, over the systems
-		var row2 := native.y - (ROW_H + 4) * 2
-		_add("flare", 0, Rect2i(Vector2i(4, row2 + ROW_H - CREW_H), size))
+	var crew: Rect2i = button("crew").rect
+	match kind:
+		"tall":
+			_add("flare", 0, Rect2i(crew.position - Vector2i(CREW_W + 4, 0), size))
+		"wide":
+			_add("flare", 0, Rect2i(crew.position + Vector2i((CREW_W + 4) * 2, 0), size))
+		_:  # the right of the fold is full on a narrow Fold: left of it, level with Crew
+			_add("flare", 0, Rect2i(Vector2i(4, crew.position.y), size))
 
 
 ## The Kindling's one extra order. The bottom rows are full on the narrowest

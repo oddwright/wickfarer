@@ -19,16 +19,19 @@ func think(combat: Combat, side: int) -> void:
 	_aim(combat, me, foe, side, r)
 	_wards(combat, me, foe, side)
 	_crew(combat, me, side)
-	_flare(combat, me, side)
+	flare_when_it_pays(combat, me, side)
 
 
 ## Flares when it pays: guns aimed and still charging, or the ship going cold,
 ## and never with the Ember already hurt or burning (the crack would stack).
-static func _flare(combat: Combat, me: Ship, side: int) -> void:
+static func flare_when_it_pays(combat: Combat, me: Ship, side: int) -> void:
 	if not me.can_flare():
 		return
 	var ember := me.system_room("ember")
 	if ember.damage > 0.0 or ember.fire > 0.0:
+		return
+	# A one-level Ember goes dark when it cracks: only flare one with a hand there to patch it.
+	if ember.level <= 1 and me.crew_in(ember.id).is_empty():
 		return
 	var charging := 0
 	for i in me.weapon_ids.size():
@@ -113,9 +116,12 @@ func _crew(combat: Combat, me: Ship, side: int) -> void:
 		if mend and mend.power > 0 and c.hp < c.max_hp * 0.35 and c.room != mend.id:
 			combat.apply({"type": "move", "crew": c.uid, "room": mend.id}, side)
 			idle.erase(c)
-	# Whoever is sealing a rent stays on it: walking off leaves the room bleeding warmth.
+	# One hand sealing a rent stays on it: walking off leaves the room bleeding
+	# warmth. The rest of the room stay free for fires and repairs.
+	var sealing := {}
 	for c in idle.duplicate():
-		if me.room(c.room).rent > 0.0:
+		if me.room(c.room).rent > 0.0 and not sealing.has(c.room):
+			sealing[c.room] = true
 			idle.erase(c)
 	# Emergencies next: fires, then rents, then broken systems.
 	var jobs: Array[String] = []
@@ -126,6 +132,7 @@ func _crew(combat: Combat, me: Ship, side: int) -> void:
 		if (
 			room.rent > 0.0
 			and room.fire <= 0.0
+			and not sealing.has(room.id)
 			and me.crew_in(room.id).is_empty()
 			and not busy.has(room.id)
 		):

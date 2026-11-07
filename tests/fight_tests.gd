@@ -64,8 +64,8 @@ static func rents_tear_and_drain(t: SceneTree) -> void:
 	_check(t, me.hull == hull - 2, "the hit still does its hull damage")
 	_shoot(c, "torch_lance", "hold", 1.0)
 	_check(t, me.room("hold").rent > 0.0, "any gun with a rent chance can tear")
-	_shoot(c, "frost_needle", "cells", 1.0)
-	_check(t, me.room("cells").rent == 0.0, "a gun that can't hurt the hull never tears")
+	_shoot(c, "frost_needle", "cells", 0.0)
+	_check(t, me.room("cells").rent == 0.0, "a gun with no rent chance never tears")
 	# Same room, torn and whole: the rent pulls the warmth right out.
 	var a := _open_fight()
 	var b := _open_fight()
@@ -103,7 +103,11 @@ static func crew_seal_rents(t: SceneTree) -> void:
 	var events := _ticks(c, 400)
 	_check(t, helm.rent == 0.0, "until it is shut")
 	_check(t, _has(events, "rent_sealed", 0), "and say so")
-	_check(t, me.hull >= me.max_hull - 3 + Ship.RENT_HULL, "a sealed rent plates a hull point back")
+	_check(
+		t,
+		me.hull >= me.max_hull - 3 + int(Ship.rent_data().hull),
+		"a sealed rent plates a hull point back"
+	)
 	var full := _open_fight()
 	_disarm(full)
 	full.player().room("helm").rent = 100.0
@@ -223,6 +227,15 @@ static func content_is_checked(t: SceneTree) -> void:
 			ContentDB.systems.ember.erase("flare")
 		_check(t, _has_error(ContentDB.validate(), want), "caught: %s" % want)
 	ContentDB.systems = keep_s
+	var keep_h: Dictionary = ContentDB.hazards.duplicate(true)
+	ContentDB.hazards.rent.seal = 0
+	_check(
+		t, _has_error(ContentDB.validate(), "rent seal must be"), "caught: a rent nobody can seal"
+	)
+	ContentDB.hazards = keep_h.duplicate(true)
+	ContentDB.hazards.rent.hull = 0.5
+	_check(t, _has_error(ContentDB.validate(), "rent hull must be"), "caught: half a hull point")
+	ContentDB.hazards = keep_h
 
 
 static func _has_error(errors: Array[String], part: String) -> bool:
@@ -233,7 +246,8 @@ static func _has_error(errors: Array[String], part: String) -> bool:
 
 
 ## The enemy's status line in the top bar must clear the buttons there (Crew,
-## Muster, Flare and, in a siege, Kindle) for every enemy hull on every screen.
+## Muster and Flare) for every enemy hull on every screen. A siege draws its own
+## line instead, which SiegeView starts past the Kindle button.
 static func foe_line_clears_buttons(t: SceneTree, screens: Dictionary) -> void:
 	if TextLayer.glyph_index.is_empty():
 		TextLayer.glyph_index = JSON.parse_string(

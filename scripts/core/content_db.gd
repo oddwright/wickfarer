@@ -19,6 +19,7 @@ const FILES := {
 	"factions": "res://data/factions.json",
 	"modules": "res://data/modules.json",
 	"sieges": "res://data/sieges.json",
+	"hazards": "res://data/hazards.json",
 }
 ## What a Hush Depth's rules may change, and the sign each must have (+1: only
 ## harder when positive, -1: only harder when negative).
@@ -73,6 +74,7 @@ static var depths: Dictionary = {}  ## {"depths": [{name, text, effects}]}, dept
 static var factions: Dictionary = {}  ## standing range, tiers, and each faction
 static var modules: Dictionary = {}  ## module id -> {name, price, weight, gain, cost, unlock}
 static var sieges: Dictionary = {}  ## boss sieges (the Kindling); see Siege
+static var hazards: Dictionary = {}  ## fight hazards' numbers (rents); see Ship
 static var loaded := false
 
 
@@ -94,6 +96,7 @@ static func load_all() -> void:
 	factions = _read(FILES.factions)
 	modules = _read(FILES.modules)
 	sieges = _read(FILES.sieges)
+	hazards = _read(FILES.hazards)
 	_install_translation()
 	loaded = true
 
@@ -157,6 +160,7 @@ static func validate() -> Array[String]:
 	if not systems.has("ember") or not systems.ember.get("stoke_light", []) is Array:
 		errors.append("system ember: needs a stoke_light price list")
 	_validate_flare(systems.get("ember", {}).get("flare"), errors)
+	_validate_rent(hazards.get("rent"), errors)
 	for sys_id in Run.REFIT_SYSTEMS:
 		if not systems.has(sys_id):
 			errors.append("refit offers unknown system %s" % sys_id)
@@ -193,6 +197,20 @@ static func _validate_flare(f: Variant, errors: Array[String]) -> void:
 			errors.append("system ember: flare %s must be a number above 0" % k)
 	if float(f.get("cooldown", 0)) < float(f.get("seconds", 0)):
 		errors.append("system ember: a flare must rest at least as long as it burns")
+
+
+## Rents: warmth lost and sealed a second, fire starved a second, hull plated back.
+static func _validate_rent(r: Variant, errors: Array[String]) -> void:
+	if not r is Dictionary:
+		errors.append("hazards: needs a rent block")
+		return
+	for k in ["drain", "seal", "snuff"]:
+		var v: Variant = r.get(k)
+		if not (v is float or v is int) or float(v) <= 0.0:
+			errors.append("hazards: rent %s must be a number above 0" % k)
+	var hull: Variant = r.get("hull")
+	if not (hull is float or hull is int) or float(hull) < 0.0 or float(hull) != float(int(hull)):
+		errors.append("hazards: rent hull must be a whole number >= 0")
 
 
 static func _validate_system(sys_id: String, sys: Dictionary, errors: Array[String]) -> void:

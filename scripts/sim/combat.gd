@@ -198,7 +198,7 @@ func _resolve(p: Dictionary) -> void:
 ## own stream, so adding rents left every other combat roll where it was.
 func _tear(r: Room, w: Dictionary, where: Dictionary) -> void:
 	var chance := float(w.get("rent_chance", 0.0))
-	if chance <= 0.0 or int(w.hull_damage) <= 0:
+	if chance <= 0.0:  # validation keeps rent chances to guns that hurt the hull
 		return
 	if rng.stream("rents").randf() < chance:
 		var fresh := r.rent <= 0.0

@@ -11,10 +11,6 @@ const WARD_REGEN_TIME := 2.5
 const GUN_BOOST := 1.1  ## weapons charge this much faster with someone at the post
 const WARD_BOOST := 1.25
 const STOKE_BOOST := 0.1  ## extra Ember heat with a stoker, before skill
-const RENT_DRAIN := 12.0  ## warmth a second an open rent lets out to the void
-const RENT_SEAL := 12.0  ## how much of a rent a normal hand seals a second
-const RENT_HULL := 1  ## hull a sealed rent gives back: the crew plate the hole
-const RENT_SNUFF := 10.0  ## fire a second the void starves out of a rented room
 
 var content_id: String
 var side: int  ## 0 = player, 1 = enemy
@@ -478,13 +474,15 @@ func _tick_crew(dt: float, events: Array) -> void:
 ## hole gives a hull point back: the only way to mend the hull mid-fight, and
 ## it costs crew time in the coldest room on the ship.
 func _seal(c: Crew, here: Room, work: float, events: Array) -> void:
-	var sealed := minf(here.rent, RENT_SEAL * float(c.spec().repair) * work)
+	var sealed := minf(here.rent, float(rent_data().seal) * float(c.spec().repair) * work)
 	here.rent -= sealed
 	_practice(c, "patch", sealed * Skills.num("patch_xp_per_rent"), events)
-	if here.rent <= 0.0:
+	# Under half a quantum would round to 0 at the end of the tick with no payout.
+	if here.rent < Q.STEP * 0.5:
 		here.rent = 0.0
-		hull = mini(max_hull, hull + RENT_HULL)
-		events.append({"type": "rent_sealed", "side": side, "room": here.id})
+		var back := int(rent_data().hull)
+		hull = mini(max_hull, hull + back)
+		events.append({"type": "rent_sealed", "side": side, "room": here.id, "hull": back})
 
 
 ## Crew at a working station practise its skill.
@@ -550,6 +548,9 @@ func promotions() -> Array[Dictionary]:
 func _tick_warmth(dt: float) -> void:
 	var delta := {}
 	var fitted := mod("warmth") - mod("heat")
+	if flare_time > 0.0:
+		fitted += float(flare_data().warmth)
+	var drain := float(rent_data().drain)
 	for r in rooms:
 		var d := -1.2 + fitted
 		if r.system == "ember" and r.level > 0:
@@ -557,9 +558,7 @@ func _tick_warmth(dt: float) -> void:
 			d += 7.0 * stoked * float(r.effective_level()) / float(r.level)
 		d += 0.3 * r.power
 		d += 4.0 * r.fire / 100.0
-		d -= RENT_DRAIN * r.rent / 100.0
-		if flare_time > 0.0:
-			d += float(flare_data().warmth)
+		d -= drain * r.rent / 100.0
 		delta[r.id] = d * dt
 	# Heat spreads sideways through doors and rises through ladders.
 	for r in rooms:
@@ -586,7 +585,7 @@ func _tick_fire(dt: float, rng: RandomNumberGenerator, events: Array) -> void:
 		if r.fire <= 0.0:
 			continue
 		if r.rent > 0.0:  # the void takes the air: fire dies down instead of growing
-			r.fire = maxf(0.0, r.fire - RENT_SNUFF * dt * r.rent / 100.0)
+			r.fire = maxf(0.0, r.fire - float(rent_data().snuff) * dt * r.rent / 100.0)
 		elif crew_in(r.id).is_empty():
 			r.fire = minf(100.0, r.fire + 6.0 * dt)
 		if r.level > 0:
@@ -636,10 +635,16 @@ static func flare_data() -> Dictionary:
 	return ContentDB.systems.ember.flare
 
 
-## A flare needs a working Ember and a rested one.
+## Rents' numbers from hazards.json.
+static func rent_data() -> Dictionary:
+	return ContentDB.hazards.rent
+
+
+## A flare needs a working Ember and a rested one (the rest starts with the burn
+## and lasts at least as long, so a burning Ember is never rested).
 func can_flare() -> bool:
 	var ember := system_room("ember")
-	return ember != null and ember.effective_level() > 0 and flare_time <= 0.0 and flare_cool <= 0.0
+	return ember != null and ember.effective_level() > 0 and flare_cool <= 0.0
 
 
 ## Pours the Ember out: guns charge faster and every room warms for a few

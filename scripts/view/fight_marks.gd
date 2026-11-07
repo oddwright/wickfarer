@@ -50,8 +50,9 @@ static func draw_button(world: WorldView, s: Ship, r: Rect2i) -> void:
 	var col := Pixel.c("v")
 	if burning:
 		k = s.flare_time / float(f.seconds)
-	elif s.flare_cool > 0.0:
-		k = 1.0 - s.flare_cool / float(f.cooldown)
+	elif s.flare_cool > 0.0:  # the rest left after the burn, filling from empty
+		var rest := maxf(float(f.cooldown) - float(f.seconds), Q.STEP)
+		k = clampf(1.0 - s.flare_cool / rest, 0.0, 1.0)
 		col = Pixel.c("f")
 	if burning or s.flare_cool > 0.0:
 		world.draw_rect(bar, Pixel.c("c"))
