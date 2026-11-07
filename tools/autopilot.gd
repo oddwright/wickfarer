@@ -11,7 +11,7 @@ extends RefCounted
 ##            Gate, takes the first choice it can in every story, and spends
 ##            scrap on repairs and the cheapest refit.
 ##   skilled: a player who has learned the game. It splits its guns across
-##            the enemy decks so the enemy ward has no busier deck to follow,
+##            the enemy decks so the enemy ward has no clearly better deck,
 ##            picks the enemy room that hurts most, shares out reactor power so
 ##            the guns keep firing, keeps crew on repairs, weighs every story
 ##            choice, refits by a plan, and picks the route to the Gate with the
@@ -151,10 +151,10 @@ func _gun_power(me: Ship, limit: int) -> int:
 
 
 ## Guns stay aimed, as a player leaves them, and the enemy moves its ward to
-## whichever deck more of them point at. So the skilled player keeps the count
-## even: guns that strip wards work on the warded deck, the rest hit the open
+## whichever deck it would stop the most on. So the skilled player splits its
+## guns: those that strip wards work on the warded deck, the rest hit the open
 ## one, and if there are more of those, the weakest is a decoy on the warded
-## deck. With the count even the ward stays put and the open deck stays open.
+## deck, so the ward has no clearly better deck to move to.
 ## A gun is re-aimed within its deck only when that is free, just after it
 ## fires; it moves decks, paying to re-sight, only when its job changes.
 func _volley(c: Combat, me: Ship, foe: Ship) -> void:

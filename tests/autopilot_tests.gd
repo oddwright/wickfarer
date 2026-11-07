@@ -44,7 +44,7 @@ static func skilled_resumes(t: SceneTree) -> void:
 
 ## The split aim: guns that strip a ward work on the warded deck and the rest
 ## on the open one, with the weakest as a decoy if there aren't enough
-## strippers, so as many guns point at each deck and the enemy ward stays put.
+## strippers, so as many guns point at each deck.
 static func split_aim(t: SceneTree) -> void:
 	var pilot := Autopilot.make("skilled")
 	for hull in ShipRoster.playable():
@@ -63,20 +63,8 @@ static func split_aim(t: SceneTree) -> void:
 			_check(
 				t, decks[strippers[0]] == foe.ward_deck, "%s: the stripper takes the ward" % hull
 			)
-		# Checked until the enemy wards or our gun deck are first hit: after that
-		# a gun can lose power and the count tip while the guns re-take decks.
-		var moved := false
-		for tick in 600:
-			var hit := (
-				me.system_room("weapons").damage > 0.0 or foe.system_room("wards").damage > 0.0
-			)
-			if c.state != "fighting" or hit:
-				break
-			var deck := foe.ward_deck
-			pilot.combat_step(c)
-			c.tick()
-			moved = moved or foe.ward_deck != deck
-		_check(t, not moved, "%s: the enemy ward stayed put" % hull)
+		# The enemy ward no longer stays put for an even count: it weighs each
+		# gun (see fight_tests.ward_follows_threat), so the split only keeps it guessing.
 
 
 ## When damage takes reactor power away, the skilled player moves power from
