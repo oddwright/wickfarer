@@ -70,7 +70,8 @@ static func records(t: SceneTree) -> void:
 
 static func unlocks(t: SceneTree) -> void:
 	var keep: Dictionary = ContentDB.unlocks.duplicate(true)
-	ContentDB.unlocks = SAMPLE_UNLOCKS.duplicate(true)
+	# Gear names its unlocks too, so the samples join the real list.
+	ContentDB.unlocks = keep.merged(SAMPLE_UNLOCKS.duplicate(true), true)
 	_check(t, ContentDB.validate().is_empty(), "the sample unlocks are valid content")
 	_unlock_rules(t)
 	ContentDB.unlocks = keep
@@ -259,7 +260,7 @@ static func review_fixes(t: SceneTree) -> void:
 		),
 		"stores and refits carry the same markup"
 	)
-	_check(t, r._marked_up(-1) == -1 and r._marked_up(0) == 0, "only a real price is marked up")
+	_check(t, r.marked_up(-1) == -1 and r.marked_up(0) == 0, "only a real price is marked up")
 	var lines: Array[String] = []
 	for i in 40:
 		lines.append("run %d of a very long wake log that wraps onto a second line" % i)

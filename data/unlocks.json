@@ -10,5 +10,23 @@
     "hint": "UNLOCK_HINT_PORCELAIN_SAINT",
     "stat": "best_gates",
     "at_least": 3
+  },
+  "gear_lamp_siphon": {
+    "name": "UNLOCK_LAMP_SIPHON",
+    "hint": "UNLOCK_HINT_LAMP_SIPHON",
+    "stat": "fights_won",
+    "at_least": 15
+  },
+  "gear_rime_lance": {
+    "name": "UNLOCK_RIME_LANCE",
+    "hint": "UNLOCK_HINT_RIME_LANCE",
+    "stat": "best_gates",
+    "at_least": 2
+  },
+  "gear_hush_veil": {
+    "name": "UNLOCK_HUSH_VEIL",
+    "hint": "UNLOCK_HINT_HUSH_VEIL",
+    "stat": "wins",
+    "at_least": 1
   }
 }

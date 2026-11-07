@@ -16,7 +16,8 @@ const CHOICE_H := 20
 const CHOICE_H_SQUARE := 30  ## the right page is narrow, so labels may take two lines
 const CHOICE_GAP := 4
 const NEXT_W := 90
-const WIDE_ROWS := 3  ## buttons a Wide page stacks before it splits into two columns
+const WIDE_ROWS := 3  ## buttons a Wide page stacks before it splits into columns
+const WIDE_COLS := 3  ## at most; nine buttons is the most a Wide page holds
 
 var kind: String
 var native: Vector2i
@@ -33,7 +34,8 @@ var menu_rect: Rect2i
 var _beacon_across: Dictionary = {}
 
 
-## mode is "chart", "event", "store", "refit" or "next" (one Continue button).
+## mode is "chart", "event", "next" (one Continue button), or a store page
+## ("store", "refit", "wares", "modules", "guns"), whose buttons take its name.
 static func build(
 	screen: Dictionary, chart: StarChart, mode: String, choice_count := 0
 ) -> RunLayout:
@@ -65,12 +67,10 @@ static func build(
 				)
 		"event":
 			l._choices(maxi(choice_count, 1), "choice")
-		"store":
-			l._choices(maxi(choice_count, 1), "store")
-		"refit":
-			l._choices(maxi(choice_count, 1), "refit")
 		"next":
 			l._add("next", 0, l._button_column(1)[0])
+		_:  # a store page: its buttons are named after it
+			l._choices(maxi(choice_count, 1), mode)
 	if l.kind == "tall" and not l.buttons.is_empty() and mode != "chart":
 		l.text_rect.end = Vector2i(l.text_rect.end.x, l.buttons[0].rect.position.y - 8)
 	return l
@@ -174,9 +174,9 @@ func _button_column(count: int) -> Array[Rect2i]:
 		bw = native.x - x - 10
 		y = text_rect.position.y + 4
 	var bh := CHOICE_H if kind == "wide" else CHOICE_H_SQUARE
-	# A long list (the refit page) goes in two columns where one would run off
-	# the bottom of a short Wide canvas.
-	var cols := 2 if kind == "wide" and count > WIDE_ROWS else 1
+	# A long list (the refit page, the store) goes in two or three columns where
+	# one would run off the bottom of a short Wide canvas.
+	var cols := mini(ceili(float(count) / WIDE_ROWS), WIDE_COLS) if kind == "wide" else 1
 	var rows := ceili(float(count) / cols)
 	var cw := (bw - (cols - 1) * CHOICE_GAP) / cols
 	for i in count:

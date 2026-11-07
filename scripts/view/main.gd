@@ -186,12 +186,9 @@ func _build_run_layout() -> void:
 		"event":
 			mode = "event"
 			count = (run.event().get("choices", []) as Array).size()
-		"store":
-			mode = "store"
-			count = run.store_options().size()
-		"refit":
-			mode = "refit"
-			count = run.refit_options().size()
+		"store", "refit", "wares", "modules", "guns":
+			mode = run.state
+			count = run.page_options().size()
 	run_layout = RunLayout.build(screen, run.chart, mode, count)
 
 
@@ -487,7 +484,7 @@ func music_state() -> String:
 			return "engage" if combat == null else music_director.state_for(combat)
 		"event", "outcome":
 			return "event"
-		"store", "refit":
+		"store", "refit", "wares", "modules", "guns":
 			return "store"
 		"lost":
 			return "defeat"
@@ -694,16 +691,12 @@ func _tap_run(p: Vector2i) -> void:
 				ui_cue("refused")
 				return
 			ui_cue("choose")
-		"store", "refit":
-			var opts := run.store_options() if b.kind == "store" else run.refit_options()
-			var option := opts[int(b.id)]
+		"store", "refit", "wares", "modules", "guns":
+			var option := run.page_options()[int(b.id)]
 			if not run.store_action(option):
 				ui_cue("refused")
 				return
-			var paid := (
-				option in Run.STORE_ITEMS or option in Run.REFIT_SYSTEMS or option == "stoke"
-			)
-			ui_cue("buy" if paid else "tap")
+			ui_cue("buy" if Market.pays(option) else "tap")
 		"next":
 			if run.is_over() and run.outcome == "":
 				ui_cue("tap")
@@ -894,7 +887,8 @@ func _new_run() -> void:
 func start_run() -> void:
 	close_menu()
 	var depth := profile.depth if profile else 0
-	var r := Run.create(_fresh_seed(), ships.start_hull(), "reach_1", depth)
+	var open: Array[String] = profile.unlocked if profile else ([] as Array[String])
+	var r := Run.create(_fresh_seed(), ships.start_hull(), "reach_1", depth, open)
 	r.run_id = _new_run_id()
 	_set_run(r)
 
