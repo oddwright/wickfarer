@@ -2,6 +2,7 @@ extends SceneTree
 ## Screenshot one screen at a given window size (needs a display; use xvfb-run).
 ## godot --path . -s tools/shot.gd -- <width> <height> <out.png> [ticks] [screen] [ui size]
 ## screen is fight (default), fight:<player ship id>, chart, event, event:<event id>, store,
+## flare (a fight with a rent on each ship and the Ember flaring),
 ## refit, wares, modules, guns or selling (store gear pages with some gear aboard),
 ## store:<faction>:<standing>, reach_done,
 ## won or lost, roster or roster_pick (the crew roster over a fight,
@@ -75,7 +76,7 @@ func _set_up() -> void:
 			_gear_page(run, which)
 		"lost", "won", "reach_done":
 			run.state = which
-		"fight":
+		"fight", "flare":
 			run._start_fight("ashmarket_cutter")
 	if which.begins_with("store:"):  # store:<faction>:<standing>
 		run.state = "store"
@@ -101,6 +102,8 @@ func _set_up() -> void:
 		_play_siege(main.combat)
 	elif main.combat:
 		_play_fight(main.combat)
+	if which == "flare":
+		_tear_and_flare(main.combat)
 	match which:
 		"title", "pause":
 			main.open_menu(which)
@@ -143,6 +146,18 @@ func _play_fight(c: Combat) -> void:
 	for i in 12:
 		c.tick()
 	main.selected_weapon = 1
+
+
+## A rent on each ship and the player's Ember mid-flare.
+func _tear_and_flare(c: Combat) -> void:
+	c.player().room("hold").rent = 100.0
+	c.enemy().room("stores").rent = 100.0
+	c.player().system_room("ember").damage = 0.0
+	c.player().system_room("ember").fire = 0.0
+	c.apply({"type": "flare"})
+	for i in 40:
+		c.tick()
+		main._on_events(c.events)
 
 
 func _play_siege(c: Combat) -> void:

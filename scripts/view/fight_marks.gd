@@ -9,17 +9,17 @@ const PATCHED := ".j...\njff..\n.fff.\n..ffj\n...j."
 const FLAME := "..w..\n.wvw.\nwvxvw\n.wvw.\n..w.."
 
 
-## A rent in the top-right of a room, with specks of warmth pulled out through it.
+## A rent in the bottom-right of a room (its word sits top-right), with specks of warmth pulled out through it.
 ## The room's cold shading already shows the warmth it costs.
 static func draw_rent(world: WorldView, r: Room, rr: Rect2i, t: float) -> void:
 	if r.rent <= 0.0:
 		return
-	var at := Vector2(rr.end.x - 8, rr.position.y + 3)
+	var at := Vector2(rr.end.x - 8, rr.end.y - 7)
 	world.draw_texture(Pixel.grid(TEAR if r.rent > 50.0 else PATCHED), at)
 	# Two specks drift toward the tear and vanish into it, a second apart.
 	for k in 2:
 		var f := fmod(t + k * 0.5, 1.0)
-		var from := Vector2(rr.position.x + 4 + k * 6, rr.end.y - 6)
+		var from := Vector2(rr.position.x + 4 + k * 6, rr.position.y + 10)
 		var p := from.lerp(at + Vector2(2, 2), f).round()
 		world.draw_rect(Rect2(p, Vector2.ONE), Pixel.c("j", 1.0 - f))
 
