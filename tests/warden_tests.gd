@@ -265,7 +265,11 @@ static func warden_holds_the_gate(t: SceneTree) -> void:
 	)
 	var last := Run.create(12, "tallow_wren", "reach_4")
 	_to_gate(last)
-	_check(t, last.state == "won", "a Gate with no Warden is crossed on arrival")
+	_check(
+		t,
+		last.state == "fight" and last.combat.siege != null and last.combat.rule() == "",
+		"the last Gate is the Kindling, not a Warden"
+	)
 
 
 ## The readout says, for each enemy gun, where it aims and when it fires.

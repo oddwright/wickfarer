@@ -51,11 +51,15 @@ static func reaches_chain(t: SceneTree) -> void:
 	_check(t, r.ship.hull == patched, "and the ship, with the Gate's patch on its hull")
 	_check(t, not r.next_reach(), "only once per Gate")
 	var guard := 0
-	while r.state != "won" and guard < 10:
+	while r.state != "fight" and guard < 10:
 		_arrive_at_gate(r)
 		r.next_reach()
 		guard += 1
-	_check(t, r.state == "won" and r.is_over(), "the last Gate wins the run")
+	_check(t, r.combat != null and r.combat.siege != null, "the last Gate opens on the Kindling")
+	r.combat.siege.done = true  # kindled (tests/siege_tests.gd plays it out)
+	r.combat.tick()
+	r.finish_fight()
+	_check(t, r.state == "won" and r.is_over(), "kindling the Cradle wins the run")
 	var chain := 0
 	var rid := "reach_1"
 	while rid != "":

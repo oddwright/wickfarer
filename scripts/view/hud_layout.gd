@@ -13,6 +13,7 @@ const SMALL_W := 54
 const CREW_W := 34  ## the Crew and Muster buttons
 const CREW_H := 30
 const CREW_X := 128  ## clear of the longest ship name and hull count in the top bar
+const KINDLE_W := 54
 const BAR_H := 40  ## a ship's status lines: name and hull, hull pips, reactor, power
 const MSG_H := 24  ## Tall: three lines of the hint between the player ship and the buttons
 const INTENT_LINE := 7  ## one line of the enemy's intent, under its status lines
@@ -46,7 +47,8 @@ static func build(
 	systems: Array[String],
 	weapon_count: int,
 	player_used := Rect2i(),
-	enemy_used := Rect2i()
+	enemy_used := Rect2i(),
+	siege := false
 ) -> HudLayout:
 	## player_used and enemy_used are the non-empty part of each frame; empty means all of it.
 	var pu := player_used if player_used.has_area() else Rect2i(Vector2i.ZERO, player_frame)
@@ -116,14 +118,32 @@ static func build(
 	if l.player_body.end.x > x:  # on a narrow canvas the player's hull reaches under it too
 		floor_y = mini(floor_y, l.player_body.position.y)
 	var lines := maxi(0, (floor_y - 1 - top) / INTENT_LINE)
-	if lines > 0:  # an empty rect still "intersects" what it sits in, so leave none
+	if lines > 0 and not siege:  # an empty rect still "intersects" what it sits in
 		l.intent_rect = Rect2i(x, top, w - 34 - x, lines * INTENT_LINE)
+	if siege:
+		l._add_kindle()
 	return l
 
 
 ## How many lines of the enemy's intent fit.
 func intent_lines() -> int:
 	return intent_rect.size.y / INTENT_LINE
+
+
+## The Kindling's one extra order. The bottom rows are full on the narrowest
+## canvases, so it sits in the top bar beside the crew buttons in Wide, at the
+## top bar just right of the fold in Square (its crew buttons are down by the ward), and
+## beside the crew buttons over the guns in Tall.
+func _add_kindle() -> void:
+	var crew: Rect2i = button("crew").rect
+	var size := Vector2i(KINDLE_W, CREW_H)
+	match kind:
+		"wide":
+			_add("kindle", 0, Rect2i(crew.position + Vector2i((CREW_W + 4) * 2, 0), size))
+		"tall":
+			_add("kindle", 0, Rect2i(crew.position - Vector2i(KINDLE_W + 4, 0), size))
+		_:
+			_add("kindle", 0, Rect2i(Vector2i(hinge.end.x + 4, 4), size))
 
 
 ## Tall (a phone held upright): the enemy under the top bar, the player's status lines

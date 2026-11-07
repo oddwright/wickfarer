@@ -133,6 +133,8 @@ func _draw() -> void:
 		_draw_rooms(side)
 		_draw_wards(side)
 	_draw_aims()
+	if combat.siege:
+		SiegeView.draw_world(self, combat)
 	for side in 2:
 		_draw_crew(side)
 	_draw_projectiles()
@@ -186,18 +188,23 @@ func _draw_system_icon(r: Room, rr: Rect2i) -> void:
 		draw_rect(Rect2(pos + Vector2(k * 3, 10), Vector2(2, 2)), Pixel.c("U"))
 
 
+## The canvas box around every room on one deck of a ship.
+func deck_rect(side: int, deck: int) -> Rect2i:
+	var box := Rect2i()
+	var first := true
+	for r in main.combat.ships[side].rooms:
+		if r.deck == deck:
+			var rr := room_rect(side, r)
+			box = rr if first else box.merge(rr)
+			first = false
+	return box
+
+
 func _draw_wards(side: int) -> void:
 	var s: Ship = main.combat.ships[side]
 	if s.ward_layers <= 0 and s.max_ward_layers() <= 0:
 		return
-	var box := Rect2i()
-	var first := true
-	for r in s.rooms:
-		if r.deck == s.ward_deck:
-			var rr := room_rect(side, r)
-			box = rr if first else box.merge(rr)
-			first = false
-	box = box.grow(2)
+	var box := deck_rect(side, s.ward_deck).grow(2)
 	for k in s.max_ward_layers():
 		var on := k < s.ward_layers
 		var b := box.grow(k * 2)
@@ -322,7 +329,10 @@ func _draw_hud() -> void:
 	var l: HudLayout = main.layout
 	var me := combat.player()
 	_draw_hull(me, Vector2i(4, 4 + l.player_bar_y), false)
-	_draw_hull(combat.enemy(), Vector2i(l.native.x - 34, 4), true)  # clear of the menu button
+	if combat.siege:
+		SiegeView.draw_hud(self, combat, l)
+	else:
+		_draw_hull(combat.enemy(), Vector2i(l.native.x - 34, 4), true)  # clear of the menu button
 	Pixel.menu_icon(self, l.menu_rect)
 	# reactor: green = in use, outline = spare, red = lost to Ember damage
 	var used := me.used_power()
@@ -355,6 +365,8 @@ func _draw_hud() -> void:
 					)
 			"crew", "muster":
 				_draw_panel(r, b.kind == "crew" and main.roster.open)
+			"kindle":
+				SiegeView.draw_kindle_button(self, combat, r)
 			"pause":
 				_draw_panel(r, main.paused)
 				var cx := r.position.x + 11

@@ -13,7 +13,7 @@ OUT = sys.argv[2]
 sys.path.insert(0, SRC)
 from PIL import Image
 from canvas import Cv, clean_orphans
-import ships, wren, cutter, minis, brine, saint, tidewarden, choir
+import ships, wren, cutter, minis, brine, saint, tidewarden, choir, hush
 
 os.makedirs(OUT, exist_ok=True)
 
@@ -51,6 +51,7 @@ sheet([brine.brine(f) for f in range(4)]).save(os.path.join(OUT, 'ship_brine_cat
 sheet([saint.saint(f) for f in range(4)]).save(os.path.join(OUT, 'ship_porcelain_saint.png'))
 sheet([tidewarden.ketch(f) for f in range(4)]).save(os.path.join(OUT, 'ship_tidewarden_ketch.png'))
 sheet([choir.psalter(f) for f in range(4)]).save(os.path.join(OUT, 'ship_choir_psalter.png'))
+sheet([hush.maw(f) for f in range(4)]).save(os.path.join(OUT, 'ship_hush_maw.png'))
 
 ORU = """
 ..aaaaa..

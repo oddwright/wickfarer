@@ -8,7 +8,7 @@ extends RefCounted
 ## - Old saves are upgraded one version at a time by migrate().
 ## - A save from a newer game version is refused, not overwritten.
 
-const VERSION := 8
+const VERSION := 9
 const DIR := "user://"
 
 
@@ -80,7 +80,13 @@ static func migrate(from_version: int, d: Dictionary) -> Variant:
 			# keeps an older build from dropping a newer run's standing.
 			return d
 		7:
-			# Version 8 fights count the Light the Hollow Choir drains (a missing
+			# Version 8 fights can be the Kindling siege, with a "siege" block and a
+			# "siege" random stream. A version 7 fight is an ordinary one and needs
+			# neither (the stream seeds itself); the bump keeps an older build from
+			# loading a siege it would play as a fight with no end.
+			return d
+		8:
+			# Version 9 fights count the Light the Hollow Choir drains (a missing
 			# count reads as 0), and a Gate's dock patches the hull on arrival, before
 			# any Warden, not on the way through. A run saved on a Gate's screen
 			# arrived without the patch and would no longer get it, so it gets it here.
